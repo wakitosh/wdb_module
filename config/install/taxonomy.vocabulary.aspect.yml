@@ -1,0 +1,11 @@
+uuid: bc9dfb9b-2326-42e1-b5a6-e713d5a22431
+langcode: en
+status: true
+name: 'Grammatical Aspect'
+vid: aspect
+description: 'Grammatical aspect (e.g., perfective).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

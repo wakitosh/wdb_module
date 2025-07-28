@@ -1,0 +1,22 @@
+uuid: 05eddaab-c237-4557-9053-6938769944b5
+langcode: en
+status: true
+dependencies:
+  config:
+    - taxonomy.vocabulary.voice
+  module:
+    - content_translation
+  enforced:
+    module:
+      - wdb_core
+      - content_translation
+id: taxonomy_term.voice
+target_entity_type_id: taxonomy_term
+target_bundle: voice
+default_langcode: en
+language_alterable: true
+third_party_settings:
+  content_translation:
+    enabled: true
+    bundle_settings:
+      untranslatable_fields_hide: '0'

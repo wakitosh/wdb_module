@@ -1,0 +1,189 @@
+{#
+/**
+ * @file
+ * Default theme implementation for the annotation info panel content.
+ *
+ * Available variables:
+ * - data: A nested array of data structured by the WdbDataService, containing:
+ * - retrieved_data: The main data payload.
+ * - navigation: Data for previous/next sign and word.
+ * - subsystem: Subsystem-specific settings like pageNavigation.
+ * - sign_interpretations: Array of sign interpretation details.
+ * - associated_word_units: Array of word unit details for each sign.
+ */
+#}
+<div class="annotation-details-popup">
+  {# Navigation Data #}
+  {% set nav = data.retrieved_data.navigation %}
+  {# Icon placement direction based on subsystem settings #}
+  {% set prev_first = (data.retrieved_data.subsystem.pageNavigation == 'left-to-right') %}
+
+  {# Loop through Sign Interpretations #}
+  {% if data.retrieved_data.sign_interpretations is not empty %}
+    {% for interp in data.retrieved_data.sign_interpretations %}
+      {% if interp.associated_word_units is not empty %}
+        {% for wu_detail in interp.associated_word_units %}
+          <div class="annotation-detail-sign">
+            {# Sign Navigation #}
+            <div class="item-header">
+              <div class="item-navigation">
+                {% if prev_first %}
+                  <a href="#"
+                     class="nav-button-icon prev-sign is-clickable"
+                     data-annotation-uri="{{ nav.sign.prev.annotation_uri }}"
+                     {% if not nav.sign.prev %}disabled{% endif %}>
+                {% else %}
+                  <a href="#"
+                     class="nav-button-icon next-sign is-clickable"
+                     data-annotation-uri="{{ nav.sign.next.annotation_uri }}"
+                     {% if not nav.sign.next %}disabled{% endif %}>
+                {% endif %}
+                  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </a>
+                <span class="item-title">{{ 'Sign'|t }}</span>
+                {% if prev_first %}
+                  <a href="#"
+                     class="nav-button-icon next-sign is-clickable"
+                     data-annotation-uri="{{ nav.sign.next.annotation_uri }}"
+                     {% if not nav.sign.next %}disabled{% endif %}>
+                {% else %}
+                  <a href="#"
+                     class="nav-button-icon prev-sign is-clickable"
+                     data-annotation-uri="{{ nav.sign.prev.annotation_uri }}"
+                     {% if not nav.sign.prev %}disabled{% endif %}>
+                {% endif %}
+                  <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </a>
+              </div>
+            </div>
+
+            {% if interp.thumbnail_data %}
+              {# Sign thumbnail with polygon overlay #}
+              <div class="sign-thumbnail is-clickable" data-annotation-uri="{{ interp.sign_info.annotation_uri }}">
+                {% set thumb = interp.thumbnail_data %}
+                <svg width="125" height="125" viewBox="0 0 {{ thumb.region_w }} {{ thumb.region_h }}">
+                  <image href="{{ thumb.thumbnail_url }}" x="0" y="0" width="{{ thumb.region_w }}" height="{{ thumb.region_h }}" />
+                  <polygon points="{{ thumb.polygon_points }}"/>
+                </svg>
+              </div>
+            {% endif %}
+
+            {# Sign Information #}
+            <p>
+              {% if interp.sign_info.sign_code %}
+                <strong>Sign Code:</strong> <a href="{{ interp.sign_info.search_url }}" target="_blank">{{ interp.sign_info.sign_code|e }}</a><br>
+              {% endif %}
+              {% if interp.sign_info.function_name %}
+                <strong>Function:</strong> {{ interp.sign_info.function_name|e }}<br>
+              {% endif %}
+              {% if interp.entity.phone.value is not empty %}
+                <strong>Phone</strong>: {{ interp.entity.phone.value|e }}<br>
+              {% endif %}
+              {% if interp.entity.note.value|e|nl2br is not empty %}
+                <strong>Note:</strong> {{ interp.entity.note.value|e|nl2br }}<br>
+              {% endif %}
+            </p>
+          </div>
+          <div class="annotation-detail-word">
+
+            {# Word Navigation #}
+            <div class="item-header">
+              <div class="item-navigation">
+                {% if prev_first %}
+                  <a href="#"
+                     class="nav-button-icon prev-word is-clickable"
+                     data-annotation-uri="{{ nav.word.prev.annotation_uri }}"
+                     data-word-points="{{ nav.word.prev.points|json_encode }}"
+                     {% if not nav.word.prev %}disabled{% endif %}>
+                {% else %}
+                  <a href="#"
+                     class="nav-button-icon next-word is-clickable"
+                     data-annotation-uri="{{ nav.word.next.annotation_uri }}"
+                     data-word-points="{{ nav.word.next.points|json_encode }}"
+                     {% if not nav.word.next %}disabled{% endif %}>
+                {% endif %}
+                  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </a>
+                <span class="item-title">{{ 'Word'|t }}</span>
+                {% if prev_first %}
+                  <a href="#"
+                     class="nav-button-icon next-word is-clickable"
+                     data-annotation-uri="{{ nav.word.next.annotation_uri }}"
+                     data-word-points="{{ nav.word.next.points|json_encode }}"
+                     {% if not nav.word.next %}disabled{% endif %}>
+                {% else %}
+                  <a href="#"
+                     class="nav-button-icon prev-word is-clickable"
+                     data-annotation-uri="{{ nav.word.prev.annotation_uri }}"
+                     data-word-points="{{ nav.word.prev.points|json_encode }}"
+                     {% if not nav.word.prev %}disabled{% endif %}>
+                {% endif %}
+                  <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </a>
+              </div>
+            </div>
+            {% if wu_detail.thumbnail_data %}
+              {% set word_thumb = wu_detail.thumbnail_data %}
+              {% set word_points_data = wu_detail.constituent_signs|map(sign => sign.polygon_points) %}
+              {# Word thumbnail with polygon overlay #}
+              <div class="word-thumbnail is-clickable" data-word-points="{{ word_points_data|json_encode }}">
+                <svg width="250" height="125" viewBox="0 0 {{ word_thumb.region_w }} {{ word_thumb.region_h }}">
+                  <image href="{{ word_thumb.thumbnail_url }}" x="0" y="0" width="{{ word_thumb.region_w }}" height="{{ word_thumb.region_h }}" />
+                  <polygon points="{{ word_thumb.word_hull_points }}"/>
+                </svg>
+              </div>
+            {% endif %}
+
+            {# Word Information #}
+            <p>
+              {% set realized_form_url = url('wdb_core.search_form', {'realized_form': wu_detail.entity.realized_form.value}) %}
+              <strong>{{ 'Realized Form'|t }}:</strong> <a href="{{ realized_form_url }}" target="_blank">{{ wu_detail.entity.realized_form.value }}</a><br>
+              {% if wu_detail.word_info %}
+                <strong>{{ 'Basic Form'|t }}:</strong> <a href="{{ wu_detail.word_info.search_url }}" target="_blank">{{ wu_detail.word_info.basic_form|e }}</a><br>
+              {% endif %}
+              {% if wu_detail.meaning_info.explanation %}
+                <strong>{{ 'Meaning'|t }}:</strong> {{ wu_detail.meaning_info.explanation }}<br>
+              {% endif %}
+
+              {% if wu_detail.grammatical_categories.lexical_category_name %}
+                <strong>Lexical Category:</strong> <a href="{{ wu_detail.grammatical_categories.lexical_category_search_url }}" target="_blank">{{ wu_detail.grammatical_categories.lexical_category_name|e }}</a><br>
+              {% endif %}
+
+              {% for cat_key, cat_name in wu_detail.grammatical_categories %}
+                {% if cat_key not in ['lexical_category_name', 'lexical_category_search_url'] and cat_name is not empty %}
+                  <strong>{{ cat_key|replace({'_': ' '})|title }}:</strong> {{ cat_name }}<br>
+                {% endif %}
+              {% endfor %}
+            </p>
+
+          </div>
+          <div class="annotation-detail-constituent-signs">
+
+            {# List of Constituent Signs #}
+            {% if wu_detail.constituent_signs is not empty %}
+              <h3>Constituent Signs:</h3>
+
+              {% for si_item in wu_detail.constituent_signs %}
+
+                <strong><a href="{{ si_item.search_url }}" target="_blank">{{ si_item.sign_code }}</a></strong>{% if si_item.reading %} [{{ si_item.reading }}]{% endif %}
+
+                {# Constituent sign thumbnail with polygon overlay #}
+                {% if si_item.thumbnail_data %}
+                  {% set sign_thumb = si_item.thumbnail_data %}
+                  {% set sign_image_url = data.iiif_base_url ~ '/' ~ sign_thumb.image_identifier|url_encode ~ '/' ~ sign_thumb.region_xywh ~ '/!100,100/0/default.jpg' %}
+                  <div class="sign-thumbnail is-clickable" data-annotation-uri="{{ si_item.annotation_uri }}">
+                    <svg width="100" height="100" viewBox="0 0 {{ sign_thumb.region_w }} {{ sign_thumb.region_h }}">
+                      <image href="{{ sign_image_url }}" x="0" y="0" width="{{ sign_thumb.region_w }}" height="{{ sign_thumb.region_h }}" />
+                      <polygon points="{{ sign_thumb.polygon_points }}"/>
+                    </svg>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          </div>
+
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+</div>

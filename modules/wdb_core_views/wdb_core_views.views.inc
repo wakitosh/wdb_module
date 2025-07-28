@@ -1,0 +1,410 @@
+<?php
+
+/**
+ * @file
+ * Provides views data for wdb_core entities.
+ *
+ * This file defines the database tables, fields, and relationships
+ * for the WDB Core module, making them available to the Views module.
+ */
+
+/**
+ * Implements hook_views_data().
+ */
+function wdb_core_views_views_data() {
+  $data = [];
+
+  // ================================================================
+  // Base Table Definitions (Selectable as the starting point in Views)
+  // ================================================================
+
+  // ----------------------------------------------------------------
+  // Base Table: WDB Word Unit (wdb_word_unit_field_data)
+  // The primary entity for building views about words in context.
+  // ----------------------------------------------------------------
+  $data['wdb_word_unit_field_data']['table']['group'] = t('WDB Content');
+  $data['wdb_word_unit_field_data']['table']['provider'] = 'wdb_core';
+  $data['wdb_word_unit_field_data']['table']['base'] = [
+    'field' => 'id',
+    'title' => t('WDB Word Unit'),
+    'help' => t('WDB Word Unit entities, representing a word in a specific context.'),
+    'weight' => -10,
+  ];
+
+  // Fields for WdbWordUnit.
+  $data['wdb_word_unit_field_data']['id'] = [
+    'title' => t('Word Unit ID'),
+    'help' => t('The unique ID of the Word Unit.'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'numeric'],
+    'argument' => ['id' => 'numeric'],
+  ];
+  $data['wdb_word_unit_field_data']['original_word_unit_identifier'] = [
+    'title' => t('Original Word Unit Identifier'),
+    'help' => t('The original identifier from the source data.'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_word_unit_field_data']['realized_form'] = [
+    'title' => t('Realized Form'),
+    'help' => t('The actual form of the word as it appears in the text.'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_word_unit_field_data']['word_sequence'] = [
+    'title' => t('Word Sequence'),
+    'help' => t('The sequence number of the word in its context.'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'numeric'],
+  ];
+  $data['wdb_word_unit_field_data']['note__value'] = [
+    'title' => t('Word Unit Note'),
+    'help' => t('A note associated with the Word Unit.'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+
+  // Relationships from WdbWordUnit.
+  $data['wdb_word_unit_field_data']['word_meaning_ref'] = [
+    'title' => t('Word Meaning'),
+    'help' => t('Relates to the meaning of this word unit.'),
+    'relationship' => [
+      'base' => 'wdb_word_meaning_field_data',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Word Meaning'),
+    ],
+  ];
+  $data['wdb_word_unit_field_data']['source_ref'] = [
+    'title' => t('Source'),
+    'help' => t('Relates to the source document.'),
+    'relationship' => [
+      'base' => 'wdb_source',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Source'),
+    ],
+  ];
+
+  // Reverse relationship to WdbWordMap.
+  $data['wdb_word_unit_field_data']['reverse__wdb_word_map__word_unit_ref'] = [
+    'title' => t('Word Map (Reverse)'),
+    'help' => t('Relates to the Word Map that references this Word Unit.'),
+    'relationship' => [
+      'id' => 'standard',
+      'base' => 'wdb_word_map',
+      'base field' => 'word_unit_ref',
+      'field' => 'id',
+      'label' => t('Word Map'),
+    ],
+  ];
+
+  // Many-to-many relationship handling (Step 1/2).
+  // First, define a relationship from the base table to the intermediate (junction) table.
+  $data['wdb_word_unit_field_data']['wdb_word_unit__annotation_page_refs'] = [
+    'title' => t('Annotation Page Refs (Intermediate)'),
+    'help' => t('The intermediate connection to Annotation Pages. Use this to bridge to the Annotation Page relationship.'),
+    'relationship' => [
+      'id' => 'standard',
+      'base' => 'wdb_word_unit__annotation_page_refs',
+      'base field' => 'entity_id',
+      'field' => 'id',
+      'label' => t('Annotation Page Ref'),
+    ],
+  ];
+
+  // ----------------------------------------------------------------
+  // Base Table: WDB Source (wdb_source)
+  // ----------------------------------------------------------------
+  $data['wdb_source']['table']['group'] = t('WDB Content');
+  $data['wdb_source']['table']['base'] = [
+    'field' => 'id',
+    'title' => t('WDB Source'),
+    'help' => t('WDB Source entities (documents).'),
+  ];
+  $data['wdb_source']['id'] = [
+    'title' => t('Source ID'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'numeric'],
+    'argument' => ['id' => 'numeric'],
+  ];
+  $data['wdb_source']['displayname'] = [
+    'title' => t('Source Title'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_source']['source_identifier'] = [
+    'title' => t('Source Identifier'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_source']['pages'] = [
+    'title' => t('Number of Pages'),
+    'field' => ['id' => 'numeric'],
+    'filter' => ['id' => 'numeric'],
+  ];
+  $data['wdb_source']['title_statement'] = [
+    'title' => t('Title Statement'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_source']['description__value'] = [
+    'title' => t('Source Description'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+
+  // ----------------------------------------------------------------
+  // Base Table: WDB Word (Lemma) (wdb_word_field_data)
+  // ----------------------------------------------------------------
+  $data['wdb_word_field_data']['table']['group'] = t('WDB Content');
+  $data['wdb_word_field_data']['table']['base'] = [
+    'field' => 'id',
+    'title' => t('WDB Word (Lemma)'),
+    'help' => t('WDB Word entities (lemmas).'),
+  ];
+  $data['wdb_word_field_data']['id'] = [
+    'title' => t('Word ID'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'numeric'],
+    'argument' => ['id' => 'numeric'],
+  ];
+  $data['wdb_word_field_data']['word_code'] = [
+    'title' => t('Word Code'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_word_field_data']['basic_form'] = [
+    'title' => t('Basic Form (Lemma)'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_word_field_data']['lexical_category_ref'] = [
+    'title' => t('Lexical Category'),
+    'relationship' => [
+      'base' => 'taxonomy_term_field_data',
+      'base field' => 'tid',
+      'id' => 'standard',
+      'label' => t('Lexical Category'),
+    ],
+  ];
+
+  // ----------------------------------------------------------------
+  // Base Table: WDB Sign (wdb_sign_field_data)
+  // ----------------------------------------------------------------
+  $data['wdb_sign_field_data']['table']['group'] = t('WDB Content');
+  $data['wdb_sign_field_data']['table']['base'] = [
+    'field' => 'id',
+    'title' => t('WDB Sign'),
+    'help' => t('WDB Sign entities.'),
+  ];
+  $data['wdb_sign_field_data']['id'] = [
+    'title' => t('Sign ID'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'numeric'],
+    'argument' => ['id' => 'numeric'],
+  ];
+  $data['wdb_sign_field_data']['sign_code'] = [
+    'title' => t('Sign Code'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+
+  // ----------------------------------------------------------------
+  // Base Table: WDB Annotation Page (wdb_annotation_page_field_data)
+  // ----------------------------------------------------------------
+  $data['wdb_annotation_page_field_data']['table']['group'] = t('WDB Content');
+  $data['wdb_annotation_page_field_data']['table']['base'] = [
+    'field' => 'id',
+    'title' => t('WDB Annotation Page'),
+    'help' => t('WDB Annotation Page entities.'),
+  ];
+  $data['wdb_annotation_page_field_data']['id'] = [
+    'title' => t('Annotation Page ID'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'numeric'],
+    'argument' => ['id' => 'numeric'],
+  ];
+  $data['wdb_annotation_page_field_data']['page_number'] = [
+    'title' => t('Page Number'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+  ];
+  $data['wdb_annotation_page_field_data']['page_name'] = [
+    'title' => t('Page Label'),
+    'field' => ['id' => 'standard'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_annotation_page_field_data']['annotation_code'] = [
+    'title' => t('Annotation Code'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_annotation_page_field_data']['source_ref'] = [
+    'title' => t('Source'),
+    'relationship' => [
+      'base' => 'wdb_source',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Source'),
+    ],
+  ];
+
+  // ================================================================
+  // Join-Only Table Definitions (Available only via relationships)
+  // ================================================================
+
+  // ----------------------------------------------------------------
+  // Intermediate Table: wdb_word_unit__annotation_page_refs
+  // This table is not meant to be used directly, but as a bridge.
+  // ----------------------------------------------------------------
+  $data['wdb_word_unit__annotation_page_refs']['table']['group'] = t('WDB Content');
+  $data['wdb_word_unit__annotation_page_refs']['table']['join']['wdb_word_unit_field_data'] = [
+    'left_field' => 'id',
+    'field' => 'entity_id',
+  ];
+  // Many-to-many relationship handling (Step 2/2).
+  // Define the relationship from the intermediate table to the final target table.
+  $data['wdb_word_unit__annotation_page_refs']['annotation_page_refs_target_id'] = [
+    'title' => t('Annotation Page'),
+    'help' => t('The Annotation Page this Word Unit appears on.'),
+    'relationship' => [
+      'base' => 'wdb_annotation_page_field_data',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Annotation Page'),
+    ],
+  ];
+
+  // ----------------------------------------------------------------
+  // Table: WDB Word Meaning (wdb_word_meaning_field_data)
+  // ----------------------------------------------------------------
+  $data['wdb_word_meaning_field_data']['table']['group'] = t('WDB Content');
+  $data['wdb_word_meaning_field_data']['table']['join']['wdb_word_unit_field_data'] = [
+    'left_field' => 'word_meaning_ref',
+    'field' => 'id',
+  ];
+  $data['wdb_word_meaning_field_data']['word_ref'] = [
+    'title' => t('Word (Lemma)'),
+    'relationship' => [
+      'base' => 'wdb_word_field_data',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Word (Lemma)'),
+    ],
+  ];
+  $data['wdb_word_meaning_field_data']['word_meaning_code'] = [
+    'title' => t('Word Meaning Code'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_word_meaning_field_data']['explanation__value'] = [
+    'title' => t('Explanation'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+
+  // ----------------------------------------------------------------
+  // Table: WDB Word Map (wdb_word_map)
+  // ----------------------------------------------------------------
+  $data['wdb_word_map']['table']['group'] = t('WDB Content');
+  $data['wdb_word_map']['table']['join']['wdb_word_unit_field_data'] = [
+    'left_field' => 'id',
+    'field' => 'word_unit_ref',
+  ];
+  $data['wdb_word_map']['sign_interpretation_ref'] = [
+    'title' => t('Sign Interpretation'),
+    'relationship' => [
+      'base' => 'wdb_sign_interpretation_field_data',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Sign Interpretation'),
+    ],
+  ];
+  $data['wdb_word_map']['sign_sequence'] = [
+    'title' => t('Sign Sequence'),
+    'field' => ['id' => 'numeric'],
+    'sort' => ['id' => 'standard'],
+    'filter' => ['id' => 'numeric'],
+  ];
+
+  // ----------------------------------------------------------------
+  // Table: WDB Sign Interpretation (wdb_sign_interpretation_field_data)
+  // ----------------------------------------------------------------
+  $data['wdb_sign_interpretation_field_data']['table']['group'] = t('WDB Content');
+  $data['wdb_sign_interpretation_field_data']['table']['join']['wdb_word_map'] = [
+    'left_field' => 'sign_interpretation_ref',
+    'field' => 'id',
+  ];
+  $data['wdb_sign_interpretation_field_data']['sign_function_ref'] = [
+    'title' => t('Sign Function'),
+    'relationship' => [
+      'base' => 'wdb_sign_function_field_data',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Sign Function'),
+    ],
+  ];
+  $data['wdb_sign_interpretation_field_data']['label_ref'] = [
+    'title' => t('Label'),
+    'relationship' => [
+      'base' => 'wdb_label',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Label'),
+    ],
+  ];
+
+  // ----------------------------------------------------------------
+  // Table: WDB Label (wdb_label)
+  // ----------------------------------------------------------------
+  $data['wdb_label']['table']['group'] = t('WDB Content');
+  $data['wdb_label']['table']['join']['wdb_sign_interpretation_field_data'] = [
+    'left_field' => 'label_ref',
+    'field' => 'id',
+  ];
+  $data['wdb_label']['label_name'] = [
+    'title' => t('Label Name'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+
+  // ----------------------------------------------------------------
+  // Table: WDB Sign Function (wdb_sign_function_field_data)
+  // ----------------------------------------------------------------
+  $data['wdb_sign_function_field_data']['table']['group'] = t('WDB Content');
+  $data['wdb_sign_function_field_data']['table']['join']['wdb_sign_interpretation_field_data'] = [
+    'left_field' => 'sign_function_ref',
+    'field' => 'id',
+  ];
+  $data['wdb_sign_function_field_data']['sign_ref'] = [
+    'title' => t('Sign'),
+    'relationship' => [
+      'base' => 'wdb_sign_field_data',
+      'base field' => 'id',
+      'id' => 'standard',
+      'label' => t('Sign'),
+    ],
+  ];
+  $data['wdb_sign_function_field_data']['function_name'] = [
+    'title' => t('Function Name'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+
+  return $data;
+}

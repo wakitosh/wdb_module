@@ -1,0 +1,22 @@
+uuid: 4f10baa7-67ba-416d-b4e8-d14ef1626e3a
+langcode: en
+status: true
+dependencies:
+  config:
+    - taxonomy.vocabulary.verbal_form
+  module:
+    - content_translation
+  enforced:
+    module:
+      - wdb_core
+      - content_translation
+id: taxonomy_term.verbal_form
+target_entity_type_id: taxonomy_term
+target_bundle: verbal_form
+default_langcode: en
+language_alterable: true
+third_party_settings:
+  content_translation:
+    enabled: true
+    bundle_settings:
+      untranslatable_fields_hide: '0'

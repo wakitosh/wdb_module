@@ -1,0 +1,11 @@
+uuid: a2cd75a2-eb8f-419a-b0b0-bae84c7e101d
+langcode: en
+status: true
+name: 'Grammatical Gender'
+vid: gender
+description: 'Grammatical gender (e.g., masculine, feminine, neuter).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

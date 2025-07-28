@@ -1,0 +1,22 @@
+config.entity.wdb_pos_mapping:
+  type: config_entity
+  label: 'WDB POS Mapping'
+  mapping:
+    id:
+      type: string
+      label: 'ID'
+    label:
+      type: label
+      label: 'Label'
+    uuid:
+      type: string
+      label: 'UUID'
+    source_pos_string:
+      type: string
+      label: 'Source POS String'
+    target_lexical_category:
+      type: string
+      label: 'Target Lexical Category'
+    weight:
+      type: integer
+      label: 'Weight'

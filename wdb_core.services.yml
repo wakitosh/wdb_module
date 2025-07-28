@@ -1,0 +1,196 @@
+services:
+  #--------------------------------
+  # Services (Business Logic Layer)
+  #--------------------------------
+
+  # Service for fetching detailed annotation data.
+  wdb_core.data_service:
+    class: Drupal\wdb_core\Service\WdbDataService
+    arguments:
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@logger.factory'
+      - '@wdb_core.hull_calculator'
+
+  # Service for generating transliterated text.
+  wdb_core.text_generator:
+    class: Drupal\wdb_core\Service\WdbTextGeneratorService
+    arguments:
+      - '@entity_type.manager'
+
+  # Service for importing linguistic data.
+  wdb_core.data_importer:
+    class: Drupal\wdb_core\Service\WdbDataImporterService
+    arguments:
+      - '@entity_type.manager'
+
+  # Coordinate transformation service (Hull).
+  wdb_core.hull_calculator:
+    class: Drupal\wdb_core\Lib\HullJsPhp\HullPHP
+
+  # Custom access checker for subsystems.
+  wdb_core.access_checker:
+    class: Drupal\wdb_core\Access\WdbAccessCheck
+    arguments:
+      - '@config.factory'
+      - '@wdb_core.data_service'
+    tags:
+      - { name: access_check, applies_to: _wdb_gallery_access }
+
+  # Route subscriber.
+  wdb_core.route_subscriber:
+    class: Drupal\wdb_core\Routing\WdbRouteSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  # Search API service controller.
+  wdb_core.search_api_controller:
+    class: Drupal\wdb_core\Controller\SearchApiController
+    arguments:
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@wdb_core.hull_calculator'
+      - '@wdb_core.data_service'
+    tags:
+      - { name: controller.service_arguments }
+
+  #--------------------------------
+  # Controllers (Presentation Layer)
+  #--------------------------------
+
+  # Controller for the viewing page.
+  wdb_core.gallery_controller:
+    class: Drupal\wdb_core\Controller\GalleryController
+    arguments:
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@module_handler'
+      - '@url_generator'
+      - '@http_client_factory'
+      - '@wdb_core.data_service'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Controller for the editing page.
+  wdb_core.annotation_edit_controller:
+    class: Drupal\wdb_core\Controller\AnnotationEditController
+    arguments:
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@module_handler'
+      - '@url_generator'
+      - '@http_client_factory'
+      - '@wdb_core.data_service'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Controller for generating IIIF v3 manifests.
+  wdb_core.iiif_v3_manifest_controller:
+    class: Drupal\wdb_core\Controller\IiifV3ManifestController
+    arguments:
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@wdb_core.data_service'
+      - '@http_client_factory'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Controller for the annotation details panel (AJAX).
+  wdb_core.dialog_content_controller:
+    class: Drupal\wdb_core\Controller\DialogContentController
+    arguments:
+      - '@wdb_core.data_service'
+      - '@renderer'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Controller for the full text panel (AJAX).
+  wdb_core.full_text_controller:
+    class: Drupal\wdb_core\Controller\FullTextController
+    arguments:
+      - '@wdb_core.text_generator'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Controller for the annotation CRUD API.
+  wdb_core.annotation_api_controller:
+    class: Drupal\wdb_core\Controller\AnnotationApiController
+    arguments:
+      - '@entity_type.manager'
+      - '@url_generator'
+      - '@wdb_core.hull_calculator'
+      - '@config.factory'
+      - '@wdb_core.data_service'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Controller for data downloads and the Hull API.
+  wdb_core.export_controller:
+    class: Drupal\wdb_core\Controller\ExportController
+    arguments:
+      - '@wdb_core.data_service'
+      - '@wdb_core.text_generator'
+      - '@config.factory'
+      - '@wdb_core.hull_calculator'
+      - '@entity_type.manager'
+      - '@renderer'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Form for linguistic data import.
+  wdb_core.data_import_form:
+    class: Drupal\wdb_core\Form\WdbDataImportForm
+    arguments:
+      - '@wdb_core.data_importer'
+      - '@entity_type.manager'
+      - '@language_manager'
+      - '@file_system'
+    tags:
+      - { name: form }
+
+  # Controller for the individual source document page.
+  wdb_core.source_view_controller:
+    class: Drupal\wdb_core\Controller\WdbSourceViewController
+    arguments:
+      - '@entity_type.manager'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Service for generating TSV templates.
+  wdb_core.template_generator:
+    class: Drupal\wdb_core\Service\WdbTemplateGeneratorService
+    arguments:
+      - '@entity_type.manager'
+
+  # Form for generating import templates.
+  wdb_core.template_generator_form:
+    class: Drupal\wdb_core\Form\WdbTemplateGeneratorForm
+    arguments:
+      - '@wdb_core.template_generator'
+      - '@entity_type.manager'
+    tags:
+      - { name: form }
+
+  # Service for generating UniDic POS mappings.
+  wdb_core.pos_mapping_generator:
+    class: Drupal\wdb_core\Service\WdbPosMappingGeneratorService
+    arguments:
+      - '@entity_type.manager'
+      - '@transliteration'
+
+  # Controller for autocomplete functionality.
+  wdb_core.autocomplete_controller:
+    class: Drupal\wdb_core\Controller\AutocompleteController
+    arguments:
+      - '@entity_type.manager'
+    tags:
+      - { name: controller.service_arguments }
+
+  # Custom breadcrumb builder.
+  wdb_core.breadcrumb:
+    class: Drupal\wdb_core\Breadcrumb\WdbBreadcrumbBuilder
+    arguments:
+      - '@entity_type.manager'
+      - '@title_resolver'
+    tags:
+      - { name: breadcrumb_builder, priority: 100 }

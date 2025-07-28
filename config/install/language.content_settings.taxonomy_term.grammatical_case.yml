@@ -1,0 +1,22 @@
+uuid: 60198a3b-fda5-440e-b338-42c2ed76a635
+langcode: en # または ja
+status: true
+dependencies:
+  config:
+    - taxonomy.vocabulary.grammatical_case
+  module:
+    - content_translation
+  enforced:
+    module:
+      - wdb_core
+      - content_translation
+id: taxonomy_term.grammatical_case
+target_entity_type_id: taxonomy_term
+target_bundle: grammatical_case
+default_langcode: en
+language_alterable: true
+third_party_settings:
+  content_translation:
+    enabled: true
+    bundle_settings:
+      untranslatable_fields_hide: '0'

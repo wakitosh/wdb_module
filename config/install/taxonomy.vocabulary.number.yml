@@ -1,0 +1,11 @@
+uuid: f7aa2e0c-efbf-4e40-ac15-9f5c33a34f64
+langcode: en
+status: true
+name: 'Grammatical Number'
+vid: number
+description: 'Grammatical number (e.g., singular, plural, dual).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

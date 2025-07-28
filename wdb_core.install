@@ -1,0 +1,281 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the WDB Core module.
+ */
+
+use Drupal\language\Entity\ConfigurableLanguage;
+use Drupal\taxonomy\Entity\Term;
+
+/**
+ * Implements hook_install().
+ *
+ * Performs setup tasks when the module is installed.
+ */
+function wdb_core_install() {
+  $logger = \Drupal::logger('wdb_core');
+
+  // 1. Ensure that required languages (en, ja) exist on the site.
+  check_and_add_languages($logger);
+
+  // 2. Update site-wide content translation settings to include WDB entities.
+  update_content_translation_settings($logger);
+
+  // 3. Create the default taxonomy terms used by the module.
+  create_default_taxonomy_terms($logger);
+
+  // 4. Create the default Part-of-Speech mapping rules.
+  try {
+    /** @var \Drupal\wdb_core\Service\WdbPosMappingGeneratorService $mapping_generator */
+    $mapping_generator = \Drupal::service('wdb_core.pos_mapping_generator');
+    $results = $mapping_generator->generateMappingsFromInternalMap();
+    if (isset($results['created']) && $results['created'] > 0) {
+      $logger->info('Automatically created @count POS mapping rules.', ['@count' => $results['created']]);
+    }
+  }
+  catch (\Exception $e) {
+    $logger->error('Failed to create default POS mappings: @message', ['@message' => $e->getMessage()]);
+  }
+}
+
+/**
+ * Helper function to check for and add required languages.
+ *
+ * @param \Psr\Log\LoggerInterface $logger
+ * The logger service.
+ */
+function check_and_add_languages($logger) {
+  $language_manager = \Drupal::languageManager();
+  $required_langcodes = ['en', 'ja'];
+
+  foreach ($required_langcodes as $langcode) {
+    if (!$language_manager->getLanguage($langcode)) {
+      try {
+        $language = ConfigurableLanguage::createFromLangcode($langcode);
+        $language->save();
+        $logger->info('Language "@langcode" was not found and has been added to the site.', ['@langcode' => $langcode]);
+      }
+      catch (\Exception $e) {
+        $logger->error('Failed to add language "@langcode": @message', ['@langcode' => $langcode, '@message' => $e->getMessage()]);
+      }
+    }
+  }
+}
+
+/**
+ * Helper function to update site-wide content translation settings.
+ *
+ * @param \Psr\Log\LoggerInterface $logger
+ * The logger service.
+ */
+function update_content_translation_settings($logger) {
+  try {
+    $config_factory = \Drupal::configFactory();
+    $config = $config_factory->getEditable('content_translation.settings');
+    $enabled_entity_types = $config->get('enabled_entity_types') ?? [];
+
+    $required_entity_types = [
+      'taxonomy_term', 'wdb_sign', 'wdb_word', 'wdb_word_meaning',
+      'wdb_sign_function', 'wdb_sign_interpretation', 'wdb_word_unit',
+    ];
+
+    $updated = FALSE;
+    foreach ($required_entity_types as $entity_type) {
+      if (!in_array($entity_type, $enabled_entity_types)) {
+        $enabled_entity_types[] = $entity_type;
+        $updated = TRUE;
+      }
+    }
+
+    if ($updated) {
+      $config->set('enabled_entity_types', $enabled_entity_types);
+      $config->save();
+      $logger->info('Enabled content translation for WDB entity types.');
+    }
+  }
+  catch (\Exception $e) {
+    $logger->error('An error occurred while updating content_translation.settings: @message', ['@message' => $e->getMessage()]);
+  }
+}
+
+/**
+ * Helper function to create default taxonomy terms for WDB vocabularies.
+ *
+ * @param \Psr\Log\LoggerInterface $logger
+ * The logger service.
+ */
+function create_default_taxonomy_terms($logger) {
+  // 1. Create hierarchical terms for 'lexical_category' from a TSV file.
+  $vid = 'lexical_category';
+  $module_path = \Drupal::moduleHandler()->getModule('wdb_core')->getPath();
+  $tsv_file_path = $module_path . '/data/lexical_categories.tsv';
+
+  if (file_exists($tsv_file_path)) {
+    $handle = fopen($tsv_file_path, 'r');
+    if ($handle !== FALSE) {
+      $header = fgetcsv($handle, 0, "\t");
+      $created_terms_map = [];
+
+      while (($data = fgetcsv($handle, 0, "\t")) !== FALSE) {
+        $row_data = array_combine($header, $data);
+        $term_name_en = trim($row_data['name_en']);
+        $term_name_ja = trim($row_data['name_ja']);
+        $parent_name_en = trim($row_data['parent_en']);
+        $gold_ontology_value = trim($row_data['gold_ontology']);
+
+        if (empty($term_name_en)) {
+          continue;
+        }
+
+        $existing_terms = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadByProperties(['vid' => $vid, 'name' => $term_name_en]);
+        if (!empty($existing_terms)) {
+          continue;
+        }
+
+        $parent_tid = 0;
+        if (!empty($parent_name_en) && isset($created_terms_map[$parent_name_en])) {
+          $parent_tid = $created_terms_map[$parent_name_en];
+        }
+
+        try {
+          $term_values = [
+            'vid' => $vid,
+            'name' => $term_name_en,
+            'langcode' => 'en',
+            'parent' => $parent_tid,
+            'field_gold_ontology' => [['value' => $gold_ontology_value]],
+          ];
+          $term = Term::create($term_values);
+          $term->save();
+
+          $created_terms_map[$term_name_en] = $term->id();
+
+          if (!empty($term_name_ja) && \Drupal::languageManager()->isLanguageLocked('ja') === FALSE && $term->hasTranslation('ja') === FALSE) {
+            $term->addTranslation('ja', ['name' => $term_name_ja])->save();
+          }
+          $logger->info('Created hierarchical term "@term" in vocabulary "@vid".', ['@term' => $term_name_en, '@vid' => $vid]);
+        }
+        catch (\Exception $e) {
+          $logger->error('Failed to create hierarchical term "@term": @message', ['@term' => $term_name_en, '@message' => $e->getMessage()]);
+        }
+      }
+      fclose($handle);
+    }
+  }
+
+  // 2. Define and create terms for other, flat vocabularies.
+  $other_vocabularies = [
+    'person' => [
+      ['en' => 'first', 'ja' => '一人称'],
+      ['en' => 'second', 'ja' => '二人称'],
+      ['en' => 'third', 'ja' => '三人称'],
+    ],
+    'grammatical_number' => [
+      ['en' => 'singular', 'ja' => '単数'],
+      ['en' => 'plural', 'ja' => '複数'],
+      ['en' => 'dual', 'ja' => '両数'],
+    ],
+    'mood' => [
+      ['en' => 'indicative', 'ja' => '直説法'],
+      ['en' => 'optative', 'ja' => '願望法'],
+      ['en' => 'subjunctive', 'ja' => '接続法'],
+    ],
+    'voice' => [
+      ['en' => 'active', 'ja' => '能動態'],
+      ['en' => 'passive', 'ja' => '受動態'],
+      ['en' => 'middle', 'ja' => '中動態'],
+    ],
+    'gender' => [
+      ['en' => 'masculine', 'ja' => '男性'],
+      ['en' => 'feminine', 'ja' => '女性'],
+      ['en' => 'neuter', 'ja' => '中性'],
+      ['en' => 'common', 'ja' => '通性'],
+    ],
+    'aspect' => [
+      ['en' => 'perfective', 'ja' => '完了相'],
+      ['en' => 'imperfective', 'ja' => '未完了相'],
+    ],
+    'verbal_form' => [
+      ['en' => 'stative', 'ja' => '静態'],
+      ['en' => 'infinitive', 'ja' => '不定詞'],
+      ['en' => 'participle', 'ja' => '分詞'],
+      ['en' => 'relative form', 'ja' => '関係形'],
+      ['en' => 'base', 'ja' => '基本形'],
+    ],
+    'grammatical_case' => [
+      ['en' => 'nominative', 'ja' => '主格'],
+      ['en' => 'accusative', 'ja' => '対格'],
+      ['en' => 'dative', 'ja' => '与格'],
+      ['en' => 'genitive', 'ja' => '属格'],
+    ],
+  ];
+
+  foreach ($other_vocabularies as $vid => $terms_to_create) {
+    foreach ($terms_to_create as $term_data) {
+      $has_translation = is_array($term_data);
+      $term_name_en = $has_translation ? $term_data['en'] : $term_data;
+      $term_name_ja = $has_translation ? $term_data['ja'] : NULL;
+
+      // Check if a term with the same English name already exists.
+      $existing_terms = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadByProperties([
+        'vid' => $vid,
+        'name' => $term_name_en,
+      ]);
+
+      if (empty($existing_terms)) {
+        try {
+          $term = Term::create([
+            'vid' => $vid,
+            'name' => $term_name_en,
+            'langcode' => 'en', // Create with English as the primary language.
+          ]);
+          $term->save();
+
+          // Add the Japanese translation.
+          if ($term_name_ja && \Drupal::languageManager()->getLanguage('ja') && $term->hasTranslation('ja') === FALSE) {
+            $term->addTranslation('ja', ['name' => $term_name_ja])->save();
+          }
+          $logger->info('Created term "@term" (and its Japanese translation) in vocabulary "@vid".', ['@term' => $term_name_en, '@vid' => $vid]);
+        }
+        catch (\Exception $e) {
+          $logger->error('Failed to create term "@term" in vocabulary "@vid": @message', [
+            '@term' => $term_name_en,
+            '@vid' => $vid,
+            '@message' => $e->getMessage(),
+          ]);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Remove the legacy 'original_label_id' field from the wdb_label entity.
+ */
+function wdb_core_update_10001() {
+  $entity_definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $field_storage_definition = $entity_definition_update_manager->getFieldStorageDefinition('original_label_id', 'wdb_label');
+  if ($field_storage_definition) {
+    $entity_definition_update_manager->uninstallFieldStorageDefinition($field_storage_definition);
+    return t('The legacy original_label_id field has been removed.');
+  }
+  return t('The legacy original_label_id field was already removed.');
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Remove the legacy 'image_extension' field from the wdb_annotation_page entity.
+ */
+function wdb_core_update_10002() {
+  $entity_definition_update_manager = \Drupal::service('entity.definition_update_manager');
+  $field_storage_definition = $entity_definition_update_manager->getFieldStorageDefinition('image_extension', 'wdb_annotation_page');
+  if ($field_storage_definition) {
+    $entity_definition_update_manager->uninstallFieldStorageDefinition($field_storage_definition);
+    return t("The legacy 'image_extension' field has been removed from the WDB Annotation Page entity.");
+  }
+  return t("The legacy 'image_extension' field was already removed.");
+}

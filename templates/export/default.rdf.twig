@@ -1,0 +1,67 @@
+{#
+ # @file
+ # RDF/XML template for a single page of a WDB source document.
+ #}
+<rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:dcterms="http://purl.org/dc/terms/"
+  xmlns:wdb="https://wdb.example.org/ontology#">
+
+  {# このページ自体の定義 #}
+  <rdf:Description rdf:about="{{ page_data.page.getCanvasUri() }}">
+    <rdf:type rdf:resource="http://purl.org/spar/fabio/Page"/>
+    <dcterms:title>{{ page_data.page.label() }}</dcterms:title>
+    <dcterms:source rdf:resource="{{ url('entity.wdb_source.canonical', {'wdb_source': page_data.source.id()}) }}"/>
+  </rdf:Description>
+
+  {# このページに出現する各エンティティの定義 #}
+  {% for item in page_data.word_units %}
+    {% set wu = item.entity %}
+    {% set word_meaning = wu.word_meaning_ref.entity %}
+    {% set word = word_meaning.word_ref.entity %}
+    {% set interpretations = item.sign_interpretations %}
+
+    {# 単語ユニット (Word Unit) #}
+    <rdf:Description rdf:about="{{ url('entity.wdb_word_unit.canonical', {'wdb_word_unit': wu.id()}) }}">
+      <rdf:type rdf:resource="wdb:WordUnit"/>
+      <wdb:realizedForm>{{ wu.realized_form.value }}</wdb:realizedForm>
+      <wdb:sequenceNumber>{{ wu.word_sequence.value }}</wdb:sequenceNumber>
+      <wdb:hasMeaning rdf:resource="{{ url('entity.wdb_word_meaning.canonical', {'wdb_word_meaning': word_meaning.id()}) }}"/>
+
+      {% if wu.gender_ref.entity %}
+        {% set gender_term = wu.gender_ref.entity %}
+        <wdb:hasGender rdf:resource="{{ url('entity.taxonomy_term.canonical', {'taxonomy_term': gender_term.id()}) }}"/>
+      {% endif %}
+      {# 他の文法カテゴリも同様に url() を使う #}
+
+    </rdf:Description>
+
+    {# 単語の意味 (Word Meaning) #}
+    <rdf:Description rdf:about="{{ url('entity.wdb_word_meaning.canonical', {'wdb_word_meaning': word_meaning.id()}) }}">
+        <rdf:type rdf:resource="wdb:WordMeaning"/>
+        <dcterms:description xml:lang="{{ word_meaning.langcode.value }}">{{ word_meaning.explanation.value }}</dcterms:description>
+        <wdb:isMeaningOf rdf:resource="{{ url('entity.wdb_word.canonical', {'wdb_word': word.id()}) }}"/>
+    </rdf:Description>
+
+    {# 単語の基本形 (Word) #}
+    <rdf:Description rdf:about="{{ url('entity.wdb_word.canonical', {'wdb_word': word.id()}) }}">
+      <rdf:type rdf:resource="http://www.w3.org/ns/lemon/ontolex#LexicalEntry"/>
+      <wdb:basicForm>{{ word.basic_form.value }}</wdb:basicForm>
+      <wdb:lexicalCategory>{{ word.lexical_category_ref.entity.label() }}</wdb:lexicalCategory>
+    </rdf:Description>
+
+    {# 文字記号の解釈 (Sign Interpretations) #}
+    {% for si in interpretations %}
+      {% set sign_function = si.sign_function_ref.entity %}
+      <rdf:Description rdf:about="{{ url('entity.wdb_sign_interpretation.canonical', {'wdb_sign_interpretation': si.id()}) }}">
+        <rdf:type rdf:resource="wdb:SignInterpretation"/>
+        <wdb:realizesWordUnit rdf:resource="{{ url('entity.wdb_word_unit.canonical', {'wdb_word_unit': wu.id()}) }}"/>
+        <wdb:sequenceInWord>{{ si.getWordMapSignSequence() }}</wdb:sequenceInWord>
+        <wdb:hasSignFunction rdf:resource="{{ url('entity.wdb_sign_function.canonical', {'wdb_sign_function': sign_function.id()}) }}"/>
+        {% if si.label_ref.entity %}
+          <wdb:isLocatedAt rdf:resource="{{ si.label_ref.entity.annotation_uri.value }}"/>
+        {% endif %}
+      </rdf:Description>
+    {% endfor %}
+  {% endfor %}
+</rdf:RDF>

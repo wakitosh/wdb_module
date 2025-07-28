@@ -1,0 +1,59 @@
+{#
+ # @file
+ # TEI P5-compliant XML template for a single page of a WDB source document.
+ #}
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>{{ page_data.source.label() }} - {{ page_data.page.label() }}</title>
+      </titleStmt>
+      <publicationStmt>
+        <p>Published by WDB Project.</p>
+      </publicationStmt>
+      <sourceDesc>
+        <p>{{ page_data.source.description.value|default('No description available.') }}</p>
+      </sourceDesc>
+    </fileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="page" n="{{ page_data.page.page_number.value }}" xml:id="page-{{ page_data.page.id() }}" facs="{{ page_data.page.getCanvasUri() }}">
+        {% for item in page_data.word_units %}
+          {% set wu = item.entity %}
+          {% set word_meaning = wu.word_meaning_ref.entity %}
+          {% set word = word_meaning.word_ref.entity %}
+          {% set interpretations = item.sign_interpretations %}
+          
+          <w xml:id="wu-{{ wu.id() }}"
+             data-word-seq="{{ wu.word_sequence.value }}"
+             lemma="{{ word.basic_form.value }}">
+            
+            <form type="realized">{{ wu.realized_form.value }}</form>
+            
+            <sense xml:id="wm-{{ word_meaning.id() }}">{{ word_meaning.explanation.value }}</sense>
+            
+            <gramGrp>
+              <gram type="lexicalCategory">{{ word.lexical_category_ref.entity.label() }}</gram>
+              {% if wu.gender_ref.entity %}<gram type="gender">{{ wu.gender_ref.entity.label() }}</gram>{% endif %}
+              {# ... 他の文法カテゴリも同様に .entity.label() でアクセス ... #}
+            </gramGrp>
+
+            {% for si in interpretations %}
+              {% set sign_function = si.sign_function_ref.entity %}
+              {% set sign = sign_function.sign_ref.entity %}
+              <seg xml:id="si-{{ si.id() }}"
+                   type="sign-interpretation"
+                   data-wdb-sign-code="{{ sign.sign_code.value }}"
+                   data-sign-seq="{{ si.getWordMapSignSequence() }}"
+                   corresp="#{{ si.label_ref.entity ? 'label-' ~ si.label_ref.entity.id() : 'no-label' }}">
+                <desc type="phone">{{ si.phone.value }}</desc>
+                <note type="function">{{ sign_function.function_name.value }}</note>
+              </seg>
+            {% endfor %}
+          </w>
+        {% endfor %}
+      </div>
+    </body>
+  </text>
+</TEI>

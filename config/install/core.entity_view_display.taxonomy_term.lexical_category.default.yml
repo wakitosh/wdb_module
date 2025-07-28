@@ -1,0 +1,26 @@
+uuid: e49193a7-5a0f-4159-9db1-f86b24346d33
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.taxonomy_term.lexical_category.field_gold_ontology
+    - taxonomy.vocabulary.lexical_category
+  enforced:
+    module:
+      - wdb_core
+id: taxonomy_term.lexical_category.default
+targetEntityType: taxonomy_term
+bundle: lexical_category
+mode: default
+content:
+  field_gold_ontology:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+hidden:
+  description: true
+  langcode: true

@@ -1,0 +1,17 @@
+uuid: 268b5a8d-e29d-4cae-a0c2-dcb0a8ecd6f6
+langcode: ja
+status: true
+dependencies:
+  module:
+    - content_translation
+    - wdb_core
+third_party_settings:
+  content_translation:
+    enabled: false
+    bundle_settings:
+      untranslatable_fields_hide: '0'
+id: wdb_word_meaning.wdb_word_meaning
+target_entity_type_id: wdb_word_meaning
+target_bundle: wdb_word_meaning
+default_langcode: en
+language_alterable: true

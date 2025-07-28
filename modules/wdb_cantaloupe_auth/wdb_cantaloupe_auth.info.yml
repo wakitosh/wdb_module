@@ -1,0 +1,7 @@
+name: 'WDB Cantaloupe Authorizer'
+type: module
+description: 'Provides an API endpoint for Cantaloupe delegate script to authorize image requests.'
+package: WDB
+core_version_requirement: ^10 || ^11
+dependencies:
+  - wdb_core:wdb_core

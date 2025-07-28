@@ -1,0 +1,17 @@
+uuid: 5d65db33-3e14-4229-9d58-472de82f9b10
+langcode: ja
+status: true
+dependencies:
+  module:
+    - content_translation
+    - wdb_core
+third_party_settings:
+  content_translation:
+    enabled: false
+    bundle_settings:
+      untranslatable_fields_hide: '0'
+id: wdb_sign_function.wdb_sign_function
+target_entity_type_id: wdb_sign_function
+target_bundle: wdb_sign_function
+default_langcode: en
+language_alterable: true

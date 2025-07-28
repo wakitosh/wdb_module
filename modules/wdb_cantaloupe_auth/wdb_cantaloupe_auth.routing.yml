@@ -1,0 +1,7 @@
+wdb_cantaloupe_auth.authorize:
+  path: '/wdb/api/cantaloupe_auth'
+  defaults:
+    _controller: 'wdb_cantaloupe_auth.auth_controller:authorizeRequest'
+  methods: [POST]
+  requirements:
+    _access: 'TRUE'

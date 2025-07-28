@@ -1,0 +1,11 @@
+uuid: 07b37a21-53a5-4fe3-83cb-0e45e53dfb6e
+langcode: en
+status: true
+name: 'Verbal Form'
+vid: verbal_form
+description: 'Verbal form (e.g., stative, infinitive).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

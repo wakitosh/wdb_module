@@ -1,0 +1,47 @@
+# config/schema/wdb_core.subsystem.schema.yml
+
+wdb_core.subsystem.*:
+  type: config_object
+  label: 'WDB Subsystem Settings'
+  mapping:
+    allowAnonymous:
+      type: boolean
+      label: 'Allow Anonymous Access to Gallery Pages'
+    pageNavigation:
+      type: string # 'right-to-left' or 'left-to-right'
+      label: 'Page Navigation Viewing Direction'
+    hullConcavity:
+      type: integer
+      label: 'Hull Concavity Parameter'
+    iiif_server_scheme:
+      type: string
+      label: 'IIIF Server Scheme'
+    iiif_server_hostname:
+      type: string
+      label: 'IIIF Server Hostname'
+    iiif_server_prefix:
+      type: string
+      label: 'IIIF Server Prefix'
+    iiif_fileExt:
+      type: string
+      label: 'IIIF Image File Extension'
+    iiif_license:
+      type: uri
+      label: 'IIIF License URL'
+    iiif_attribution:
+      type: label
+      label: 'IIIF Attribution Text'
+    iiif_logo:
+      type: uri
+      label: 'IIIF Logo URL'
+    export_templates:
+      type: mapping
+      label: 'Export Templates'
+      mapping:
+        tei:
+          type: text
+          label: 'TEI/XML Template'
+        rdf:
+          type: text
+          label: 'RDF/XML Template'
+

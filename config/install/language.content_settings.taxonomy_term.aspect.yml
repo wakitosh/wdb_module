@@ -1,0 +1,22 @@
+uuid: 78df475a-d2f0-4206-b843-de3b2364e4a6
+langcode: en # または ja
+status: true
+dependencies:
+  config:
+    - taxonomy.vocabulary.aspect
+  module:
+    - content_translation
+  enforced:
+    module:
+      - wdb_core
+      - content_translation # この設定は content_translation モジュールに依存
+id: taxonomy_term.aspect
+target_entity_type_id: taxonomy_term
+target_bundle: aspect
+default_langcode: en
+language_alterable: true
+third_party_settings:
+  content_translation:
+    enabled: true
+    bundle_settings:
+      untranslatable_fields_hide: '0'

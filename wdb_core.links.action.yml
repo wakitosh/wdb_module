@@ -1,0 +1,41 @@
+wdb_core.pos_mapping_add:
+  route_name: entity.wdb_pos_mapping.add-form
+  title: 'Add WDB POS Mapping'
+  appears_on:
+    - entity.wdb_pos_mapping.collection
+
+wdb_core.source_add:
+  route_name: entity.wdb_source.add-form
+  title: 'Add WDB Source'
+  appears_on:
+    - entity.wdb_source.collection
+
+wdb_core.annotation_page_add:
+  route_name: entity.wdb_annotation_page.add-form
+  title: 'Add WDB Annotation Page'
+  appears_on:
+    - entity.wdb_annotation_page.collection
+
+wdb_core.sign_add:
+  route_name: entity.wdb_sign.add-form
+  title: 'Add WDB Sign'
+  appears_on:
+    - entity.wdb_sign.collection
+
+wdb_core.sign_function_add:
+  route_name: entity.wdb_sign_function.add-form
+  title: 'Add WDB Sign Function'
+  appears_on:
+    - entity.wdb_sign_function.collection
+
+wdb_core.word_add:
+  route_name: entity.wdb_word.add-form
+  title: 'Add WDB Word'
+  appears_on:
+    - entity.wdb_word.collection
+
+wdb_core.word_meaning_add:
+  route_name: entity.wdb_word_meaning.add-form
+  title: 'Add WDB Word Meaning'
+  appears_on:
+    - entity.wdb_word_meaning.collection

@@ -1,0 +1,22 @@
+uuid: 6e2ce19c-1cb5-46d9-98eb-9efa58080814
+langcode: en # または ja
+status: true
+dependencies:
+  config:
+    - taxonomy.vocabulary.number
+  module:
+    - content_translation
+  enforced:
+    module:
+      - wdb_core
+      - content_translation
+id: taxonomy_term.number
+target_entity_type_id: taxonomy_term
+target_bundle: number
+default_langcode: en
+language_alterable: true
+third_party_settings:
+  content_translation:
+    enabled: true
+    bundle_settings:
+      untranslatable_fields_hide: '0'

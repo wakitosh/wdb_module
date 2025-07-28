@@ -1,0 +1,11 @@
+uuid: 7ba71cdc-0fcb-4547-bf21-91d296b1ebb8
+langcode: en
+status: true
+name: 'Grammatical Case'
+vid: grammatical_case
+description: 'Grammatical case.'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

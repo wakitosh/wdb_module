@@ -1,0 +1,11 @@
+# Ignore Composer dependencies
+/vendor/
+
+# Ignore Node.js dependencies
+/node_modules/
+
+# Ignore IDE and OS-specific files
+.DS_Store
+.idea/
+.vscode/
+*.swp

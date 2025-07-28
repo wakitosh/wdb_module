@@ -1,0 +1,11 @@
+uuid: 2fb0cea0-4470-4a9a-9593-142ea034c0b8
+langcode: en
+status: true
+name: 'Grammatical Voice'
+vid: voice
+description: 'Grammatical voice (e.g., active, passive).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

@@ -1,0 +1,129 @@
+/**
+ * @file
+ * Defines the flexbox-based layout for the main viewer and panel container.
+ */
+
+/* Main container for the viewer and the side panel. */
+#wdb-main-container {
+  display: flex;
+  flex-direction: row; /* Arrange elements horizontally. */
+  min-height: 400px; /* It's good to specify a minimum height. */
+  width: 100%;
+  border: 1px solid #ccc;
+}
+
+/* The OpenSeadragon viewer itself. */
+#openseadragon-viewer {
+  flex: 1 1 auto; /* Use all remaining available space. */
+  min-width: 200px; /* Minimum width. */
+  height: 100%;
+  background-color: #000;
+}
+
+/* The title of the annotation panel. */
+#wdb-annotation-panel-title {
+  padding: 10px;
+  margin: 0;
+  border-bottom: 1px solid #ccc;
+  background-color: #f8f8f8;
+  flex-shrink: 0; /* The title should not shrink. */
+}
+
+/* The right-side panel, which is a vertical flex container. */
+#wdb-annotation-info-panel {
+  display: flex;
+  flex-direction: column; /* Arrange child elements vertically. */
+  padding: 0;
+  min-width: 150px;
+  flex-basis: 270px;
+  flex-shrink: 0;
+  height: 100%;
+  overflow-y: auto; /* Show scrollbar if content overflows. */
+  font-size:0.8rem;
+}
+
+/* Content areas within the side panel. */
+#wdb-annotation-panel-content,
+#wdb-full-text-content {
+  padding: 10px;
+  flex-grow: 1; /* Use all remaining space. */
+  overflow-y: auto; /* Also scroll if content is long. */
+  font-size:0.9rem;
+}
+
+/* Upper panel (Annotation Details). */
+#wdb-annotation-details-area {
+  flex: 1 1 70%; /* Set initial height to 70%. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100px; /* Minimum height. */
+  overflow: hidden; /* To enable scrolling on child elements. */
+}
+
+/* Control the display order in the annotation panel. */
+.annotation-details-popup {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Word block at the top. */
+.annotation-detail-word {
+  order: 1;
+}
+
+/* Sign block second. */
+.annotation-detail-sign {
+  order: 2;
+}
+
+/* Constituent signs list third. */
+.annotation-detail-constituent-signs {
+  order: 3;
+}
+
+/* Lower panel (Full Text). */
+#wdb-full-text-area {
+  flex: 1 1 30%; /* Set initial height to 30%. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100px; /* Minimum height. */
+  overflow: hidden; /* To enable scrolling on child elements. */
+}
+
+/* Styles for panel titles and content. */
+#wdb-annotation-info-panel h3 {
+  margin: 4px;
+  padding: 0;
+  border-bottom: 1px solid #ccc;
+  flex-shrink: 0; /* Title area should not shrink. */
+  font-weight:bold;
+  font-size: 0.9rem;
+}
+
+/* Handle for horizontal resizing (between viewer and panel). */
+#wdb-resizer {
+  flex-basis: 6px; /* Handle width. */
+  flex-shrink: 0; /* Prevent the handle from shrinking. */
+  background-color: #eee;
+  cursor: col-resize; /* Set mouse cursor to horizontal resize. */
+  height: 100%;
+  border-left: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+}
+#wdb-resizer:hover {
+  background-color: #ddd;
+}
+
+/* Handle for vertical resizing (between annotation details and full text). */
+#wdb-resizer-horizontal {
+  flex-basis: 6px; /* Handle height. */
+  flex-shrink: 0;
+  background-color: #eee;
+  cursor: row-resize; /* Set mouse cursor to vertical resize. */
+  width: 100%;
+  border-top: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+}
+#wdb-resizer-horizontal:hover {
+  background-color: #ddd;
+}

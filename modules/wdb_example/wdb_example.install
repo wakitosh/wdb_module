@@ -1,0 +1,190 @@
+<?php
+
+/**
+ * @file
+ * Install hooks for the WDB Example module.
+ *
+ * This file contains the logic to create a full set of sample data upon
+ * module installation, allowing users to immediately explore the module's
+ * features.
+ */
+
+use Drupal\Core\Render\Markup;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
+use Drupal\taxonomy\Entity\Term;
+use Drupal\wdb_core\Entity\WdbSource;
+
+/**
+ * Implements hook_install().
+ */
+function wdb_example_install() {
+  $messenger = \Drupal::messenger();
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $config_factory = \Drupal::configFactory();
+
+  // --- 1. Get existing taxonomy terms required for the sample data. ---
+  $term_storage = $entity_type_manager->getStorage('taxonomy_term');
+  $pos_terms = [
+    '指示代名詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'demonstrative'])) ?: NULL,
+    '連体格' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'adnominal case marker'])) ?: NULL,
+    '接頭辞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'prefix'])) ?: NULL,
+    '普通名詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'common noun'])) ?: NULL,
+    '格助詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'case marker'])) ?: NULL,
+    '係助詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'binding particle'])) ?: NULL,
+  ];
+
+  // Check if all required terms exist.
+  foreach ($pos_terms as $name => $term) {
+    if (!$term) {
+      $messenger->addError(t('Required taxonomy term not found for "@name". Please ensure core data is installed.', ['@name' => $name]));
+      return;
+    }
+  }
+
+  $subsystem_term = reset($term_storage->loadByProperties(['vid' => 'subsystem', 'name' => 'genji'])) ?: $term_storage->create(['vid' => 'subsystem', 'name' => 'genji', 'langcode' => 'ja']);
+  $subsystem_term->save();
+
+  // --- 2. Update the subsystem configuration for the example. ---
+  $config_name = 'wdb_core.subsystem.' . $subsystem_term->id();
+  $config = $config_factory->getEditable($config_name);
+  $config
+    ->set('iiif_server_scheme', 'https')
+    ->set('iiif_server_hostname', 'emuseum.nich.go.jp')
+    ->set('iiif_server_prefix', 'iiif/?IIIF=')
+    ->set('allowAnonymous', TRUE)
+    ->set('pageNavigation', 'right-to-left')
+    ->set('hullConcavity', 0)
+    ->save();
+
+  // --- 3. Create the sample WdbSource entity. ---
+  $source_storage = $entity_type_manager->getStorage('wdb_source');
+  $source_entity = reset($source_storage->loadByProperties(['source_identifier' => 'nich-100412001'])) ?: $source_storage->create([
+    'displayname' => '「源氏物語」桐壺',
+    'source_identifier' => 'nich-100412001',
+    'subsystem_tags' => [$subsystem_term->id()],
+    'pages' => 1,
+    'description' => 'e国宝「源氏物語 桐壺」 https://emuseum.nich.go.jp/detail?content_base_id=100412&content_part_id=001&content_pict_id=0&langId=ja&webView=0',
+    'langcode' => 'ja',
+  ]);
+  $source_entity->save();
+
+  // --- 4. Update the auto-created WdbAnnotationPage with sample data. ---
+  $page_storage = $entity_type_manager->getStorage('wdb_annotation_page');
+  $page_entity = reset($page_storage->loadByProperties(['source_ref' => $source_entity->id()])) ?: NULL;
+
+  if ($page_entity) {
+    $page_entity->set('page_number', 3);
+    $page_entity->set('page_name', '3ページ目');
+    $page_entity->set('image_identifier', '100412001000-003.tif');
+    $page_entity->set('annotation_code', 'nich-100412001_3');
+    $page_entity->set('langcode', 'ja');
+    $page_entity->save();
+  }
+  else {
+    $messenger->addError(t('Could not find the auto-created annotation page for the new source.'));
+    return;
+  }
+
+  // --- 5. Create sample word, sign, and annotation data. ---
+  $sample_data = [
+    ['wu_id' => 'genji_1_1', 'realized' => 'いつれ', 'basic' => 'いづれ', 'pos' => '指示代名詞', 'chars' => ['い', 'づ', 'れ']],
+    ['wu_id' => 'genji_1_2', 'realized' => 'の', 'basic' => 'の', 'pos' => '連体格', 'chars' => ['の']],
+    ['wu_id' => 'genji_1_3', 'realized' => '御', 'basic' => '御', 'pos' => '接頭辞', 'chars' => ['御']],
+    ['wu_id' => 'genji_1_4', 'realized' => '時', 'basic' => '時', 'pos' => '普通名詞', 'chars' => ['時']],
+    ['wu_id' => 'genji_1_5', 'realized' => 'に', 'basic' => 'に', 'pos' => '格助詞', 'chars' => ['に']],
+    ['wu_id' => 'genji_1_6', 'realized' => 'か', 'basic' => 'か', 'pos' => '係助詞', 'chars' => ['か']],
+  ];
+  $annotations_data = [
+    '1-1' => [['3147.96', '593.72'], ['3232.42', '656.57'], ['3330.99', '645.34'], ['3471.48', '585.97'], ['3456.45', '511.69'], ['3399.68', '491.08'], ['3300.01', '501.02'], ['3301.61', '499.93']],
+    '1-2' => [['3231.35', '692.08'], ['3191.35', '769.26'], ['3179.03', '860.43'], ['3184.51', '923.86'], ['3210.99', '930.78'], ['3237.85', '909.58'], ['3332.10', '837.92'], ['3361.24', '840.93'], ['3384.62', '870.80'], ['3420.22', '884.80'], ['3444.47', '876.42'], ['3441.90', '823.60'], ['3441.47', '787.30'], ['3482.86', '704.37'], ['3439.07', '632.80'], ['3398.79', '628.68']],
+    '1-3' => [['3321.82', '854.54'], ['3323.61', '902.19'], ['3284.92', '919.44'], ['3278.86', '951.51'], ['3249.99', '1028.60'], ['3189.40', '1097.19'], ['3186.96', '1163.75'], ['3227.34', '1213.35'], ['3283.53', '1216.19'], ['3359.21', '1192.81'], ['3417.05', '1166.36'], ['3428.91', '1137.81'], ['3422.92', '1106.19'], ['3412.28', '978.15'], ['3392.85', '936.81'], ['3361.38', '851.78'], ['3337.82', '846.51']],
+    '1-4' => [['3215.80', '1235.75'], ['3158.01', '1347.35'], ['3153.25', '1416.07'], ['3197.41', '1435.18'], ['3284.69', '1480.03'], ['3309.17', '1487.77'], ['3364.27', '1461.22'], ['3433.61', '1413.34'], ['3451.00', '1278.38'], ['3433.00', '1224.29'], ['3383.05', '1192.29'], ['3340.31', '1179.48'], ['3261.59', '1202.98']],
+    '1-5' => [['3190.09', '1509.64'], ['3169.85', '1603.29'], ['3158.11', '1714.47'], ['3202.07', '1716.12'], ['3238.56', '1732.20'], ['3349.80', '1790.06'], ['3368.58', '1800.31'], ['3399.89', '1786.06'], ['3409.27', '1759.66'], ['3429.15', '1593.13'], ['3490.63', '1524.49'], ['3462.38', '1498.40'], ['3425.91', '1470.75'], ['3376.26', '1423.21'], ['3326.79', '1444.33']],
+    '1-6' => [['3194.69', '1841.53'], ['3154.47', '1930.77'], ['3177.18', '2004.16'], ['3227.26', '2006.30'], ['3275.78', '1968.86'], ['3324.33', '1974.29'], ['3349.19', '2036.44'], ['3389.55', '2036.07'], ['3420.11', '1997.56'], ['3435.30', '1847.75'], ['3479.97', '1795.64'], ['3450.06', '1765.46'], ['3383.59', '1758.17'], ['3272.07', '1779.38'], ['3250.71', '1793.94']],
+    '1-7' => [['3267.30', '1991.34'], ['3263.56', '2128.23'], ['3269.10', '2151.80'], ['3306.59', '2160.80'], ['3353.30', '2160.26'], ['3364.17', '2119.75'], ['3345.39', '2101.76'], ['3345.15', '1992.89'], ['3316.93', '1970.25'], ['3291.94', '1977.92'], ['3291.94', '1977.92']],
+    '1-8' => [['3260.69', '2210.15'], ['3279.74', '2254.97'], ['3291.78', '2294.96'], ['3341.15', '2279.94'], ['3372.37', '2252.02'], ['3372.49', '2208.30'], ['3347.75', '2172.82'], ['3299.80', '2167.91'], ['3277.60', '2176.13'], ['3277.60', '2176.13']],
+  ];
+
+  $word_seq = 0;
+  $char_count_total = 0;
+  $label_line = 1;
+
+  foreach ($sample_data as $word_data) {
+    $word_seq++;
+    $sign_seq_in_word = 0;
+
+    // Find or create WdbWord & WdbWordMeaning.
+    $word_storage = $entity_type_manager->getStorage('wdb_word');
+    $word_entity = reset($word_storage->loadByProperties(['basic_form' => $word_data['basic']])) ?: $word_storage->create(['basic_form' => $word_data['basic'], 'lexical_category_ref' => $pos_terms[$word_data['pos']]->id(), 'langcode' => 'ja']);
+    $word_entity->save();
+
+    $meaning_storage = $entity_type_manager->getStorage('wdb_word_meaning');
+    $meaning_entity = reset($meaning_storage->loadByProperties(['word_ref' => $word_entity->id()])) ?: $meaning_storage->create(['word_ref' => $word_entity->id(), 'explanation' => 'Example explanation.', 'meaning_identifier' => 1, 'word_meaning_code' => $word_entity->id() . '_1', 'langcode' => 'ja']);
+    $meaning_entity->save();
+
+    // Find or create WdbWordUnit.
+    $wu_storage = $entity_type_manager->getStorage('wdb_word_unit');
+    $wu_entity = reset($wu_storage->loadByProperties(['original_word_unit_identifier' => $word_data['wu_id']])) ?: $wu_storage->create(['original_word_unit_identifier' => $word_data['wu_id'], 'source_ref' => $source_entity->id(), 'annotation_page_refs' => [$page_entity->id()], 'word_meaning_ref' => $meaning_entity->id(), 'realized_form' => $word_data['realized'], 'word_sequence' => $word_seq, 'langcode' => 'ja']);
+    $wu_entity->save();
+
+    foreach ($word_data['chars'] as $char) {
+      $char_count_total++;
+      $sign_seq_in_word++;
+      $label_name = $label_line . '-' . $char_count_total;
+
+      // Find or create WdbSign, WdbSignFunction.
+      $sign_storage = $entity_type_manager->getStorage('wdb_sign');
+      $sign_entity = reset($sign_storage->loadByProperties(['sign_code' => $char])) ?: $sign_storage->create(['sign_code' => $char, 'langcode' => 'ja']);
+      $sign_entity->save();
+
+      $function_name = (mb_ereg('[\p{Han}]', $char)) ? 'logogram' : 'phonogram';
+      $sf_storage = $entity_type_manager->getStorage('wdb_sign_function');
+      $sf_entity = reset($sf_storage->loadByProperties(['sign_ref' => $sign_entity->id(), 'function_name' => $function_name])) ?: $sf_storage->create(['sign_ref' => $sign_entity->id(), 'function_name' => $function_name, 'langcode' => 'ja']);
+      $sf_entity->save();
+
+      // Find or create WdbLabel.
+      $label_storage = $entity_type_manager->getStorage('wdb_label');
+      $polygon_points = $annotations_data[$label_name] ?? [['0,0']];
+      $polygon_points_for_storage = array_map(fn($p) => ['value' => implode(',', $p)], $polygon_points);
+      $center_coords = ['x' => 0, 'y' => 0];
+      if (!empty($polygon_points[0])) {
+        $x_coords = array_column($polygon_points, 0);
+        $y_coords = array_column($polygon_points, 1);
+        $center_coords['x'] = (min($x_coords) + max($x_coords)) / 2;
+        $center_coords['y'] = (min($y_coords) + max($y_coords)) / 2;
+      }
+      $label_entity = reset($label_storage->loadByProperties(['label_name' => $label_name, 'annotation_page_ref' => $page_entity->id()])) ?: $label_storage->create(['label_name' => $label_name, 'annotation_page_ref' => $page_entity->id(), 'polygon_points' => $polygon_points_for_storage, 'label_center_x' => $center_coords['x'], 'label_center_y' => $center_coords['y']]);
+      $label_entity->save();
+      $label_entity->set('annotation_uri', Url::fromRoute('entity.wdb_label.canonical', ['wdb_label' => $label_entity->id()], ['absolute' => TRUE])->toString())->save();
+
+      // Find or create WdbSignInterpretation.
+      $si_storage = $entity_type_manager->getStorage('wdb_sign_interpretation');
+      $si_entity = reset($si_storage->loadByProperties(['label_ref' => $label_entity->id()])) ?: $si_storage->create(['annotation_page_ref' => $page_entity->id(), 'label_ref' => $label_entity->id(), 'sign_function_ref' => $sf_entity->id(), 'sign_interpretation_code' => 'si_' . $label_entity->id(), 'langcode' => 'ja']);
+      $si_entity->save();
+
+      // Find or create WdbWordMap.
+      $map_storage = $entity_type_manager->getStorage('wdb_word_map');
+      $map_entity = reset($map_storage->loadByProperties(['sign_interpretation_ref' => $si_entity->id(), 'word_unit_ref' => $wu_entity->id()])) ?: $map_storage->create(['sign_interpretation_ref' => $si_entity->id(), 'word_unit_ref' => $wu_entity->id(), 'sign_sequence' => $sign_seq_in_word]);
+      $map_entity->save();
+    }
+  }
+
+  // Display a message with links to the sample page.
+  $source_url = Url::fromRoute('entity.wdb_source.canonical', ['wdb_source' => $source_entity->id()]);
+  $gallery_url = Url::fromRoute('wdb_core.gallery_page', [
+    'subsysname' => $subsystem_term->get('name')->value,
+    'source' => $source_entity->get('source_identifier')->value,
+    'page' => $page_entity->get('page_number')->value,
+  ]);
+  $search_url = Url::fromRoute('wdb_core.search_form');
+
+  $message_body = '<ul>';
+  $message_body .= '<li>' . Link::fromTextAndUrl(t('View the sample gallery page'), $gallery_url)->toString() . '</li>';
+  $message_body .= '<li>' . Link::fromTextAndUrl(t('View the sample source page'), $source_url)->toString() . '</li>';
+  $message_body .= '<li>' . Link::fromTextAndUrl(t('Go to the search page'), $search_url)->toString() . '</li>';
+  $message_body .= '</ul>';
+
+  $messenger->addStatus(t('WDB Example module installation complete.'));
+  $messenger->addStatus(Markup::create($message_body));
+}

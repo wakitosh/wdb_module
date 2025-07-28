@@ -1,0 +1,22 @@
+uuid: 211a125d-61f9-4650-b430-334d00c2a701
+langcode: en # または ja
+status: true
+dependencies:
+  config:
+    - taxonomy.vocabulary.mood
+  module:
+    - content_translation
+  enforced:
+    module:
+      - wdb_core
+      - content_translation
+id: taxonomy_term.mood
+target_entity_type_id: taxonomy_term
+target_bundle: mood
+default_langcode: en
+language_alterable: true
+third_party_settings:
+  content_translation:
+    enabled: true
+    bundle_settings:
+      untranslatable_fields_hide: '0'

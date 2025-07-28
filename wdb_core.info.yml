@@ -1,0 +1,15 @@
+# web/modules/custom/wdb_core/wdb_core.info.yml
+name: 'WDB Core Functionality'
+type: module
+description: 'Core services, configuration, and base functionality for the WDB application.'
+package: WDB
+core_version_requirement: ^10 || ^11
+dependencies:
+  - drupal:taxonomy
+  - drupal:content_translation
+  - drupal:language
+  - drupal:file
+  - drupal:field
+  - drupal:field_ui
+  - drupal:jquery_ui
+  - drupal:jquery_ui_dialog

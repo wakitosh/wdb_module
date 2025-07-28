@@ -1,0 +1,7 @@
+name: 'WDB Example'
+type: module
+description: 'Provides example content and configuration for the WDB Core module.'
+package: WDB
+core_version_requirement: ^10 || ^11
+dependencies:
+  - wdb_core:wdb_core

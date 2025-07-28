@@ -1,0 +1,296 @@
+# ----------------------------------------------------------------
+# 1. Page Display Routes (Pages directly accessed by users)
+# ----------------------------------------------------------------
+
+# Individual source document page.
+wdb_core.source_canonical:
+  path: '/wdb/source/{source_identifier}'
+  defaults:
+    _controller: 'wdb_core.source_view_controller:view'
+    _title_callback: 'wdb_core.source_view_controller:getTitle'
+  requirements:
+    _permission: 'access content'
+
+# Gallery page redirect route.
+# Catches URLs without a page number.
+wdb_core.gallery_redirect:
+  path: '/wdb/{subsysname}/gallery/{source}'
+  defaults:
+    _controller: '\Drupal\wdb_core\Controller\GalleryController::redirectToSource'
+  requirements:
+    _permission: 'access content'
+
+# Gallery page.
+wdb_core.gallery_page:
+  path: '/wdb/{subsysname}/gallery/{source}/{page}'
+  defaults:
+    _controller: 'wdb_core.gallery_controller:viewPage'
+    _title_callback: 'wdb_core.gallery_controller:getPageTitle'
+  requirements:
+    _custom_access: 'wdb_core.access_checker::access'
+    page: \d+
+
+# Editing page (OpenSeadragon + Annotorious Editor).
+wdb_core.annotation_edit_page:
+  path: '/wdb/{subsysname}/gallery/{source}/{page}/edit'
+  defaults:
+    _controller: 'wdb_core.annotation_edit_controller:buildPage'
+    _title_callback: 'wdb_core.annotation_edit_controller:getPageTitle'
+  requirements:
+    _permission: 'access wdb annotation edit page'
+    page: \d+
+
+# IIIF Presentation API v3 Manifest.
+wdb_core.iiif_manifest_v3:
+  path: '/wdb/{subsysname}/gallery/{source}/manifest'
+  defaults:
+    _controller: 'wdb_core.iiif_v3_manifest_controller:buildManifest'
+  methods: [GET, OPTIONS]
+  requirements:
+    _permission: 'access content'
+
+# TEI/XML download.
+wdb_core.tei_download_page:
+  path: '/wdb/{subsysname}/gallery/{source}/{page}/tei'
+  defaults:
+    _controller: 'wdb_core.export_controller:downloadTei'
+  requirements:
+    _permission: 'access content'
+    page: \d+
+
+# RDF/XML download.
+wdb_core.rdf_download_page:
+  path: '/wdb/{subsysname}/gallery/{source}/{page}/rdf'
+  defaults:
+    _controller: 'wdb_core.export_controller:downloadRdf'
+  requirements:
+    _permission: 'access content'
+    page: \d+
+
+# Plain text download.
+wdb_core.text_download_page:
+  path: '/wdb/{subsysname}/gallery/{source}/{page}/text'
+  defaults:
+    _controller: 'wdb_core.export_controller:downloadText'
+  requirements:
+    _permission: 'access content'
+    page: \d+
+
+# Search form page.
+wdb_core.search_form:
+  path: '/wdb/search'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbSearchForm'
+    _title: 'WDB Search'
+  requirements:
+    _permission: 'access content'
+
+# WDB module settings form.
+wdb_core.settings_form:
+  path: '/admin/config/wdb/settings'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbSettingsForm'
+    _title: 'WDB Core Settings'
+  requirements:
+    _permission: 'administer wdb configuration'
+
+# ----------------------------------------------------------------
+# 2. API Routes
+# ----------------------------------------------------------------
+
+# Search API endpoint.
+wdb_core.search_api:
+  path: '/wdb/api/search'
+  defaults:
+    _controller: 'wdb_core.search_api_controller:search'
+  methods: [GET]
+  requirements:
+    _permission: 'access content'
+
+# Coordinate transformation service (Convex Hull / Concave Hull).
+wdb_core.hull_api:
+  path: '/wdb/api/hull'
+  defaults:
+    _controller: 'wdb_core.export_controller:calculateHullApi'
+  methods: [GET]
+  requirements:
+    _access: 'TRUE'
+
+# Get annotation list for Annotorious v3.
+wdb_core.annotation_search:
+  path: '/wdb/api/annotation/search'
+  defaults:
+    _controller: 'wdb_core.annotation_api_controller:searchAnnotations'
+  methods: [GET]
+  requirements:
+    _permission: 'access content'
+
+# Word-level annotation list (v3).
+wdb_core.word_annotation_list_v3:
+  path: '/wdb/api/annotation/v3/{wdb_annotation_page}/words.json'
+  defaults:
+    _controller: 'wdb_core.annotation_api_controller:getWordLevelAnnotations'
+  requirements:
+    _permission: 'access content'
+    wdb_annotation_page: \d+
+  options:
+    parameters:
+      wdb_annotation_page:
+        type: entity:wdb_annotation_page
+
+# Create new annotation.
+wdb_core.annotation_create:
+  path: '/wdb/api/annotation/create'
+  defaults:
+    _controller: 'wdb_core.annotation_api_controller:createAnnotation'
+  methods: [POST]
+  requirements:
+    _permission: 'access wdb annotation api create'
+
+# Update annotation.
+wdb_core.annotation_update:
+  path: '/wdb/api/annotation/update'
+  defaults:
+    _controller: 'wdb_core.annotation_api_controller:updateAnnotation'
+  methods: [POST, PUT]
+  requirements:
+    _permission: 'access wdb annotation api update'
+
+# Delete annotation.
+wdb_core.annotation_delete:
+  path: '/wdb/api/annotation/destroy'
+  defaults:
+    _controller: 'wdb_core.annotation_api_controller:deleteAnnotation'
+  methods: [DELETE]
+  requirements:
+    _permission: 'access wdb annotation api delete'
+
+# Autocomplete endpoint for realized_form.
+wdb_core.autocomplete.realized_form:
+  path: '/wdb/autocomplete/realized_form'
+  defaults:
+    _controller: 'wdb_core.autocomplete_controller:handleAutocomplete'
+  requirements:
+    _permission: 'access content'
+
+# Autocomplete endpoint for basic_form.
+wdb_core.autocomplete.basic_form:
+  path: '/wdb/autocomplete/basic_form'
+  defaults:
+    _controller: 'wdb_core.autocomplete_controller:handleAutocomplete'
+  requirements:
+    _permission: 'access content'
+
+# Autocomplete endpoint for WdbSign.
+wdb_core.autocomplete.sign:
+  path: '/wdb/autocomplete/sign'
+  defaults:
+    _controller: 'wdb_core.autocomplete_controller:handleAutocomplete'
+  requirements:
+    _permission: 'access content'
+
+# ----------------------------------------------------------------
+# 4. AJAX Callback Routes
+# ----------------------------------------------------------------
+
+# Get content for the annotation details panel.
+wdb_core.get_annotation_details_by_uri:
+  path: '/wdb/ajax/annotation_details_by_uri/{subsysname}'
+  defaults:
+    _controller: 'wdb_core.dialog_content_controller:getDetailsByUri'
+  requirements:
+    _permission: 'access content'
+
+# Get full text content.
+wdb_core.get_full_text:
+  path: '/wdb/ajax/full_text/{subsysname}/{source}/{page}'
+  defaults:
+    _controller: 'wdb_core.full_text_controller:getFullTextContent'
+  methods: [GET]
+  requirements:
+    _permission: 'access content'
+    page: \d+
+
+# AJAX endpoint to get the first annotation URI from a Word Unit ID.
+wdb_core.get_uri_from_wu:
+  path: '/wdb/ajax/get_uri_from_wu/{wdb_word_unit_original_id}'
+  defaults:
+    _controller: 'wdb_core.export_controller:getUriFromWordUnit'
+  requirements:
+    _permission: 'access content'
+
+# API endpoint to get an individual annotation (WdbLabel).
+# Mainly used for data migration or Drush commands.
+wdb_core.annotation_individual:
+  path: '/wdb/api/annotation/{wdb_label}'
+  defaults:
+    _controller: 'wdb_core.annotation_api_controller:getIndividualAnnotation'
+  methods: [GET]
+  requirements:
+    _permission: 'access content'
+
+# ----------------------------------------------------------------
+# 5. Content Management Pages
+# ----------------------------------------------------------------
+
+# Route for the linguistic data bulk import form.
+wdb_core.data_import_form:
+  path: '/admin/content/wdb/import'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbDataImportForm'
+    _title: 'Import Linguistic Data'
+  requirements:
+    _permission: 'administer wdb content'
+
+# Route for the import log rollback confirmation form.
+entity.wdb_import_log.rollback_form:
+  path: '/admin/content/wdb/import_log/{wdb_import_log}/rollback'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbImportLogRollbackForm'
+    _title: 'Rollback Import'
+  requirements:
+    _permission: 'administer wdb import logs'
+  options:
+    parameters:
+      wdb_import_log:
+        type: entity:wdb_import_log
+
+# Route for the linguistic data template generation form.
+wdb_core.template_generator_form:
+  path: '/admin/content/wdb/generate-template'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbTemplateGeneratorForm'
+    _title: 'Generate Import Template'
+  requirements:
+    _permission: 'administer wdb content'
+
+# ----------------------------------------------------------------
+# 6. Site Configuration Pages
+# ----------------------------------------------------------------
+
+# WDB POS Mapping UI.
+entity.wdb_pos_mapping.collection:
+  path: '/admin/structure/wdb_pos_mapping'
+  defaults:
+    _entity_list: 'wdb_pos_mapping'
+    _title: 'WDB POS Mappings'
+  requirements:
+    _permission: 'administer wdb pos mappings'
+
+# WDB POS Mapping UI (Add Mapping).
+entity.wdb_pos_mapping.add_form:
+  path: '/admin/structure/wdb_pos_mapping/add'
+  defaults:
+    _entity_form: 'wdb_pos_mapping.add'
+    _title: 'Add WDB POS Mapping'
+  requirements:
+    _permission: 'administer wdb pos mappings'
+
+# WDB Admin Dashboard.
+wdb_core.admin_dashboard:
+  path: '/admin/wdb'
+  defaults:
+    _controller: '\Drupal\wdb_core\Controller\DashboardController::build'
+    _title: 'WDB Dashboard'
+  requirements:
+    _permission: 'administer wdb content'

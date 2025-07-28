@@ -1,0 +1,11 @@
+uuid: b07f6f0e-b51a-4aec-993a-38fb44038988
+langcode: ja
+status: true
+dependencies:
+  module:
+    - wdb_core
+id: wdb_word.wdb_word
+target_entity_type_id: wdb_word
+target_bundle: wdb_word
+default_langcode: en
+language_alterable: true

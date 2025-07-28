@@ -1,0 +1,75 @@
+name_en	name_ja	parent_en	gold_ontology
+adjective	形容詞		http://purl.org/linguistics/gold/Adjectival
+article	冠詞		http://purl.org/linguistics/gold/Article
+definite	定冠詞	article	http://purl.org/linguistics/gold/DefiniteArticle
+indefinite	不定冠詞	article	http://purl.org/linguistics/gold/IndefiniteArticle
+possessive	所有冠詞	article	
+converter			
+adnominal converter		converter	
+adverbial converter		converter	
+focalization		converter	
+preterit		converter	
+negator	否定辞		
+numeral	数詞		http://purl.org/linguistics/gold/Numeral
+cardinal	基数詞	numeral	http://purl.org/linguistics/gold/CardinalNumber
+ordinal	序数詞	numeral	http://purl.org/linguistics/gold/OrdinalNumber
+particle	助詞		http://purl.org/linguistics/gold/Particle
+case marker	格助詞	particle	
+conjunctive particle	接続助詞	particle	
+adverbial particle	副助詞	particle	
+binding particle	係助詞	particle	
+interjectory particle	間投助詞	particle	
+parallel marker	並立助詞	particle	
+phrasal particle	準体助詞	particle	
+sentence ending particle	終助詞	particle	
+adnominal case marker	連体格	case marker	
+genitive	属格	case marker	
+verbal	動詞		http://purl.org/linguistics/gold/Verbal
+strong	強変化動詞	verbal	
+weak	弱変化動詞	verbal	
+double	二重動詞	verbal	
+irregular	不規則動詞	verbal	
+nominal	名詞		http://purl.org/linguistics/gold/Noun
+personal	人名詞	nominal	
+place	場所名詞	nominal	
+proper noun	固有名詞	nominal	http://purl.org/linguistics/gold/ProperNoun
+common noun	普通名詞	nominal	http://purl.org/linguistics/gold/CommonNoun
+adjective noun	形容詞性名詞	nominal	http://purl.org/linguistics/gold/Adjectival
+pronominal	代名詞		http://purl.org/linguistics/gold/Pronominal
+personal pronoun	人称代名詞	pronominal	http://purl.org/linguistics/gold/PersonalPronoun
+demonstrative	指示代名詞	pronominal	http://purl.org/linguistics/gold/Demonstrative
+interrogative	疑問代名詞	pronominal	http://purl.org/linguistics/gold/InterrogativeProform
+independent	独立代名詞	pronominal	
+dependent	従属代名詞	pronominal	
+adverb	副詞		http://purl.org/linguistics/gold/Adverbial
+stative adverb	状態副詞	adverb	
+degree adverb	程度副詞	adverb	
+modal adverb	様態副詞	adverb	
+preposition	前置詞		http://purl.org/linguistics/gold/Preposition
+relative	関係詞		http://purl.org/linguistics/gold/Relativizer
+conjunction	接続詞		http://purl.org/linguistics/gold/Conjunction
+interjection	感動詞		http://purl.org/linguistics/gold/Interjection
+adjectival verb	形容動詞		
+pre-noun adjectival	連体詞		
+auxiliary verb	助動詞		
+symbol	記号類		
+punctuation mark	句点	symbol	
+reading mark	読点	punctuation mark	
+dot	ピリオド	punctuation mark	
+verse point	節点	punctuation mark	
+quotation mark	引用符	punctuation mark	
+exclamation mark	感嘆符	punctuation mark	
+question mark	疑問符	punctuation mark	
+parenthese	括弧	symbol	
+cartouche	カルトゥーシュ	parenthese	
+interpunct	中黒	symbol	
+hyphen	ハイフン	symbol	
+leader	リーダ	symbol	
+dash	ダッシュ	symbol	
+iteration mark	踊り字	symbol	
+character	文字	symbol	
+affix	接辞		
+infix	挿入辞	affix	
+prefix	接頭辞	affix	
+suffix	接尾辞	affix	
+circumfix	接周辞	affix	

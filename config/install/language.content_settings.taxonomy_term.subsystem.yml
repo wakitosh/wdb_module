@@ -1,0 +1,22 @@
+uuid: 590bf5d4-e2f5-407a-aac5-99ebe313d5fd
+langcode: en
+status: true
+dependencies:
+  config:
+    - taxonomy.vocabulary.subsystem
+  module:
+    - content_translation
+  enforced:
+    module:
+      - wdb_core
+      - content_translation
+id: taxonomy_term.subsystem
+target_entity_type_id: taxonomy_term
+target_bundle: subsystem
+default_langcode: site_default
+language_alterable: true
+third_party_settings:
+  content_translation:
+    enabled: false
+    bundle_settings:
+      untranslatable_fields_hide: '0'

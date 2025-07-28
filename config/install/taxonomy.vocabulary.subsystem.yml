@@ -1,0 +1,11 @@
+uuid: cdd7029d-5395-4531-b247-31b3708afd63
+langcode: en
+status: true
+name: Subsystem
+vid: subsystem
+description: 'Used to categorize content by subsystem (e.g., hdb, jgt).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

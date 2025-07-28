@@ -1,0 +1,20 @@
+uuid: ee997cdc-b3c5-4c04-8609-90b8ee752262
+langcode: en
+status: true
+dependencies:
+  module:
+    - taxonomy
+  enforced:
+    module:
+      - wdb_core
+id: taxonomy_term.field_gold_ontology
+field_name: field_gold_ontology
+entity_type: taxonomy_term
+type: string
+settings:
+  max_length: 255
+  case_sensitive: false
+  is_ascii: false
+module: core
+locked: false
+cardinality: 1

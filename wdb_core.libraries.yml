@@ -1,0 +1,104 @@
+# ----------------------------------------------------------------
+# 1. External Library Definitions
+# ----------------------------------------------------------------
+
+# OpenSeadragon Core
+openseadragon_core:
+  version: 5.0.1
+  js:
+    assets/openseadragon/openseadragon.min.js: {}
+
+# Annotorious v3 for OpenSeadragon
+annotorious_osd:
+  version: '3.5.1'
+  js:
+    assets/annotorious-v3/annotorious-openseadragon.js: {}
+  css:
+    theme:
+      assets/annotorious-v3/annotorious-openseadragon.css: {}
+  dependencies:
+    - wdb_core/openseadragon_core
+
+# ----------------------------------------------------------------
+# 2. WDB Custom Feature Libraries
+# ----------------------------------------------------------------
+
+# Common toolbar library (mode switch, pager, export)
+wdb_toolbar:
+  js:
+    js/wdb_toolbar.js: {}
+  css:
+    theme:
+      css/wdb_toolbar.css: {} # Common CSS for toolbar and pager
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/jquery
+    - core/once
+
+# Page layout (resize functionality, etc.)
+wdb_page_layout:
+  css:
+    theme:
+      css/wdb_layout.css: {}
+  js:
+    js/wdb_resizable.js: {}
+    js/wdb_layout_adjust.js: {}
+  dependencies:
+    - core/once
+    - core/drupal.debounce
+
+# Lazy loading library
+lazysizes:
+  js:
+    assets/lazysizes/lazysizes.min.js: {}
+
+# ----------------------------------------------------------------
+# 3. Integrated Libraries per Page Type
+# ----------------------------------------------------------------
+
+# For the viewing page
+wdb_viewer:
+  js:
+    js/wdb_openseadragon_viewer.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
+    - core/jquery
+    - wdb_core/annotorious_osd
+    - wdb_core/wdb_toolbar
+    - wdb_core/lazysizes
+
+# For the editing page
+wdb_editor:
+  css:
+    theme:
+      css/annotorious-editor.css: {} # Custom styles for the editor popup
+      css/wdb_editor.css: {}
+  js:
+    js/wdb_openseadragon_editor.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
+    - wdb_core/annotorious_osd
+    - wdb_core/wdb_toolbar
+    - wdb_core/lazysizes
+
+# For the search page
+wdb_search:
+  css:
+    theme:
+      css/wdb_search.css: {}
+  js:
+    js/wdb_search.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupal.ajax
+    - core/once
+
+# Common styles for the admin interface
+wdb_admin:
+  css:
+    theme:
+      css/wdb_admin.css: {}

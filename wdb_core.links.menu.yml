@@ -1,0 +1,131 @@
+wdb_core.admin_menu:
+  title: 'WDB'
+  description: 'WDB Core module administration pages.'
+  parent: system.admin
+  route_name: wdb_core.admin_dashboard
+  weight: -20
+
+wdb_core.admin_dashboard:
+  title: 'Dashboard'
+  description: 'WDB Core module administration dashboard.'
+  parent: wdb_core.admin_menu
+  route_name: wdb_core.admin_dashboard
+
+wdb_core.entity_list_links:
+  title: 'Content Management'
+  description: 'Manage WDB content entities.'
+  parent: wdb_core.admin_dashboard
+  route_name: '<nolink>'
+  weight: 0
+
+entity.wdb_source.collection:
+  title: 'Manage Sources'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_source.collection
+  weight: 0
+
+entity.wdb_annotation_page.collection:
+  title: 'Manage Annotation Pages'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_annotation_page.collection
+  weight: 10
+
+entity.wdb_label.collection:
+  title: 'Manage Labels (Annotation Regions)'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_label.collection
+  weight: 20
+
+entity.wdb_sign.collection:
+  title: 'Manage Signs'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_sign.collection
+  weight: 30
+
+entity.wdb_sign_function.collection:
+  title: 'Manage Sign Functions'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_sign_function.collection
+  weight: 40
+
+entity.wdb_sign_interpretation.collection:
+  title: 'Manage Sign Interpretations'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_sign_interpretation.collection
+  weight: 50
+
+entity.wdb_word_map.collection:
+  title: 'Manage Word Maps'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_word_map.collection
+  weight: 60
+
+entity.wdb_word_unit.collection:
+  title: 'Manage Word Units'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_word_unit.collection
+  weight: 70
+
+entity.wdb_word_meaning.collection:
+  title: 'Manage Word Meanings'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_word_meaning.collection
+  weight: 80
+
+entity.wdb_word.collection:
+  title: 'Manage Words (Lemmas)'
+  parent: wdb_core.entity_list_links
+  route_name: entity.wdb_word.collection
+  weight: 90
+
+wdb_core.tools_links:
+  title: 'Tools & Utilities'
+  parent: wdb_core.admin_dashboard
+  route_name: '<nolink>'
+  weight: 10
+
+wdb_core.template_generator_menu_link:
+  title: 'Generate Import Template'
+  description: 'Generate a WDB data import template from a morphological analysis file.'
+  parent: wdb_core.tools_links
+  route_name: wdb_core.template_generator_form
+  weight: 0
+
+wdb_core.data_import_form:
+  title: 'Import Linguistic Data'
+  parent: wdb_core.tools_links
+  route_name: wdb_core.data_import_form
+  weight: 10
+
+wdb_core.import_log_collection:
+  title: 'Import Log'
+  description: 'View and manage past data import jobs.'
+  parent: wdb_core.tools_links
+  route_name: entity.wdb_import_log.collection
+  weight: 20
+
+wdb_core.pos_mapping_collection:
+  title: 'Manage POS Mappings'
+  description: 'Manage mappings between external POS tags and WDB categories.'
+  parent: wdb_core.tools_links
+  route_name: entity.wdb_pos_mapping.collection
+  weight: 30
+
+wdb_core.config_links:
+  title: 'Configuration'
+  parent: wdb_core.admin_dashboard
+  route_name: '<nolink>'
+  weight: 20
+
+wdb_core.settings_form_menu_link:
+  title: 'Module Settings'
+  parent: wdb_core.config_links
+  route_name: wdb_core.settings_form
+  weight: 0
+
+wdb_core.source_type_settings:
+  title: 'Source Type Settings'
+  description: 'Manage fields and settings for the WDB Source entity type.'
+  parent: wdb_core.config_links
+  url: 'internal:/admin/content/wdb_source/fields'
+  weight: 10

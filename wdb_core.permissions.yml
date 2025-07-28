@@ -1,0 +1,42 @@
+# wdb_core.permissions.yml
+
+access wdb annotation edit page:
+  title: 'Access WDB annotation editing page'
+  description: 'Allows users to create, update, and delete annotations using the IIIF viewer.'
+
+access wdb annotation api create:
+  title: 'Access WDB Annotation API (Create)'
+  description: 'Allows users to create new annotations via the API.'
+
+access wdb annotation api update:
+  title: 'Access WDB Annotation API (Update)'
+  description: 'Allows users to update annotations via the API.'
+
+access wdb annotation api delete:
+  title: 'Access WDB Annotation API (Delete)'
+  description: 'Allows users to delete annotations via the API.'
+
+administer wdb content:
+  title: 'Administer WDB content'
+  description: 'Allows users to perform administrative tasks for WDB, such as data import.'
+
+administer wdb import logs:
+  title: 'Administer WDB Import Logs'
+  description: 'Allows users to view and roll back data import jobs.'
+
+administer wdb_source entities:
+  title: 'Administer WDB Source entities'
+  description: 'Allow to access the WDB Source administration page.'
+  restrict access: true
+
+administer wdb pos mappings:
+  title: 'Administer WDB POS Mappings'
+  description: 'Allows users to manage the mapping rules for Part-of-Speech data import.'
+
+view wdb gallery pages:
+  title: 'View non-public WDB gallery pages'
+  description: 'Allows users to view gallery pages for subsystems that are not configured for anonymous access.'
+
+administer wdb configuration:
+  title: 'Administer WDB Core configuration'
+  description: 'Access the WDB Core settings page.'

@@ -1,0 +1,11 @@
+uuid: babb9892-6eb3-4d18-b4e1-e02c307606f4
+langcode: en
+status: true
+name: 'Grammatical Mood'
+vid: mood
+description: 'Grammatical mood (e.g., indicative, optative).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

@@ -1,0 +1,11 @@
+uuid: 58e500d7-c18c-4c1a-ab27-fe0a69dc8eca
+langcode: en
+status: true
+name: 'Lexical Category'
+vid: lexical_category
+description: 'Used to categorize words by their lexical category (e.g., verb, common noun).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core

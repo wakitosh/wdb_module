@@ -1,0 +1,11 @@
+uuid: e1e253b2-c819-486c-88e0-612b5d8d5380
+langcode: ja
+status: true
+dependencies:
+  module:
+    - wdb_core
+id: wdb_sign.wdb_sign
+target_entity_type_id: wdb_sign
+target_bundle: wdb_sign
+default_langcode: en
+language_alterable: true

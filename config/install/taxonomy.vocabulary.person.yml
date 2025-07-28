@@ -1,0 +1,11 @@
+uuid: 39e80ed4-c11e-4251-8f6e-d1d82c1822c9
+langcode: en
+status: true
+name: 'Grammatical Person'
+vid: person
+description: 'Grammatical person (e.g., first, second, third).'
+weight: 0
+dependencies:
+  enforced:
+    module:
+      - wdb_core
