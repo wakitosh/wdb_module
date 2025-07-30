@@ -7,8 +7,8 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Routing\UrlGeneratorInterface;
 use Drupal\Core\Http\ClientFactory;
+use Drupal\Core\Routing\UrlGeneratorInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
 use Drupal\wdb_core\Entity\WdbSource;
@@ -16,7 +16,6 @@ use Drupal\wdb_core\Entity\WdbAnnotationPage;
 use Drupal\wdb_core\Service\WdbDataService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -90,7 +89,7 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
       $container->get('config.factory'),
       $container->get('module_handler'),
       $container->get('url_generator'),
-      $container->get('http_client_factory'),
+      $container->get('http_client.factory'),
       $container->get('wdb_core.data_service')
     );
   }
@@ -111,13 +110,7 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
   public function getPageTitle(string $subsysname, string $source, int $page): string {
     $wdb_source_entity = $this->loadWdbSource($source, $subsysname);
     if ($wdb_source_entity) {
-      return $this->t(
-        'Edit Annotations: @source_label - Page @page',
-        [
-          '@source_label' => $wdb_source_entity->label(),
-          '@page' => $page,
-        ]
-      );
+      return $this->t('Edit Annotations: @source_label - Page @page', ['@source_label' => $wdb_source_entity->label(), '@page' => $page]);
     }
     return $this->t('Edit Annotations');
   }
@@ -151,7 +144,7 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
     // Assemble the info.json URL.
     $subsys_config = $this->wdbDataService->getSubsystemConfig($subsysname);
     if (!$subsys_config) {
-      return new Response($this->t('Subsystem configuration not found for "@subsys".', ['@subsys' => $subsysname]), 404);
+      return ['#markup' => $this->t('Subsystem configuration not found for "@subsys".', ['@subsys' => $subsysname])];
     }
 
     $iiif_base_url = $this->wdbDataService->getIiifBaseUrlForSubsystem($subsysname);
@@ -172,19 +165,12 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
     // Canvas URI and Annotation List URI.
     $manifest_base_uri = $this->getManifestUri($wdb_source_entity, $subsysname);
     $canvas_id_uri = $this->getCanvasUri($wdb_annotation_page_entity, $manifest_base_uri);
-    $annotation_list_uri = $this->urlGenerator->generateFromRoute(
-      'wdb_core.annotation_search',
-      [],
-      [
-        'query' => ['uri' => $canvas_id_uri],
-        'absolute' => TRUE,
-      ]
-    );
+    $annotation_list_uri = $this->urlGenerator->generateFromRoute('wdb_core.annotation_search', [], ['query' => ['uri' => $canvas_id_uri], 'absolute' => TRUE]);
     $annotation_api_base_url = $this->urlGenerator->generateFromRoute('<front>', [], ['absolute' => TRUE]) . 'wdb/api/annotation';
 
     // Get all page information for the thumbnail pager.
     $page_list = [];
-    $all_pages = $this->getAllPagesForSource($wdb_source_entity);
+    $all_pages = $this->wdbDataService->getAllPagesForSource($wdb_source_entity);
     if ($all_pages) {
       foreach ($all_pages as $page_entity) {
         $image_identifier_for_thumb = $page_entity->get('image_identifier')->value;
@@ -206,38 +192,28 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
     // Settings to pass to drupalSettings.
     $module_path = $this->moduleHandler()->getModule('wdb_core')->getPath();
     $toolbar_urls = [
-      'view' => Url::fromRoute(
-        'wdb_core.gallery_page',
-        [
-          'subsysname' => $subsysname,
-          'source' => $source,
-          'page' => $page,
-        ]
-      )->toString(),
-      'tei' => Url::fromRoute(
-        'wdb_core.tei_download_page',
-        [
-          'subsysname' => $subsysname,
-          'source' => $source,
-          'page' => $page,
-        ]
-      )->toString(),
-      'rdf' => Url::fromRoute(
-        'wdb_core.rdf_download_page',
-        [
-          'subsysname' => $subsysname,
-          'source' => $source,
-          'page' => $page,
-        ]
-      )->toString(),
-      'text' => Url::fromRoute(
-        'wdb_core.text_download_page',
-        [
-          'subsysname' => $subsysname,
-          'source' => $source,
-          'page' => $page,
-        ]
-      )->toString(),
+      // The "View" link is always available for users who can access the edit page.
+      'view' => Url::fromRoute('wdb_core.gallery_page', [
+        'subsysname' => $subsysname,
+        'source' => $source,
+        'page' => $page,
+      ])->toString(),
+      // Export functions.
+      'tei' => Url::fromRoute('wdb_core.tei_download_page', [
+        'subsysname' => $subsysname,
+        'source' => $source,
+        'page' => $page,
+      ])->toString(),
+      'rdf' => Url::fromRoute('wdb_core.rdf_download_page', [
+        'subsysname' => $subsysname,
+        'source' => $source,
+        'page' => $page,
+      ])->toString(),
+      'text' => Url::fromRoute('wdb_core.text_download_page', [
+        'subsysname' => $subsysname,
+        'source' => $source,
+        'page' => $page,
+      ])->toString(),
       'manifest_v3' => Url::fromRoute('wdb_core.iiif_manifest_v3', [
         'subsysname' => $subsysname,
         'source' => $source,
@@ -278,8 +254,16 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
         'id' => 'wdb-main-container',
         'class' => ['wdb-is-editing'],
       ],
-      'viewer' => ['#type' => 'html_tag', '#tag' => 'div', '#attributes' => ['id' => 'openseadragon-viewer']],
-      'resizer' => ['#type' => 'html_tag', '#tag' => 'div', '#attributes' => ['id' => 'wdb-resizer']],
+      'viewer' => [
+        '#type' => 'html_tag',
+        '#tag' => 'div',
+        '#attributes' => ['id' => 'openseadragon-viewer'],
+      ],
+      'resizer' => [
+        '#type' => 'html_tag',
+        '#tag' => 'div',
+        '#attributes' => ['id' => 'wdb-resizer'],
+      ],
       'annotation_info' => [
         '#type' => 'html_tag',
         '#tag' => 'div',
@@ -294,30 +278,14 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
     $build['pager_modal_container'] = [
       '#type' => 'html_tag',
       '#tag' => 'div',
-      '#attributes' => ['id' => 'wdb-thumbnail-pager-container', 'class' => ['wdb-pager-modal']],
+      '#attributes' => [
+        'id' => 'wdb-thumbnail-pager-container',
+        'class' => ['wdb-pager-modal'],
+      ],
       '#weight' => 100,
     ];
 
     return $build;
-  }
-
-  /**
-   * Helper to load all page entities for a source.
-   *
-   * @param \Drupal\wdb_core\Entity\WdbSource $source_entity
-   *   The source entity.
-   *
-   * @return \Drupal\wdb_core\Entity\WdbAnnotationPage[]
-   *   An array of page entities.
-   */
-  private function getAllPagesForSource(WdbSource $source_entity): array {
-    $storage = $this->entityTypeManager()->getStorage('wdb_annotation_page');
-    $query = $storage->getQuery()
-      ->condition('source_ref', $source_entity->id())
-      ->sort('page_number', 'ASC')
-      ->accessCheck(FALSE);
-    $ids = $query->execute();
-    return !empty($ids) ? $storage->loadMultiple($ids) : [];
   }
 
   /**
@@ -358,10 +326,9 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
    */
   private function loadWdbAnnotationPage(WdbSource $wdb_source_entity, int $page_number): ?WdbAnnotationPage {
     $annotation_page_storage = $this->entityTypeManager()->getStorage('wdb_annotation_page');
-    $annotation_code = $wdb_source_entity->get('source_identifier')->value . '_' . $page_number;
     $annotation_pages = $annotation_page_storage->loadByProperties([
-      'annotation_code' => $annotation_code,
       'source_ref' => $wdb_source_entity->id(),
+      'page_number' => $page_number,
     ]);
     return reset($annotation_pages) ?: NULL;
   }
