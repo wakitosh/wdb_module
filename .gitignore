@@ -4,6 +4,12 @@
 # Ignore Node.js dependencies
 /node_modules/
 
+# Ignore Drupal development files
+/core
+/sites/*/files
+/sites/*/private
+/sites/*/settings.local.php
+
 # Ignore IDE and OS-specific files
 .DS_Store
 .idea/
