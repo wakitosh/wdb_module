@@ -264,6 +264,55 @@ wdb_core.template_generator_form:
   requirements:
     _permission: 'administer wdb content'
 
+# Manually define the 'add-form' routes that were failing to generate.
+entity.wdb_source.add-form:
+  path: '/admin/content/wdb_source/add'
+  defaults:
+    _entity_form: 'wdb_source.add'
+    _title: 'Add WDB Source'
+  requirements:
+    _permission: 'administer wdb_source entities'
+
+entity.wdb_annotation_page.add-form:
+  path: '/admin/content/wdb_annotation_page/add'
+  defaults:
+    _entity_form: 'wdb_annotation_page.add'
+    _title: 'Add WDB Annotation Page'
+  requirements:
+    _permission: 'administer wdb_annotation_page entities'
+
+entity.wdb_sign.add-form:
+  path: '/admin/content/wdb_sign/add'
+  defaults:
+    _entity_form: 'wdb_sign.add'
+    _title: 'Add WDB Sign'
+  requirements:
+    _permission: 'administer wdb_sign entities'
+
+entity.wdb_sign_function.add-form:
+  path: '/admin/content/wdb_sign_function/add'
+  defaults:
+    _entity_form: 'wdb_sign_function.add'
+    _title: 'Add WDB Sign Function'
+  requirements:
+    _permission: 'administer wdb_sign_function entities'
+
+entity.wdb_word.add-form:
+  path: '/admin/content/wdb_word/add'
+  defaults:
+    _entity_form: 'wdb_word.add'
+    _title: 'Add WDB Word'
+  requirements:
+    _permission: 'administer wdb_word entities'
+
+entity.wdb_word_meaning.add-form:
+  path: '/admin/content/wdb_word_meaning/add'
+  defaults:
+    _entity_form: 'wdb_word_meaning.add'
+    _title: 'Add WDB Word Meaning'
+  requirements:
+    _permission: 'administer wdb_word_meaning entities'
+
 # ----------------------------------------------------------------
 # 6. Site Configuration Pages
 # ----------------------------------------------------------------
@@ -278,7 +327,7 @@ entity.wdb_pos_mapping.collection:
     _permission: 'administer wdb pos mappings'
 
 # WDB POS Mapping UI (Add Mapping).
-entity.wdb_pos_mapping.add_form:
+entity.wdb_pos_mapping.add-form:
   path: '/admin/structure/wdb_pos_mapping/add'
   defaults:
     _entity_form: 'wdb_pos_mapping.add'
