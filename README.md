@@ -49,17 +49,22 @@ It is recommended to install the module using Composer.
    drush en wdb_cantaloupe_auth # For Cantaloupe authentication
    drush en wdb_example         # For sample content
 ```
-4. **Upon installation, the module will automatically:**
-   * Add English and Japanese languages to the site if they do not exist.
-   * Create the necessary Taxonomy vocabularies (Lexical Category, Grammatical Categories, etc.).
-   * Create a default set of POS (Part-of-Speech) mapping rules.
-5. Navigate to `/admin/people/permissions` and grant the "Administer WDB Core configuration" and other WDB-related permissions to the appropriate roles.
+4. **Configure Private File System:** The linguistic data import feature requires Drupal's private file system.  
+   * Go to `Configuration > Media > File system` (`/admin/config/media/file-system`).  
+   * Set the "Private file system path" (e.g., `../private`) and save the configuration. Ensure this directory exists and is writable by the web server, but is not accessible directly from the web.  
+5. **Upon installation, the module will automatically:**  
+   * Add English and Japanese languages to the site if they do not exist.  
+   * Create the necessary Taxonomy vocabularies (Lexical Category, Grammatical Categories, etc.).  
+   * Create a default set of POS (Part-of-Speech) mapping rules.  
+6. Navigate to `/admin/people/permissions` and grant the "Administer WDB Core configuration" and other WDB-related permissions to the appropriate roles.
 
 ## **5\. Usage Workflow**
 
 After installation, all WDB-related management pages are consolidated under the **WDB** menu item in the administration toolbar. Here is a typical workflow for setting up and using the system:
 
-1. **Create a Subsystem:** Go to `Structure > Taxonomy > Subsystem` and create a new taxonomy term for your collection (e.g., "Hittite"). Select the language for this subsystem.
+1. **Create a Subsystem:**  
+   * **Prerequisite:** Ensure the language for your data is available in Drupal. Go to `Configuration > Regional and language > Languages` (`/admin/config/regional/language`). If the language (e.g., Egyptian) does not exist, add it as a "Custom language".  
+   * **Create the Term:** Go to `Structure > Taxonomy > Subsystem` and create a new taxonomy term for your collection. Select the language for this subsystem.  
 2. **Define a Source:** Go to `WDB > Dashboard > Content Management > Manage Sources` and create a new WDB Source entity. Select the subsystem you just created.
 3. **Update Annotation Pages:** When a new Source is created, Annotation Page entities are automatically generated based on the "Pages" field. Navigate to `WDB > Dashboard > Content Management > Manage Annotation Pages` to edit these pages, adding the correct `Page Label` and `IIIF Image Identifier` for each.
 4. **Configure the Subsystem:** Go to `WDB > Dashboard > Configuration > Module Settings`. In the tab for your new subsystem, configure the IIIF server details and access control settings.
@@ -275,7 +280,10 @@ Composerを使用してモジュールをインストールすることを推奨
    drush en wdb_cantaloupe_auth # Cantaloupe認証連携
    drush en wdb_example         # サンプルコンテンツ
 ```
-4. **インストール時の挙動:** モジュールを有効化すると、以下の初期設定が自動的に行われます。
+4. **プライベートファイルシステムの設定:** 言語データのインポート機能は、Drupalのプライベートファイルシステムを使用します。  
+   * `環境設定 > メディア > ファイルシステム` (`/admin/config/media/file-system`) に移動します。  
+   * 「プライベートファイルシステムパス」を設定し（例: `../private`）、設定を保存してください。このディレクトリは、Webサーバーから書き込み可能で、かつWebから直接アクセスできない場所にある必要があります。  
+5. **インストール時の挙動:** モジュールを有効化すると、以下の初期設定が自動的に行われます。
    * サイトに英語と日本語が（もしなければ）追加されます。
    * 語彙範疇（Lexical Category）や文法カテゴリー（Grammatical Categories）のタクソノミーボキャブラリーが生成されます。
    * 品詞マッピングの初期ルールが作成されます。
@@ -285,7 +293,9 @@ Composerを使用してモジュールをインストールすることを推奨
 
 インストール後、WDB関連の全ての管理ページは、管理ツールバーの\*\*「WDB」\*\*メニュー項目に集約されます。以下に、典型的な作業の流れを示します。
 
-1. **サブシステムの作成:** `サイト構築 > タクソノミー > Subsystem` に移動し、資料群に対応する新しいタクソノミータームを作成します（例：「Hittite」）。この時、その資料群の主要言語を選択します。
+1. **サブシステムの作成:**  
+   * **事前準備:** 扱うデータの言語がDrupalに登録されていることを確認します。`環境設定 > 地域・言語 > 言語` (`/admin/config/regional/language`) に移動してください。もし言語（例: エジプト語）が存在しない場合は、「カスタム言語を追加」から言語コード（例: egy）を指定して作成します。  
+   * **タームの作成:** サイト構築 \> タクソノミー \> Subsystem に移動し、資料群に対応する新しいタクソノミータームを作成します。この時、その資料群の主要言語として、先ほど準備した言語を選択します。  
 2. **資料情報の定義:** `WDB > ダッシュボード > コンテンツ管理 > 資料の管理` に移動し、新しいWDB Sourceエンティティを作成します。先ほど作成したサブシステムを選択してください。
 3. **アノテーションページの更新:** 新しい資料を作成すると、そのページ数分のアノテーションページエンティティが自動生成されます。`WDB > ダッシュボード > コンテンツ管理 > アノテーションページの管理` に移動し、各ページのページ名やIIIF画像APIのIdentifierを正しく入力します。
 4. **サブシステムの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。新しく作成したサブシステムのタブを開き、IIIF画像サーバの情報や資料の公開方法などを設定します。
