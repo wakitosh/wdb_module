@@ -6,13 +6,13 @@
 openseadragon_core:
   version: 5.0.1
   js:
-    assets/openseadragon/openseadragon.min.js: {}
+    assets/openseadragon/openseadragon.min.js: { preprocess: false }
 
 # Annotorious v3 for OpenSeadragon
 annotorious_osd:
   version: '3.5.1'
   js:
-    assets/annotorious-v3/annotorious-openseadragon.js: {}
+    assets/annotorious-v3/annotorious-openseadragon.js: { preprocess: false }
   css:
     theme:
       assets/annotorious-v3/annotorious-openseadragon.css: {}
@@ -26,7 +26,7 @@ annotorious_osd:
 # Common toolbar library (mode switch, pager, export)
 wdb_toolbar:
   js:
-    js/wdb_toolbar.js: {}
+    js/wdb_toolbar.js: { preprocess: false }
   css:
     theme:
       css/wdb_toolbar.css: {} # Common CSS for toolbar and pager
@@ -42,8 +42,8 @@ wdb_page_layout:
     theme:
       css/wdb_layout.css: {}
   js:
-    js/wdb_resizable.js: {}
-    js/wdb_layout_adjust.js: {}
+    js/wdb_resizable.js: { preprocess: false }
+    js/wdb_layout_adjust.js: { preprocess: false }
   dependencies:
     - core/once
     - core/drupal.debounce
@@ -51,7 +51,7 @@ wdb_page_layout:
 # Lazy loading library
 lazysizes:
   js:
-    assets/lazysizes/lazysizes.min.js: {}
+    assets/lazysizes/lazysizes.min.js: { preprocess: false }
 
 # ----------------------------------------------------------------
 # 3. Integrated Libraries per Page Type
@@ -60,7 +60,7 @@ lazysizes:
 # For the viewing page
 wdb_viewer:
   js:
-    js/wdb_openseadragon_viewer.js: {}
+    js/wdb_openseadragon_viewer.js: { preprocess: false }
   dependencies:
     - core/drupal
     - core/once
@@ -73,10 +73,9 @@ wdb_viewer:
 wdb_editor:
   css:
     theme:
-      css/annotorious-editor.css: {} # Custom styles for the editor popup
       css/wdb_editor.css: {}
   js:
-    js/wdb_openseadragon_editor.js: {}
+    js/wdb_openseadragon_editor.js: { preprocess: false }
   dependencies:
     - core/drupal
     - core/once
@@ -90,7 +89,7 @@ wdb_search:
     theme:
       css/wdb_search.css: {}
   js:
-    js/wdb_search.js: {}
+    js/wdb_search.js: { preprocess: false }
   dependencies:
     - core/jquery
     - core/drupal
