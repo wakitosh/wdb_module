@@ -16,7 +16,6 @@
 #openseadragon-viewer {
   flex: 1 1 auto; /* Use all remaining available space. */
   min-width: 200px; /* Minimum width. */
-  height: 100%;
   background-color: #000;
 }
 
