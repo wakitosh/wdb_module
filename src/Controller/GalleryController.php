@@ -141,6 +141,13 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
       throw new NotFoundHttpException();
     }
 
+    $label_count = $this->entityTypeManager()->getStorage('wdb_label')->getQuery()
+      ->condition('annotation_page_ref', $wdb_annotation_page_entity->id())
+      ->accessCheck(FALSE)
+      ->count()
+      ->execute();
+    $has_annotations = $label_count > 0;
+
     // 2. Generate the necessary URIs.
     $subsys_config = $this->wdbDataService->getSubsystemConfig($subsysname);
     if (!$subsys_config) {
@@ -273,6 +280,7 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
       'subsystemConfig' => [
         'hullConcavity' => (int) $subsys_config->get('hullConcavity') ?? 20,
       ],
+      'hasAnnotations' => $has_annotations,
     ];
 
     // 4. Build the render array.
@@ -311,9 +319,10 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
             '#attributes' => [
               'id' => 'wdb-annotation-panel-content',
             ],
-            '#markup' => '<p>' . $this->t('Click on an annotation to see details.') . '</p>',
+            '#markup' => '<p>' . $this->t('No annotation available for this page.') . '</p>',
           ],
         ],
+
         'resizer_h' => ['#type' => 'html_tag', '#tag' => 'div', '#attributes' => ['id' => 'wdb-resizer-horizontal']],
         'full_text' => [
           '#type' => 'container',

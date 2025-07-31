@@ -56,6 +56,14 @@
           },
         });
 
+        // If annotations exist, update the initial text in the panel.
+        if (osdSettings.hasAnnotations) {
+          const panelContent = document.getElementById('wdb-annotation-panel-content');
+          if (panelContent) {
+            panelContent.innerHTML = `<p>${Drupal.t('Click on an annotation to see details.')}</p>`;
+          }
+        }
+
         // Define the styling function for annotations.
         const stylingFunction = (annotation, state) => {
           // Style for selected annotations or the temporary word hull.
