@@ -60,11 +60,17 @@ function wdb_core_views_views_data() {
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'numeric'],
   ];
-  $data['wdb_word_unit_field_data']['note__value'] = [
+  $data['wdb_word_unit_field_data']['word_unit_note'] = [
     'title' => t('Word Unit Note'),
     'help' => t('A note associated with the Word Unit.'),
-    'field' => ['id' => 'standard'],
-    'filter' => ['id' => 'string'],
+    'field' => [
+      'id' => 'standard',
+      'real field' => 'note__value',
+    ],
+    'filter' => [
+      'id' => 'string',
+      'real field' => 'note__value',
+    ],
   ];
 
   // Relationships from WdbWordUnit.
@@ -89,6 +95,7 @@ function wdb_core_views_views_data() {
     ],
   ];
 
+  // Add relationships for all grammatical category taxonomy terms.
   $grammar_categories = [
     'person_ref' => t('Person'),
     'gender_ref' => t('Gender'),
@@ -112,32 +119,6 @@ function wdb_core_views_views_data() {
       ],
     ];
   }
-
-  // Reverse relationship to WdbWordMap.
-  $data['wdb_word_unit_field_data']['reverse__wdb_word_map__word_unit_ref'] = [
-    'title' => t('Word Map (Reverse)'),
-    'help' => t('Relates to the Word Map that references this Word Unit.'),
-    'relationship' => [
-      'id' => 'standard',
-      'base' => 'wdb_word_map',
-      'base field' => 'word_unit_ref',
-      'field' => 'id',
-      'label' => t('Word Map'),
-    ],
-  ];
-
-  // Many-to-many relationship handling (Step 1/2).
-  $data['wdb_word_unit_field_data']['wdb_word_unit__annotation_page_refs'] = [
-    'title' => t('Annotation Page Refs (Intermediate)'),
-    'help' => t('The intermediate connection to Annotation Pages. Use this to bridge to the Annotation Page relationship.'),
-    'relationship' => [
-      'id' => 'standard',
-      'base' => 'wdb_word_unit__annotation_page_refs',
-      'base field' => 'entity_id',
-      'field' => 'id',
-      'label' => t('Annotation Page Ref'),
-    ],
-  ];
 
   // ----------------------------------------------------------------
   // Base Table: WDB Source (wdb_source)
@@ -313,6 +294,12 @@ function wdb_core_views_views_data() {
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
+  $data['wdb_annotation_page_field_data']['image_identifier'] = [
+    'title' => t('IIIF Image Identifier'),
+    'help' => t('IIIF Image Identifier.'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
   $data['wdb_annotation_page_field_data']['source_ref'] = [
     'title' => t('Source'),
     'help' => t('Relates the Annotation Page to its parent Source document.'),
@@ -429,6 +416,30 @@ function wdb_core_views_views_data() {
       'base field' => 'id',
       'id' => 'standard',
       'label' => t('Label'),
+    ],
+  ];
+  $data['wdb_sign_interpretation_field_data']['phone'] = [
+    'title' => t('Phone'),
+    'help' => t('The phonetic value or reading of the sign.'),
+    'field' => ['id' => 'standard'],
+    'filter' => ['id' => 'string'],
+  ];
+  $data['wdb_sign_interpretation_field_data']['line_number'] = [
+    'title' => t('Line Number'),
+    'help' => t('The line number on the page where the sign appears.'),
+    'field' => ['id' => 'numeric'],
+    'filter' => ['id' => 'numeric'],
+  ];
+  $data['wdb_sign_interpretation_field_data']['sign_interpretation_note'] = [
+    'title' => t('Sign Interpretation Note'),
+    'help' => t('A note associated with the Sign Interpretation.'),
+    'field' => [
+      'id' => 'standard',
+      'real field' => 'note__value',
+    ],
+    'filter' => [
+      'id' => 'string',
+      'real field' => 'note__value',
     ],
   ];
 
