@@ -17,7 +17,6 @@ function wdb_core_views_views_data() {
   // ================================================================
   // Base Table Definitions (Selectable as the starting point in Views)
   // ================================================================
-
   // ----------------------------------------------------------------
   // Base Table: WDB Word Unit (wdb_word_unit_field_data)
   // The primary entity for building views about words in context.
@@ -161,6 +160,18 @@ function wdb_core_views_views_data() {
     'filter' => ['id' => 'string'],
   ];
 
+  $data['wdb_source']['subsystem_tags'] = [
+    'title' => t('Subsystem'),
+    'help' => t('Relates the source to its subsystem taxonomy term.'),
+    'relationship' => [
+      'base' => 'taxonomy_term_field_data',
+      'base field' => 'tid',
+      'field' => 'subsystem_tags_target_id',
+      'id' => 'standard',
+      'label' => t('Subsystem'),
+    ],
+  ];
+
   // ----------------------------------------------------------------
   // Base Table: WDB Word (Lemma) (wdb_word_field_data)
   // ----------------------------------------------------------------
@@ -267,7 +278,6 @@ function wdb_core_views_views_data() {
   // ================================================================
   // Join-Only Table Definitions (Available only via relationships)
   // ================================================================
-
   // ----------------------------------------------------------------
   // Intermediate Table: wdb_word_unit__annotation_page_refs
   // This table is not meant to be used directly, but as a bridge.
