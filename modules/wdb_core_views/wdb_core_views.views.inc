@@ -165,13 +165,22 @@ function wdb_core_views_views_data() {
     'filter' => ['id' => 'string'],
   ];
 
-  $data['wdb_source']['subsystem_tags'] = [
+  // Relationship from WdbSource to its Subsystem taxonomy term.
+  // Because 'subsystem_tags' is a multi-value field, we must expose the
+  // intermediate field table and define the relationship from there.
+  $data['wdb_source__subsystem_tags']['table']['group'] = t('WDB Content');
+  $data['wdb_source__subsystem_tags']['table']['join'] = [
+    'wdb_source' => [
+      'left_field' => 'id',
+      'field' => 'entity_id',
+    ],
+  ];
+  $data['wdb_source__subsystem_tags']['subsystem_tags_target_id'] = [
     'title' => t('Subsystem'),
     'help' => t('Relates the source to its subsystem taxonomy term.'),
     'relationship' => [
       'base' => 'taxonomy_term_field_data',
       'base field' => 'tid',
-      'field' => 'subsystem_tags_target_id',
       'id' => 'standard',
       'label' => t('Subsystem'),
     ],
