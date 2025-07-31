@@ -89,6 +89,30 @@ function wdb_core_views_views_data() {
     ],
   ];
 
+  $grammar_categories = [
+    'person_ref' => t('Person'),
+    'gender_ref' => t('Gender'),
+    'number_ref' => t('Number'),
+    'verbal_form_ref' => t('Verbal Form'),
+    'aspect_ref' => t('Aspect'),
+    'mood_ref' => t('Mood'),
+    'voice_ref' => t('Voice'),
+    'grammatical_case_ref' => t('Grammatical Case'),
+  ];
+
+  foreach ($grammar_categories as $field_name => $label) {
+    $data['wdb_word_unit_field_data'][$field_name] = [
+      'title' => $label,
+      'help' => t('Relates the Word Unit to its @label taxonomy term.', ['@label' => strtolower($label->render())]),
+      'relationship' => [
+        'base' => 'taxonomy_term_field_data',
+        'base field' => 'tid',
+        'id' => 'standard',
+        'label' => $label,
+      ],
+    ];
+  }
+
   // Reverse relationship to WdbWordMap.
   $data['wdb_word_unit_field_data']['reverse__wdb_word_map__word_unit_ref'] = [
     'title' => t('Word Map (Reverse)'),
