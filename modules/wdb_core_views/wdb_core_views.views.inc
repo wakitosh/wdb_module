@@ -103,7 +103,6 @@ function wdb_core_views_views_data() {
   ];
 
   // Many-to-many relationship handling (Step 1/2).
-  // First, define a relationship from the base table to the intermediate (junction) table.
   $data['wdb_word_unit_field_data']['wdb_word_unit__annotation_page_refs'] = [
     'title' => t('Annotation Page Refs (Intermediate)'),
     'help' => t('The intermediate connection to Annotation Pages. Use this to bridge to the Annotation Page relationship.'),
@@ -127,6 +126,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_source']['id'] = [
     'title' => t('Source ID'),
+    'help' => t('The unique ID of the Source.'),
     'field' => ['id' => 'numeric'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'numeric'],
@@ -134,28 +134,33 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_source']['displayname'] = [
     'title' => t('Source Title'),
+    'help' => t('The display name of the Source.'),
     'field' => ['id' => 'standard'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_source']['source_identifier'] = [
     'title' => t('Source Identifier'),
+    'help' => t('The unique string identifier of the Source.'),
     'field' => ['id' => 'standard'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_source']['pages'] = [
     'title' => t('Number of Pages'),
+    'help' => t('The total number of pages in the Source document.'),
     'field' => ['id' => 'numeric'],
     'filter' => ['id' => 'numeric'],
   ];
   $data['wdb_source']['title_statement'] = [
     'title' => t('Title Statement'),
+    'help' => t('The title statement of the Source, used in manifests.'),
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_source']['description__value'] = [
     'title' => t('Source Description'),
+    'help' => t('The description of the Source document.'),
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
@@ -183,6 +188,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_word_field_data']['id'] = [
     'title' => t('Word ID'),
+    'help' => t('The unique ID of the Word.'),
     'field' => ['id' => 'numeric'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'numeric'],
@@ -190,18 +196,21 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_word_field_data']['word_code'] = [
     'title' => t('Word Code'),
+    'help' => t('The unique code for the Word (basic_form + category).'),
     'field' => ['id' => 'standard'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_word_field_data']['basic_form'] = [
     'title' => t('Basic Form (Lemma)'),
+    'help' => t('The dictionary form of the Word.'),
     'field' => ['id' => 'standard'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_word_field_data']['lexical_category_ref'] = [
     'title' => t('Lexical Category'),
+    'help' => t('Relates the Word to its lexical category taxonomy term.'),
     'relationship' => [
       'base' => 'taxonomy_term_field_data',
       'base field' => 'tid',
@@ -221,6 +230,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_sign_field_data']['id'] = [
     'title' => t('Sign ID'),
+    'help' => t('The unique ID of the Sign.'),
     'field' => ['id' => 'numeric'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'numeric'],
@@ -228,6 +238,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_sign_field_data']['sign_code'] = [
     'title' => t('Sign Code'),
+    'help' => t('The unique code representing the Sign.'),
     'field' => ['id' => 'standard'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
@@ -244,6 +255,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_annotation_page_field_data']['id'] = [
     'title' => t('Annotation Page ID'),
+    'help' => t('The unique ID of the Annotation Page.'),
     'field' => ['id' => 'numeric'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'numeric'],
@@ -251,22 +263,26 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_annotation_page_field_data']['page_number'] = [
     'title' => t('Page Number'),
+    'help' => t('The page number within the source document.'),
     'field' => ['id' => 'numeric'],
     'sort' => ['id' => 'standard'],
   ];
   $data['wdb_annotation_page_field_data']['page_name'] = [
     'title' => t('Page Label'),
+    'help' => t('The human-readable label for the page.'),
     'field' => ['id' => 'standard'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_annotation_page_field_data']['annotation_code'] = [
     'title' => t('Annotation Code'),
+    'help' => t('The unique code for the annotation page (source_id + page_num).'),
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_annotation_page_field_data']['source_ref'] = [
     'title' => t('Source'),
+    'help' => t('Relates the Annotation Page to its parent Source document.'),
     'relationship' => [
       'base' => 'wdb_source',
       'base field' => 'id',
@@ -280,15 +296,12 @@ function wdb_core_views_views_data() {
   // ================================================================
   // ----------------------------------------------------------------
   // Intermediate Table: wdb_word_unit__annotation_page_refs
-  // This table is not meant to be used directly, but as a bridge.
   // ----------------------------------------------------------------
   $data['wdb_word_unit__annotation_page_refs']['table']['group'] = t('WDB Content');
   $data['wdb_word_unit__annotation_page_refs']['table']['join']['wdb_word_unit_field_data'] = [
     'left_field' => 'id',
     'field' => 'entity_id',
   ];
-  // Many-to-many relationship handling (Step 2/2).
-  // Define the relationship from the intermediate table to the final target table.
   $data['wdb_word_unit__annotation_page_refs']['annotation_page_refs_target_id'] = [
     'title' => t('Annotation Page'),
     'help' => t('The Annotation Page this Word Unit appears on.'),
@@ -310,6 +323,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_word_meaning_field_data']['word_ref'] = [
     'title' => t('Word (Lemma)'),
+    'help' => t('Relates the Word Meaning to its parent Word (lemma).'),
     'relationship' => [
       'base' => 'wdb_word_field_data',
       'base field' => 'id',
@@ -319,11 +333,13 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_word_meaning_field_data']['word_meaning_code'] = [
     'title' => t('Word Meaning Code'),
+    'help' => t('The unique code for the Word Meaning.'),
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
   $data['wdb_word_meaning_field_data']['explanation__value'] = [
     'title' => t('Explanation'),
+    'help' => t('The explanation of the Word Meaning.'),
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
@@ -338,6 +354,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_word_map']['sign_interpretation_ref'] = [
     'title' => t('Sign Interpretation'),
+    'help' => t('The Interpretation of the Sign in the context of the Word Unit.'),
     'relationship' => [
       'base' => 'wdb_sign_interpretation_field_data',
       'base field' => 'id',
@@ -347,6 +364,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_word_map']['sign_sequence'] = [
     'title' => t('Sign Sequence'),
+    'help' => t('The sequence number of the Sign in the word unit.'),
     'field' => ['id' => 'numeric'],
     'sort' => ['id' => 'standard'],
     'filter' => ['id' => 'numeric'],
@@ -362,6 +380,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_sign_interpretation_field_data']['sign_function_ref'] = [
     'title' => t('Sign Function'),
+    'help' => t('Relates the interpretation to its Sign Function (e.g., phonetic, logogram).'),
     'relationship' => [
       'base' => 'wdb_sign_function_field_data',
       'base field' => 'id',
@@ -371,6 +390,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_sign_interpretation_field_data']['label_ref'] = [
     'title' => t('Label'),
+    'help' => t('Relates the interpretation to the drawn polygon (Label) on the image.'),
     'relationship' => [
       'base' => 'wdb_label',
       'base field' => 'id',
@@ -389,6 +409,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_label']['label_name'] = [
     'title' => t('Label Name'),
+    'help' => t('The textual name of the Label (e.g., "1-1").'),
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
@@ -403,6 +424,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_sign_function_field_data']['sign_ref'] = [
     'title' => t('Sign'),
+    'help' => t('Relates the Sign Function to its parent Sign.'),
     'relationship' => [
       'base' => 'wdb_sign_field_data',
       'base field' => 'id',
@@ -412,6 +434,7 @@ function wdb_core_views_views_data() {
   ];
   $data['wdb_sign_function_field_data']['function_name'] = [
     'title' => t('Function Name'),
+    'help' => t('The name of the function (e.g., "phonetic").'),
     'field' => ['id' => 'standard'],
     'filter' => ['id' => 'string'],
   ];
