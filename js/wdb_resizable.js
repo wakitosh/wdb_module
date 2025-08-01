@@ -54,13 +54,17 @@
       once('wdb-resizable-init-h', '#wdb-resizer-horizontal', context).forEach(function (resizer) {
         const topSide = resizer.previousElementSibling; // The top panel
         const bottomSide = resizer.nextElementSibling; // The bottom panel
+        const parentContainer = resizer.parentElement;
 
         let y = 0;
         let topHeight = 0;
+        let parentHeight = 0;
+        const resizerHeight = resizer.getBoundingClientRect().height;
 
         const mouseDownHandler = function (e) {
           y = e.clientY;
           topHeight = topSide.getBoundingClientRect().height;
+          parentHeight = parentContainer.getBoundingClientRect().height;
 
           document.addEventListener('mousemove', mouseMoveHandler);
           document.addEventListener('mouseup', mouseUpHandler);
@@ -72,8 +76,15 @@
         const mouseMoveHandler = function (e) {
           const dy = e.clientY - y;
           const newTopHeight = topHeight + dy;
-          // Update the flex-basis to change the height.
-          topSide.style.flexBasis = `${newTopHeight}px`;
+          const newBottomHeight = parentHeight - newTopHeight - resizerHeight;
+
+          // Set minimum heights to prevent panels from collapsing.
+          if (newTopHeight > 50 && newBottomHeight > 50) {
+            // Set flex-basis for both panels simultaneously to ensure
+            // a 1:1 drag response.
+            topSide.style.flexBasis = `${newTopHeight}px`;
+            bottomSide.style.flexBasis = `${newBottomHeight}px`;
+          }
         };
 
         const mouseUpHandler = function () {
