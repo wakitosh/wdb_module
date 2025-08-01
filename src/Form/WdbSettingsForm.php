@@ -38,8 +38,6 @@ class WdbSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    // Note: While dependency injection is best practice, we are using the static
-    // service container here to adhere to the existing code structure.
     $entity_type_manager = \Drupal::entityTypeManager();
 
     $form['vertical_tabs'] = ['#type' => 'vertical_tabs'];
@@ -106,6 +104,29 @@ class WdbSettingsForm extends ConfigFormBase {
         '#default_value' => $config->get('iiif_logo'),
       ];
 
+      $form['subsystems'][$term_id]['iiif_settings']['iiif_identifier_pattern'] = [
+        '#type' => 'textfield',
+        '#title' => $this->t('IIIF Identifier Pattern'),
+        '#default_value' => $config->get('iiif_identifier_pattern'),
+        '#description' => $this->t('Define a pattern to automatically generate image identifiers. Use placeholders: <code>{source_identifier}</code>, <code>{page_number}</code>, <code>{page_name}</code>, <code>{subsystem_name}</code>.'),
+        '#placeholder' => '{source_identifier}/{page_number}.tif',
+      ];
+
+      // Add a button to re-apply the pattern, only if a pattern is saved.
+      if (!empty($config->get('iiif_identifier_pattern'))) {
+        $form['subsystems'][$term_id]['iiif_settings']['reapply_pattern'] = [
+          '#type' => 'details',
+          '#title' => $this->t('Update Existing Pages'),
+          '#description' => $this->t('If you have changed the IIIF Identifier Pattern, you can apply the new pattern to all existing annotation pages within this subsystem. This will overwrite any manually set identifiers.'),
+        ];
+        $form['subsystems'][$term_id]['iiif_settings']['reapply_pattern']['submit'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Apply pattern to existing pages in "@subsystem"', ['@subsystem' => $term->label()]),
+          '#submit' => ['::submitReapplyPattern'],
+          '#subsystem_id' => $term_id,
+        ];
+      }
+
       $form['subsystems'][$term_id]['allowAnonymous'] = [
         '#type' => 'checkbox',
         '#title' => $this->t('Allow anonymous access'),
@@ -141,7 +162,6 @@ class WdbSettingsForm extends ConfigFormBase {
         '#rows' => 15,
         '#default_value' => $config->get('export_templates.rdf'),
       ];
-
     }
 
     return parent::buildForm($form, $form_state);
@@ -171,6 +191,7 @@ class WdbSettingsForm extends ConfigFormBase {
           ->set('iiif_license', $values['iiif_settings']['iiif_license'])
           ->set('iiif_attribution', $values['iiif_settings']['iiif_attribution'])
           ->set('iiif_logo', $values['iiif_settings']['iiif_logo'])
+          ->set('iiif_identifier_pattern', $values['iiif_settings']['iiif_identifier_pattern'])
           ->set('export_templates.tei', $values['export_templates']['tei'])
           ->set('export_templates.rdf', $values['export_templates']['rdf'])
           ->save();
@@ -178,6 +199,103 @@ class WdbSettingsForm extends ConfigFormBase {
     }
 
     parent::submitForm($form, $form_state);
+  }
+
+  /**
+   * Submit handler for the "Apply pattern" button.
+   */
+  public function submitReapplyPattern(array &$form, FormStateInterface $form_state) {
+    $triggering_element = $form_state->getTriggeringElement();
+    $subsystem_id = $triggering_element['#subsystem_id'];
+
+    $operations = [
+      [
+        '\Drupal\wdb_core\Form\WdbSettingsForm::batchProcessReapplyPattern',
+        [$subsystem_id],
+      ],
+    ];
+
+    $batch = [
+      'title' => $this->t('Applying new identifier pattern...'),
+      'operations' => $operations,
+      'finished' => '\Drupal\wdb_core\Form\WdbSettingsForm::batchFinishedCallback',
+    ];
+
+    batch_set($batch);
+  }
+
+  /**
+   * Batch API operation for reapplying the identifier pattern.
+   */
+  public static function batchProcessReapplyPattern($subsystem_id, &$context) {
+    $entity_type_manager = \Drupal::entityTypeManager();
+    $source_storage = $entity_type_manager->getStorage('wdb_source');
+    $page_storage = $entity_type_manager->getStorage('wdb_annotation_page');
+
+    if (!isset($context['sandbox']['progress'])) {
+      $context['sandbox']['progress'] = 0;
+      $source_ids = $source_storage->getQuery()
+        ->condition('subsystem_tags', $subsystem_id)
+        ->accessCheck(FALSE)
+        ->execute();
+
+      $page_ids = [];
+      if (!empty($source_ids)) {
+        $page_ids = $page_storage->getQuery()
+          ->condition('source_ref', $source_ids, 'IN')
+          ->accessCheck(FALSE)
+          ->execute();
+      }
+
+      $context['sandbox']['page_ids'] = array_values($page_ids);
+      $context['sandbox']['max'] = count($page_ids);
+      $context['results']['updated'] = 0;
+    }
+
+    $page_ids_chunk = array_slice($context['sandbox']['page_ids'], $context['sandbox']['progress'], 10);
+
+    if (empty($page_ids_chunk)) {
+      $context['finished'] = 1;
+      return;
+    }
+
+    $pages_to_update = $page_storage->loadMultiple($page_ids_chunk);
+    foreach ($pages_to_update as $page) {
+      // The getImageIdentifier() method contains the logic to generate the new
+      // identifier from the pattern. We save the entity to store this new value.
+      $new_identifier = $page->getImageIdentifier(TRUE);
+      $page->set('image_identifier', $new_identifier);
+      $page->save();
+      $context['results']['updated']++;
+    }
+
+    $context['sandbox']['progress'] += count($page_ids_chunk);
+    $context['message'] = t('Updating page @progress of @total...', ['@progress' => $context['sandbox']['progress'], '@total' => $context['sandbox']['max']]);
+
+    if ($context['sandbox']['progress'] >= $context['sandbox']['max']) {
+      $context['finished'] = 1;
+    }
+    else {
+      $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+    }
+  }
+
+  /**
+   * Batch API finished callback.
+   */
+  public static function batchFinishedCallback($success, $results, $operations) {
+    $messenger = \Drupal::messenger();
+    if ($success) {
+      $updated_count = $results['updated'] ?? 0;
+      $messenger->addStatus(\Drupal::translation()->formatPlural(
+        $updated_count,
+        'Successfully updated 1 annotation page.',
+        'Successfully updated @count annotation pages.'
+      ));
+    }
+    else {
+      $messenger->addError(t('An error occurred during the update process.'));
+    }
   }
 
 }

@@ -113,10 +113,9 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
     $image_ext = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
 
     foreach ($all_pages as $page_entity) {
-      $image_identifier = $page_entity->get('image_identifier')->value;
+      $image_identifier = $page_entity->getImageIdentifier();
       if (empty($image_identifier)) {
-        $page_num = $page_entity->get('page_number')->value;
-        $image_identifier = 'wdb/' . $subsysname . '/' . $source . '/' . $page_num . '.' . $image_ext;
+        continue;
       }
 
       $info_json_url = $iiif_base_url . '/' . rawurlencode($image_identifier) . '/info.json';

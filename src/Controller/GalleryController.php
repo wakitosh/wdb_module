@@ -140,6 +140,14 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     if (!$wdb_annotation_page_entity) {
       throw new NotFoundHttpException();
     }
+    $image_identifier = $wdb_annotation_page_entity->getImageIdentifier();
+    if (empty($image_identifier)) {
+      return [
+        '#markup' => $this->t('The IIIF Image Identifier for this page has not been set, and no generation pattern is configured for the subsystem. Please configure it in the <a href=":url">module settings</a>.', [
+          ':url' => Url::fromRoute('wdb_core.settings_form')->toString(),
+        ]),
+      ];
+    }
 
     $label_count = $this->entityTypeManager()->getStorage('wdb_label')->getQuery()
       ->condition('annotation_page_ref', $wdb_annotation_page_entity->id())
@@ -161,13 +169,15 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
       throw new NotFoundHttpException('IIIF configuration is incomplete for this subsystem.');
     }
 
-    $info_json_url = '';
-    $image_ext = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
-    $image_identifier = $wdb_annotation_page_entity->get('image_identifier')->value;
+    $image_identifier = $wdb_annotation_page_entity->getImageIdentifier();
     if (empty($image_identifier)) {
-      $page_num = $wdb_annotation_page_entity->get('page_number')->value;
-      $image_identifier = 'wdb/' . $subsysname . '/' . $source . '/' . $page_num . '.' . $image_ext;
+      return [
+        '#markup' => $this->t('The IIIF Image Identifier for this page has not been set, and no generation pattern is configured for the subsystem. Please configure it in the <a href=":url">module settings</a>.', [
+          ':url' => Url::fromRoute('wdb_core.settings_form')->toString(),
+        ]),
+      ];
     }
+
     $info_json_url = $iiif_base_url . '/' . rawurlencode($image_identifier) . '/info.json';
     $page_navigation = $subsys_config->get('pageNavigation') ?? 'left-to-right';
 
@@ -194,12 +204,11 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     $all_pages = $this->getAllPagesForSource($wdb_source_entity);
     if ($all_pages) {
       foreach ($all_pages as $page_entity) {
-        $image_identifier_for_thumb = $page_entity->get('image_identifier')->value;
-        // Fallback for the image identifier.
-        if (empty($image_identifier_for_thumb)) {
-          $page_num_for_thumb = $page_entity->get('page_number')->value;
-          $image_ext_for_thumb = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
-          $image_identifier_for_thumb = 'wdb/' . $subsysname . '/' . $source . '/' . $page_num_for_thumb . '.' . $image_ext_for_thumb;
+        $image_identifier_for_thumb = $page_entity->getImageIdentifier();
+        $page_num = $page_entity->get('page_number')->value;
+
+        if (empty($image_identifier_for_thumb) || !is_numeric($page_num)) {
+          continue;
         }
 
         $page_list[] = [

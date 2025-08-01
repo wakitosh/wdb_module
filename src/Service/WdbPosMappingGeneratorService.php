@@ -77,6 +77,7 @@ class WdbPosMappingGeneratorService {
     '助詞-終助詞-*-*' => 'sentence ending particle',
     '助詞-副助詞-*-*' => 'adverbial particle',
     '助詞-係助詞-*-*' => 'adverbial particle',
+    '助詞-準体助詞-*-*' => 'phrasal particle',
     // --- Affix ---
     '接頭辞-*-*-*' => 'prefix',
     '接尾辞-形状詞的-*-*' => 'suffix',

@@ -187,6 +187,59 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
   }
 
   /**
+   * Gets the IIIF image identifier.
+   *
+   * If the 'image_identifier' field is set and force is FALSE, it returns
+   * its value. Otherwise, it attempts to generate it based on the subsystem's
+   * configured pattern.
+   *
+   * @param bool $force_regeneration
+   *   If TRUE, it will always try to generate the identifier from the pattern,
+   *   ignoring any existing value.
+   *
+   * @return string|null
+   *   The image identifier, or NULL if it cannot be determined.
+   */
+  public function getImageIdentifier(bool $force_regeneration = FALSE): ?string {
+    // If a value is already explicitly set and we are not forcing regeneration, use it.
+    if (!$force_regeneration && $this->hasField('image_identifier') && !$this->get('image_identifier')->isEmpty()) {
+      return $this->get('image_identifier')->value;
+    }
+
+    // Otherwise, try to generate it from the pattern.
+    /** @var \Drupal\wdb_core\Entity\WdbSource $source */
+    $source = $this->get('source_ref')->entity;
+    if (!$source) {
+      return NULL;
+    }
+
+    /** @var \Drupal\taxonomy\TermInterface $subsystem */
+    $subsystem = $source->get('subsystem_tags')->entity;
+    if (!$subsystem) {
+      return NULL;
+    }
+
+    $config_name = 'wdb_core.subsystem.' . $subsystem->id();
+    $subsystem_config = \Drupal::config($config_name);
+    $pattern = $subsystem_config->get('iiif_identifier_pattern');
+
+    if (empty($pattern)) {
+      // If there's no pattern, return the existing value (if any) unless forced.
+      return $force_regeneration ? NULL : ($this->get('image_identifier')->value ?? NULL);
+    }
+
+    // Replace placeholders with actual values.
+    $replacements = [
+      '{source_identifier}' => $source->get('source_identifier')->value,
+      '{page_number}' => $this->get('page_number')->value,
+      '{page_name}' => $this->get('page_name')->value,
+      '{subsystem_name}' => $subsystem->getName(),
+    ];
+
+    return str_replace(array_keys($replacements), array_values($replacements), $pattern);
+  }
+
+  /**
    * Generates and returns the canonical Canvas URI for this page entity.
    *
    * @return string

@@ -161,6 +161,7 @@ services:
     class: Drupal\wdb_core\Service\WdbTemplateGeneratorService
     arguments:
       - '@entity_type.manager'
+      - '@logger.factory'
 
   # Form for generating import templates.
   wdb_core.template_generator_form:

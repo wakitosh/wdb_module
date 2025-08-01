@@ -301,10 +301,9 @@ class WdbDataService {
         // This should ideally not happen if checked in the parent method.
         return $si_data_item;
       }
-      $image_ext = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
-      $image_identifier = $page_entity->get('image_identifier')->value;
+      $image_identifier = $page_entity->getImageIdentifier();
       if (empty($image_identifier)) {
-        $image_identifier = 'wdb/' . $subsysname . '/' . $source_entity->get('source_identifier')->value . '/' . $page_entity->get('page_number')->value . '.' . $image_ext;
+        return $si_data_item;
       }
 
       $target_w = 125;
@@ -443,10 +442,10 @@ class WdbDataService {
             if (!$subsys_config) {
               return $wu_data_item;
             }
-            $image_ext = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
-            $image_identifier = $page_entity->get('image_identifier')->value;
+
+            $image_identifier = $page_entity->getImageIdentifier();
             if (empty($image_identifier)) {
-              $image_identifier = 'wdb/' . $subsysname . '/' . $source_entity->get('source_identifier')->value . '/' . $page_entity->get('page_number')->value . '.' . $image_ext;
+              return $wu_data_item;
             }
             $sign_thumbnail_data = [
               'image_identifier' => $image_identifier,
@@ -497,11 +496,11 @@ class WdbDataService {
         if (!$subsys_config) {
           return $wu_data_item;
         }
-        $image_ext = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
-        $image_identifier = $page_entity->get('image_identifier')->value;
+        $image_identifier = $page_entity->getImageIdentifier();
         if (empty($image_identifier)) {
-          $image_identifier = 'wdb/' . $subsysname . '/' . $source_entity->get('source_identifier')->value . '/' . $page_entity->get('page_number')->value . '.' . $image_ext;
+          return $wu_data_item;
         }
+
         $points_for_hull = array_map(fn($p) => array_map('floatval', explode(',', $p)), $all_polygon_points_for_word);
         $concavity = $subsys_config->get('hullConcavity') ?? 20;
         $hull_points = $this->hullCalculator->calculate($points_for_hull, $concavity);

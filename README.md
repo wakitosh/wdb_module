@@ -49,28 +49,29 @@ It is recommended to install the module using Composer.
    drush en wdb_cantaloupe_auth # For Cantaloupe authentication
    drush en wdb_example         # For sample content
 ```
-4. **Configure Private File System:** The linguistic data import feature requires Drupal's private file system.  
-   * Go to `Configuration > Media > File system` (`/admin/config/media/file-system`).  
-   * Set the "Private file system path" (e.g., `../private`) and save the configuration. Ensure this directory exists and is writable by the web server, but is not accessible directly from the web.  
-5. **Upon installation, the module will automatically:**  
-   * Add English and Japanese languages to the site if they do not exist.  
-   * Create the necessary Taxonomy vocabularies (Lexical Category, Grammatical Categories, etc.).  
-   * Create a default set of POS (Part-of-Speech) mapping rules.  
+4. **Configure Private File System:** The linguistic data import feature requires Drupal's private file system.
+   * Go to `Configuration > Media > File system` (`/admin/config/media/file-system`).
+   * Set the "Private file system path" (e.g., `../private`) and save the configuration. Ensure this directory exists and is writable by the web server, but is not accessible directly from the web.
+5. **Upon installation, the module will automatically:**
+   * Add English and Japanese languages to the site if they do not exist.
+   * Create the necessary Taxonomy vocabularies (Lexical Category, Grammatical Categories, etc.).
+   * Create a default set of POS (Part-of-Speech) mapping rules.
 6. Navigate to `/admin/people/permissions` and grant the "Administer WDB Core configuration" and other WDB-related permissions to the appropriate roles.
 
 ## **5\. Usage Workflow**
 
 After installation, all WDB-related management pages are consolidated under the **WDB** menu item in the administration toolbar. Here is a typical workflow for setting up and using the system:
 
-1. **Create a Subsystem:**  
-   * **Prerequisite:** Ensure the language for your data is available in Drupal. Go to `Configuration > Regional and language > Languages` (`/admin/config/regional/language`). If the language (e.g., Egyptian) does not exist, add it as a "Custom language".  
-   * **Create the Term:** Go to `Structure > Taxonomy > Subsystem` and create a new taxonomy term for your collection. Select the language for this subsystem.  
-2. **Define a Source:** Go to `WDB > Dashboard > Content Management > Manage Sources` and create a new WDB Source entity. Select the subsystem you just created.
-3. **Update Annotation Pages:** When a new Source is created, Annotation Page entities are automatically generated based on the "Pages" field. Navigate to `WDB > Dashboard > Content Management > Manage Annotation Pages` to edit these pages, adding the correct `Page Label` and `IIIF Image Identifier` for each.
-4. **Configure the Subsystem:** Go to `WDB > Dashboard > Configuration > Module Settings`. In the tab for your new subsystem, configure the IIIF server details and access control settings.
+1. **Create a Subsystem:**
+   * **Prerequisite:** Ensure the language for your data is available in Drupal. Go to `Configuration > Regional and language > Languages` (`/admin/config/regional/language`). If the language (e.g., Egyptian) does not exist, add it as a "Custom language".
+   * **Create the Term:** Go to `Structure > Taxonomy > Subsystem` and create a new taxonomy term for your collection. Select the language for this subsystem.
+2. **Configure the Subsystem:** Go to `WDB > Dashboard > Configuration > Module Settings`. In the tab for your new subsystem, configure the IIIF server details and access control settings.
+   * **Important:** It is highly recommended to set the **IIIF Identifier Pattern** at this stage, before creating any WDB Source entities. This ensures that `image_identifier` values are generated correctly from the start.
    * **IIIF Server Prefix:** Do not URL-encode this value.
    * **Allow anonymous access:** Check this to make the gallery pages for this subsystem public. Otherwise, only users with the "View non-public WDB gallery pages" permission can access them.
-   * **Hull Concavity:** Controls the tightness of the auto-generated word polygon. A smaller value creates a tighter, more concave shape. `0` results in a convex hull.
+   * **Hull Concavity:** Controls the tightness of the auto-generated word polygon. A smaller value creates a tighter, more concave shape. However, `0` results in a convex hull.
+3. **Define a Source:** Go to `WDB > Dashboard > Content Management > Manage Sources` and create a new WDB Source entity. Select the subsystem you just created.
+4. **Update Annotation Pages:** When a new Source is created, Annotation Page entities are automatically generated based on the "Pages" field. Navigate to `WDB > Dashboard > Content Management > Manage Annotation Pages` to edit these pages and confirm the `image_identifier` has been generated correctly. You can also manually override it here if needed.
 5. **View the Gallery:** At this point, you should be able to access the gallery page (`/wdb/{subsystem_name}/gallery/{source_identifier}/{page_number}`) and see the IIIF images.
 6. **Annotate Characters:** In edit mode (`./edit`), draw polygons for each character. Enter a label for each polygon in the popup editor (e.g., a format like "line-character_sequence" like "1-1", "1-2" is recommended, but any readable text is acceptable).
 7. **Prepare Linguistic Data:** Create your linguistic data in a TSV file. You can download a template from the "TSV Template Generator" tool (`WDB > Dashboard > Tools & Utilities`). The `example` module provides useful sample data. For Japanese, you can also generate a template directly from the output of a morphological analyzer like WebChaMaMe (Chaki import format). In that case, UniDic's part-of-speech system will be automatically mapped to WDB's lexical categories. The POS Mappings table is used for mapping. You can also modify the mapping as needed.
@@ -84,7 +85,6 @@ The following columns are expected in the data import file. Fields marked with \
 * `source`\*: The "Source Identifier" of the WdbSource entity.
 * `page`\*: The page number.
 * `labelname`\*: The label text entered for each polygon (e.g., "1-1").
-* `image_identifier`\*: The IIIF Image Identifier for the page.
 * `sign`\*: The character symbol or code.
 * `function`: The function of the character (e.g., phonogram, logogram).
 * `phone`: The phonetic transcription of the character.
@@ -280,9 +280,9 @@ Composerを使用してモジュールをインストールすることを推奨
    drush en wdb_cantaloupe_auth # Cantaloupe認証連携
    drush en wdb_example         # サンプルコンテンツ
 ```
-4. **プライベートファイルシステムの設定:** 言語データのインポート機能は、Drupalのプライベートファイルシステムを使用します。  
-   * `環境設定 > メディア > ファイルシステム` (`/admin/config/media/file-system`) に移動します。  
-   * 「プライベートファイルシステムパス」を設定し（例: `../private`）、設定を保存してください。このディレクトリは、Webサーバーから書き込み可能で、かつWebから直接アクセスできない場所にある必要があります。  
+4. **プライベートファイルシステムの設定:** 言語データのインポート機能は、Drupalのプライベートファイルシステムを使用します。
+   * `環境設定 > メディア > ファイルシステム` (`/admin/config/media/file-system`) に移動します。
+   * 「プライベートファイルシステムパス」を設定し（例: `../private`）、設定を保存してください。このディレクトリは、Webサーバーから書き込み可能で、かつWebから直接アクセスできない場所にある必要があります。
 5. **インストール時の挙動:** モジュールを有効化すると、以下の初期設定が自動的に行われます。
    * サイトに英語と日本語が（もしなければ）追加されます。
    * 語彙範疇（Lexical Category）や文法カテゴリー（Grammatical Categories）のタクソノミーボキャブラリーが生成されます。
@@ -293,15 +293,16 @@ Composerを使用してモジュールをインストールすることを推奨
 
 インストール後、WDB関連の全ての管理ページは、管理ツールバーの\*\*「WDB」\*\*メニュー項目に集約されます。以下に、典型的な作業の流れを示します。
 
-1. **サブシステムの作成:**  
-   * **事前準備:** 扱うデータの言語がDrupalに登録されていることを確認します。`環境設定 > 地域・言語 > 言語` (`/admin/config/regional/language`) に移動してください。もし言語（例: エジプト語）が存在しない場合は、「カスタム言語を追加」から言語コード（例: egy）を指定して作成します。  
-   * **タームの作成:** サイト構築 \> タクソノミー \> Subsystem に移動し、資料群に対応する新しいタクソノミータームを作成します。この時、その資料群の主要言語として、先ほど準備した言語を選択します。  
-2. **資料情報の定義:** `WDB > ダッシュボード > コンテンツ管理 > 資料の管理` に移動し、新しいWDB Sourceエンティティを作成します。先ほど作成したサブシステムを選択してください。
-3. **アノテーションページの更新:** 新しい資料を作成すると、そのページ数分のアノテーションページエンティティが自動生成されます。`WDB > ダッシュボード > コンテンツ管理 > アノテーションページの管理` に移動し、各ページのページ名やIIIF画像APIのIdentifierを正しく入力します。
-4. **サブシステムの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。新しく作成したサブシステムのタブを開き、IIIF画像サーバの情報や資料の公開方法などを設定します。
+1. **サブシステムの作成:**
+   * **事前準備:** 扱うデータの言語がDrupalに登録されていることを確認します。`環境設定 > 地域・言語 > 言語` (`/admin/config/regional/language`) に移動してください。もし言語（例: エジプト語）が存在しない場合は、「カスタム言語を追加」から言語コード（例: egy）を指定して作成します。
+   * **タームの作成:** サイト構築 \> タクソノミー \> Subsystem に移動し、資料群に対応する新しいタクソノミータームを作成します。この時、その資料群の主要言語として、先ほど準備した言語を選択します。
+2. **サブシステムの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。新しく作成したサブシステムのタブを開き、IIIF画像サーバの情報や資料の公開方法などを設定します。
+   * **重要:** `image_identifier`を正しく自動生成するために、この段階で **IIIF Identifier Pattern** を設定することを**強く推奨します**。この設定は、`WDB Source`**エンティティを作成する前**に行ってください。
    * **IIIF Server Prefix:** URLエンコードは不要です。
    * **Allow anonymous access:** これにチェックを入れると、このサブシステムのギャラリーページが匿名ユーザーに公開されます。チェックを外した場合、ギャラリーページを閲覧するには、ユーザーの権限設定で「View non-public WDB gallery pages」の権限が必要になります。初期状態では非公開です。
-   * **Hull Concavity:** 文字の集合から単語のポリゴンを生成する際の、座標の密着度（凹みの大きさ）を制御します。値が小さいほど凹みが大きくなります（0で凸包）。
+   * **Hull Concavity:** 文字の集合から単語のポリゴンを生成する際の、座標の密着度（凹みの大きさ）を制御します。値が小さいほど凹みが大きくなります（ただし、0で凸包）。
+3. **資料情報の定義:** `WDB > ダッシュボード > コンテンツ管理 > 資料の管理` に移動し、新しいWDB Sourceエンティティを作成します。先ほど作成したサブシステムを選択してください。
+4. **アノテーションページの更新:** 新しい資料を作成すると、そのページ数分のアノテーションページエンティティが自動生成されます。`WDB > ダッシュボード > コンテンツ管理 > アノテーションページの管理` に移動し、`image_identifier`が正しく生成されていることを確認します。必要であれば、ここで個別に値を上書きすることも可能です。
 5. **ギャラリーページの確認:** ここまでの設定が完了すると、`/wdb/{サブシステム名}/gallery/{資料ID}/{ページ番号}` というURLでギャラリーページにアクセスし、IIIF画像が表示されるはずです。
 6. **アノテーションの作成:** 編集モード (`./edit`) に切り替え、ツールバーのボタンを使ってポリゴンを描画します。各ポリゴンには、"1-1"（行番号-文字順）のような、ページ内でユニークなラベル名を入力します。
 7. **言語データの準備:** システム外で言語データを作成します。`WDB > ダッシュボード > ツールとユーティリティ > TSVテンプレート生成` から、テンプレートとなるTSVファイルをダウンロードできます。`example`モジュールを有効化すると、サンプルデータも利用できます。日本語の場合は、形態素解析済みテキスト（Web茶まめが出力するChakiインポート用形式のフォーマット）をアップロードして、テンプレートを生成することも可能です。その場合、UniDicの品詞体系はWDBの語彙範疇に自動的にマッピングされます。マッピングにはPOS Mappingsテーブルが使われます。必要に応じてマッピングを修正することも可能です。
@@ -315,7 +316,6 @@ Composerを使用してモジュールをインストールすることを推奨
 * `source`\*: 資料名。WdbSourceエンティティの「Source Identifier」と一致させる必要があります。
 * `page`\*: ページ番号。
 * `labelname`\*: ラベル名。各ポリゴンに入力した "1-1" 等のテキストと一致させる必要があります。
-* `image_identifier`\*: IIIF画像のIdentifier。
 * `sign`\*: 文字記号あるいは文字コード。
 * `function`: 文字の機能（例: phonogram, logogram）。
 * `phone`: 文字の発音・音写。

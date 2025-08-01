@@ -3,9 +3,11 @@
 namespace Drupal\wdb_core\Service;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\wdb_core\Entity\WdbSource;
 use Drupal\wdb_core\Entity\WdbSignInterpretation;
+use Psr\Log\LoggerInterface;
 
 /**
  * Service for generating TSV templates for data import.
@@ -29,6 +31,7 @@ class WdbTemplateGeneratorService {
    * @var array
    */
   protected array $posMappingCache = [];
+  protected LoggerInterface $logger;
 
   /**
    * Constructs a new WdbTemplateGeneratorService object.
@@ -36,8 +39,9 @@ class WdbTemplateGeneratorService {
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerChannelFactoryInterface $logger_factory) {
     $this->entityTypeManager = $entity_type_manager;
+    $this->logger = $logger_factory->get('wdb_core');
     $this->loadPosMappings();
   }
 
@@ -47,7 +51,6 @@ class WdbTemplateGeneratorService {
   protected function loadPosMappings() {
     $storage = $this->entityTypeManager->getStorage('wdb_pos_mapping');
     $ids = $storage->getQuery()
-      // Load mappings sorted by weight to ensure correct matching priority.
       ->sort('weight', 'ASC')
       ->accessCheck(FALSE)
       ->execute();
@@ -68,7 +71,7 @@ class WdbTemplateGeneratorService {
    */
   public function generateTemplateFromSource(WdbSource $source): string {
     $header = [
-      'source', 'page', 'labelname', 'image_identifier',
+      'source', 'page', 'labelname',
       'sign', 'function', 'phone', 'note',
       'word_unit', 'basic_form', 'realized_form',
       'word_sequence',
@@ -87,7 +90,6 @@ class WdbTemplateGeneratorService {
       ->accessCheck(FALSE)->execute();
 
     if (!empty($page_ids)) {
-      // To avoid generating a massive file, we only sample a few interpretations.
       $si_storage = $this->entityTypeManager->getStorage('wdb_sign_interpretation');
       $si_ids = $si_storage->getQuery()
         ->condition('annotation_page_ref', $page_ids, 'IN')
@@ -123,7 +125,7 @@ class WdbTemplateGeneratorService {
   public function generateTemplateFromMecab(string $source_file_path, string $source_identifier, array &$context): string {
     $output_data = [];
     $header = [
-      'source', 'page', 'labelname', 'image_identifier',
+      'source', 'page', 'labelname',
       'sign', 'function', 'phone', 'note',
       'word_unit', 'basic_form', 'realized_form',
       'word_sequence',
@@ -141,6 +143,7 @@ class WdbTemplateGeneratorService {
 
     $word_counter = 0;
     $line_counter = 0;
+    $context['warnings'] = [];
 
     // Assumes the Chaki import format from "Web-chamame".
     while (($line = fgets($handle)) !== FALSE) {
@@ -169,6 +172,16 @@ class WdbTemplateGeneratorService {
 
       $lexical_category_name = $this->getMappedCategoryName($pos_string);
 
+      // If mapping failed, log a warning and add it to the context.
+      if (empty($lexical_category_name)) {
+        $warning_message = $this->t('Could not map POS string "@pos" from line @num to a lexical category. The "lexical_category_name" field will be empty.', [
+          '@pos' => $pos_string,
+          '@num' => $line_counter,
+        ]);
+        $this->logger->warning($warning_message);
+        $context['warnings'][] = $warning_message;
+      }
+
       $word_counter++;
       $current_word_unit = $word_counter;
 
@@ -179,7 +192,6 @@ class WdbTemplateGeneratorService {
           'source' => $source_identifier,
           'page' => '',
           'labelname' => '',
-          'image_identifier' => '',
           'sign' => $char,
           'function' => '',
           'phone' => '',
@@ -237,7 +249,6 @@ class WdbTemplateGeneratorService {
     $row['source'] = $source ? $source->get('source_identifier')->value : '';
     $row['page'] = $page ? $page->get('page_number')->value : '';
     $row['labelname'] = $label ? $label->label() : '';
-    $row['image_identifier'] = $page ? $page->get('image_identifier')->value : '';
     $row['sign'] = $sign ? $sign->label() : '';
     $row['function'] = $sign_function ? $sign_function->get('function_name')->value : '';
     $row['phone'] = $si->get('phone')->value;
@@ -268,7 +279,7 @@ class WdbTemplateGeneratorService {
     }
 
     $header_keys = [
-      'source', 'page', 'labelname', 'image_identifier', 'sign', 'function',
+      'source', 'page', 'labelname', 'sign', 'function',
       'phone', 'note', 'word_unit', 'basic_form', 'realized_form',
       'word_sequence',
       'lexical_category_name',
@@ -294,11 +305,8 @@ class WdbTemplateGeneratorService {
    *   The name of the mapped taxonomy term, or an empty string if no match.
    */
   private function getMappedCategoryName(string $pos_string): string {
-    // Check against the sorted mapping cache in order.
     foreach ($this->posMappingCache as $mapping) {
       $pattern = $mapping->source_pos_string;
-
-      // Use fnmatch to support wildcard (*) matching.
       if (fnmatch($pattern, $pos_string)) {
         $term_id = $mapping->target_lexical_category;
         if ($term_id) {

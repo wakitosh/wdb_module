@@ -320,13 +320,10 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     $word_bbox = $this->calculateBoundingBoxArray($all_polygon_points);
     $page_entity = $word_unit->get('annotation_page_refs')->referencedEntities()[0] ?? NULL;
     if ($page_entity) {
-      $source_entity = $page_entity->get('source_ref')->entity;
-      $image_identifier = $page_entity->get('image_identifier')->value;
+      $image_identifier = $page_entity->getImageIdentifier();
 
       if (empty($image_identifier)) {
-        $subsys_config = $this->wdbDataService->getSubsystemConfig($subsysname);
-        $image_ext = ltrim($subsys_config->get('IIIF_fileExt') ?? 'jpg', '.');
-        $image_identifier = 'wdb/' . $subsysname . '/' . $source_entity->get('source_identifier')->value . '/' . $page_entity->get('page_number')->value . '.' . $image_ext;
+        return NULL;
       }
 
       $target_w = 250;

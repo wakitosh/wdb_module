@@ -6,6 +6,7 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
 use Drupal\wdb_core\Service\WdbTemplateGeneratorService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -168,6 +169,14 @@ class WdbTemplateGeneratorForm extends FormBase implements ContainerInjectionInt
       $file_path = $file->getRealPath();
       $context = [];
       $tsv_content = $this->templateGeneratorService->generateTemplateFromMecab($file_path, $source_identifier, $context);
+
+      // After generation, check the context for any warnings.
+      if (!empty($context['warnings'])) {
+        $this->messenger()->addWarning($this->t('The template was generated, but @count POS string(s) could not be mapped to a lexical category. Please check the recent log messages for details.', ['@count' => count($context['warnings'])]));
+      }
+      else {
+        $this->messenger()->addStatus($this->t('Template generated successfully.'));
+      }
 
       $form_state->setResponse($this->downloadTsvResponse($tsv_content, 'template_mecab.tsv'));
     }

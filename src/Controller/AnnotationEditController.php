@@ -141,10 +141,11 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
       throw new NotFoundHttpException();
     }
 
-    // Assemble the info.json URL.
     $subsys_config = $this->wdbDataService->getSubsystemConfig($subsysname);
     if (!$subsys_config) {
-      return ['#markup' => $this->t('Subsystem configuration not found for "@subsys".', ['@subsys' => $subsysname])];
+      return [
+        '#markup' => $this->t('Subsystem configuration not found for "@subsys".', ['@subsys' => $subsysname]),
+      ];
     }
 
     $iiif_base_url = $this->wdbDataService->getIiifBaseUrlForSubsystem($subsysname);
@@ -152,17 +153,19 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
       $this->getLogger('wdb_core')->error('IIIF base URL is not configured for subsystem: @subsys', ['@subsys' => $subsysname]);
       throw new NotFoundHttpException('IIIF configuration is incomplete for this subsystem.');
     }
-    $image_ext = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
-    $image_identifier = $wdb_annotation_page_entity->get('image_identifier')->value;
+
+    $image_identifier = $wdb_annotation_page_entity->getImageIdentifier();
     if (empty($image_identifier)) {
-      $page_num = $wdb_annotation_page_entity->get('page_number')->value;
-      $image_identifier = 'wdb/' . $subsysname . '/' . $source . '/' . $page_num . '.' . $image_ext;
+      return [
+        '#markup' => $this->t('The IIIF Image Identifier for this page has not been set, and no generation pattern is configured for the subsystem. Please configure it in the <a href=":url">module settings</a>.', [
+          ':url' => Url::fromRoute('wdb_core.settings_form')->toString(),
+        ]),
+      ];
     }
 
     $info_json_url = $iiif_base_url . '/' . rawurlencode($image_identifier) . '/info.json';
     $page_navigation = $subsys_config->get('pageNavigation') ?? 'left-to-right';
 
-    // Canvas URI and Annotation List URI.
     $manifest_base_uri = $this->getManifestUri($wdb_source_entity, $subsysname);
     $canvas_id_uri = $this->getCanvasUri($wdb_annotation_page_entity, $manifest_base_uri);
     $annotation_list_uri = $this->urlGenerator->generateFromRoute('wdb_core.annotation_search', [], ['query' => ['uri' => $canvas_id_uri], 'absolute' => TRUE]);
@@ -173,12 +176,16 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
     $all_pages = $this->wdbDataService->getAllPagesForSource($wdb_source_entity);
     if ($all_pages) {
       foreach ($all_pages as $page_entity) {
-        $image_identifier_for_thumb = $page_entity->get('image_identifier')->value;
+        $image_identifier_for_thumb = $page_entity->getImageIdentifier();
         $page_num = $page_entity->get('page_number')->value;
+
+        if (empty($image_identifier_for_thumb) || !is_numeric($page_num)) {
+          continue;
+        }
+
         $page_list[] = [
           'page' => $page_num,
           'label' => $page_entity->label(),
-          // Change the link destination to the edit page route.
           'url' => Url::fromRoute('wdb_core.annotation_edit_page', [
             'subsysname' => $subsysname,
             'source' => $source,
@@ -189,7 +196,6 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
       }
     }
 
-    // Settings to pass to drupalSettings.
     $module_path = $this->moduleHandler()->getModule('wdb_core')->getPath();
     $toolbar_urls = [
       // The "View" link is always available for users who can access the edit page.
@@ -241,7 +247,6 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
       'toolbarUrls' => $toolbar_urls,
     ];
 
-    // Build the render array.
     $build = [];
     $build['#title'] = $this->getPageTitle($subsysname, $source, $page);
     $build['#attached']['library'][] = 'wdb_core/wdb_editor';

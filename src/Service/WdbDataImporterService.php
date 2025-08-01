@@ -67,7 +67,6 @@ class WdbDataImporterService {
     $source_identifier = trim($rowData['source'] ?? '');
     $page_num = (int) trim($rowData['page'] ?? 0);
     $label_name = trim($rowData['labelname'] ?? '');
-    $image_identifier = trim($rowData['image_identifier'] ?? '');
     $sign_code = trim($rowData['sign'] ?? '');
     $function_name = trim($rowData['function'] ?? '');
     $phone = trim($rowData['phone'] ?? '');
@@ -91,7 +90,7 @@ class WdbDataImporterService {
     ];
 
     // 2. Check for required data.
-    if (empty($source_identifier) || empty($page_num) || empty($image_identifier) || empty($sign_code) || empty($basic_form) || empty($word_unit_from_tsv)) {
+    if (empty($source_identifier) || empty($page_num) || empty($sign_code) || empty($basic_form) || empty($word_unit_from_tsv)) {
       $context['results']['failed']++;
       $context['results']['errors'][] = $this->t('Skipped row @row_num due to missing required data.', ['@row_num' => $row_num]);
       return FALSE;
@@ -114,7 +113,7 @@ class WdbDataImporterService {
         throw new \Exception('Source entity not found: ' . $source_identifier);
       }
 
-      $wdb_annotation_page_entity = $this->findOrCreateWdbAnnotationPage($wdb_source_entity, $page_num, $image_identifier, $context);
+      $wdb_annotation_page_entity = $this->findOrCreateWdbAnnotationPage($wdb_source_entity, $page_num, $context);
       if (!$wdb_annotation_page_entity) {
         throw new \Exception('Annotation Page entity not found for page ' . $page_num);
       }
@@ -283,15 +282,13 @@ class WdbDataImporterService {
    *   The parent source entity.
    * @param int $page_num
    *   The page number.
-   * @param string $image_identifier
-   *   The IIIF image identifier.
    * @param array $context
    *   The batch API context array.
    *
    * @return \Drupal\wdb_core\Entity\WdbAnnotationPage|null
    *   The annotation page entity.
    */
-  private function findOrCreateWdbAnnotationPage(WdbSource $source_entity, int $page_num, string $image_identifier, array &$context): ?WdbAnnotationPage {
+  private function findOrCreateWdbAnnotationPage(WdbSource $source_entity, int $page_num, array &$context): ?WdbAnnotationPage {
     $storage = $this->entityTypeManager->getStorage('wdb_annotation_page');
 
     // First, search by source and page number.
@@ -301,11 +298,6 @@ class WdbDataImporterService {
     ]);
 
     if ($entity = reset($entities)) {
-      // If an entity is found, update the image_identifier if it is currently empty.
-      if (empty($entity->get('image_identifier')->value) && !empty($image_identifier)) {
-        $entity->set('image_identifier', $image_identifier);
-        $entity->save();
-      }
       return $entity;
     }
 
@@ -315,7 +307,6 @@ class WdbDataImporterService {
       'page_number' => $page_num,
     // Temporary page name.
       'page_name' => 'p. ' . $page_num,
-      'image_identifier' => $image_identifier,
     ]);
     $entity->save();
     $context['results']['created_entities'][] = ['type' => 'wdb_annotation_page', 'id' => $entity->id()];
