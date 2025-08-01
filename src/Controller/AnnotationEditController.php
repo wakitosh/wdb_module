@@ -168,8 +168,9 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
 
     $manifest_base_uri = $this->getManifestUri($wdb_source_entity, $subsysname);
     $canvas_id_uri = $this->getCanvasUri($wdb_annotation_page_entity, $manifest_base_uri);
-    $annotation_list_uri = $this->urlGenerator->generateFromRoute('wdb_core.annotation_search', [], ['query' => ['uri' => $canvas_id_uri], 'absolute' => TRUE]);
-    $annotation_api_base_url = $this->urlGenerator->generateFromRoute('<front>', [], ['absolute' => TRUE]) . 'wdb/api/annotation';
+
+    // *** FIX: Use Url::fromRoute for all URL generation to handle language prefixes correctly. ***
+    $annotation_list_uri = Url::fromRoute('wdb_core.annotation_search', [], ['query' => ['uri' => $canvas_id_uri], 'absolute' => TRUE])->toString();
 
     // Get all page information for the thumbnail pager.
     $page_list = [];
@@ -231,7 +232,9 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
       'initialCanvasID' => $canvas_id_uri,
       'annotationListUrl' => $annotation_list_uri,
       'annotationEndpoint' => [
-        'url' => rtrim($annotation_api_base_url, '/'),
+        'create' => Url::fromRoute('wdb_core.annotation_create', [], ['absolute' => TRUE])->toString(),
+        'update' => Url::fromRoute('wdb_core.annotation_update', [], ['absolute' => TRUE])->toString(),
+        'destroy' => Url::fromRoute('wdb_core.annotation_delete', [], ['absolute' => TRUE])->toString(),
       ],
       'context' => [
         'subsysname' => $subsysname,

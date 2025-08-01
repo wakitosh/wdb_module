@@ -24,6 +24,7 @@ use Symfony\Component\HttpFoundation\Request;
  */
 class AnnotationApiController extends ControllerBase implements ContainerInjectionInterface {
 
+
   /**
    * The URL generator service.
    *

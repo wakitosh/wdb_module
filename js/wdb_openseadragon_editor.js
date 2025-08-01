@@ -30,14 +30,12 @@
             },
           });
 
-
           const anno = AnnotoriousOSD.createOSDAnnotator(viewer, {
             drawingEnabled: false,
             drawingMode: 'click',
           });
           anno.setDrawingTool('polygon');
           viewerElement.annotorious = anno;
-
           // --- Add custom drawing tool buttons to the toolbar ---
           const panelToolbar = document.getElementById('wdb-panel-toolbar');
           if (panelToolbar) {
@@ -274,8 +272,9 @@
             }
 
             const isNew = !previous.bodies.find(b => b.purpose === 'commenting');
-            const endpoint = isNew ? '/create' : '/update';
-            const apiUrl = osdSettings.annotationEndpoint.url + endpoint;
+//            const endpoint = isNew ? '/create' : '/update';
+//            const apiUrl = osdSettings.annotationEndpoint.url + endpoint;
+            const apiUrl = isNew ? osdSettings.annotationEndpoint.create : osdSettings.annotationEndpoint.update;
 
             fetch(apiUrl, {
               method: 'POST',
@@ -305,7 +304,7 @@
               // This was just an unsaved new annotation being deleted, so no API call is needed.
               return;
             }
-            const deleteUrl = `${osdSettings.annotationEndpoint.url}/destroy?uri=${encodeURIComponent(annotation.id)}`;
+            const deleteUrl = `${osdSettings.annotationEndpoint.destroy}?uri=${encodeURIComponent(annotation.id)}`;
             fetch(deleteUrl, { method: 'DELETE' })
               .then(response => {
                 if (!response.ok) {
