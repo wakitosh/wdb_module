@@ -30,6 +30,7 @@
             },
           });
 
+
           const anno = AnnotoriousOSD.createOSDAnnotator(viewer, {
             drawingEnabled: false,
             drawingMode: 'click',
