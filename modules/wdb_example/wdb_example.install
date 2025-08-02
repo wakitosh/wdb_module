@@ -59,6 +59,7 @@ function wdb_example_install() {
   $config_name = 'wdb_core.subsystem.' . $subsystem_term->id();
   $config = $config_factory->getEditable($config_name);
   $config
+    ->set('display_title', 'サンプル：保坂本源氏物語')
     ->set('iiif_server_scheme', 'https')
     ->set('iiif_server_hostname', 'emuseum.nich.go.jp')
     ->set('iiif_server_prefix', 'iiif/?IIIF=')

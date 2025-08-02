@@ -4,6 +4,9 @@ wdb_core.subsystem.*:
   type: config_object
   label: 'WDB Subsystem Settings'
   mapping:
+    display_title:
+      type: label
+      label: 'Display Title'
     allowAnonymous:
       type: boolean
       label: 'Allow Anonymous Access to Gallery Pages'
@@ -34,6 +37,9 @@ wdb_core.subsystem.*:
     iiif_logo:
       type: uri
       label: 'IIIF Logo URL'
+    iiif_identifier_pattern:
+      type: string
+      label: 'IIIF Identifier Pattern'
     export_templates:
       type: mapping
       label: 'Export Templates'
@@ -44,4 +50,3 @@ wdb_core.subsystem.*:
         rdf:
           type: text
           label: 'RDF/XML Template'
-

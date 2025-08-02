@@ -94,9 +94,14 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
         // You can add a class for CSS styling.
         '#markup' => '<h1 class="subsystem-title">' . $title . '</h1>',
       ];
-      // Disable block caching because the title is dynamic per page/subsystem.
-      $build['#cache']['max-age'] = 0;
     }
+
+    // *** FIX: Add the URL path cache context. ***
+    // This tells Drupal that the block's content is dependent on the URL,
+    // so it will generate a different cache entry for each page. This
+    // correctly handles cases where the block is empty on some pages and
+    // has a title on others.
+    $build['#cache']['contexts'][] = 'url.path';
 
     return $build;
   }

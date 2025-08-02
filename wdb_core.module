@@ -10,6 +10,7 @@
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\wdb_core\Entity\WdbSource;
+use Drupal\Core\Routing\RouteMatchInterface;
 
 /**
  * Implements hook_theme().
@@ -401,6 +402,38 @@ function wdb_core_taxonomy_term_delete_form_validate(array &$form, FormStateInte
         '', // Set the error on the whole form.
         t('The subsystem "@name" cannot be deleted because it is currently in use by one or more source documents.', ['@name' => $term_name])
       );
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_html().
+ *
+ * Overrides the site name portion of the <title> tag on WDB subsystem pages
+ * with the subsystem's configured "Display Title".
+ */
+function wdb_core_preprocess_html(&$variables) {
+  /** @var \Drupal\Core\Routing\RouteMatchInterface $route_match */
+  $route_match = \Drupal::service('current_route_match');
+  $subsystem_name = $route_match->getParameter('subsysname');
+
+  // Proceed only if we are on a page with a subsystem parameter in the URL.
+  if ($subsystem_name) {
+    $new_site_name = '';
+    $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
+    $terms = $term_storage->loadByProperties(['vid' => 'subsystem', 'name' => $subsystem_name]);
+
+    if ($subsystem_term = reset($terms)) {
+      $config_id = 'wdb_core.subsystem.' . $subsystem_term->id();
+      $config = \Drupal::config($config_id);
+      $new_site_name = $config->get('display_title');
+    }
+
+    if (!empty($new_site_name)) {
+      // The head_title array has 'title' (the page's content title) and
+      // 'name' (the site's name). We override the 'name' part to change
+      // what appears in the browser tab.
+      $variables['head_title']['name'] = $new_site_name;
     }
   }
 }
