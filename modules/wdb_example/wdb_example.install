@@ -25,13 +25,22 @@ function wdb_example_install() {
 
   // --- 1. Get existing taxonomy terms required for the sample data. ---
   $term_storage = $entity_type_manager->getStorage('taxonomy_term');
+
+  // *** FIX: Store loadByProperties result in a variable before passing to reset() to avoid notice. ***
+  $demonstrative_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'demonstrative']);
+  $adnominal_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'adnominal case marker']);
+  $prefix_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'prefix']);
+  $common_noun_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'common noun']);
+  $case_marker_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'case marker']);
+  $binding_particle_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'binding particle']);
+
   $pos_terms = [
-    '指示代名詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'demonstrative'])) ?: NULL,
-    '連体格' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'adnominal case marker'])) ?: NULL,
-    '接頭辞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'prefix'])) ?: NULL,
-    '普通名詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'common noun'])) ?: NULL,
-    '格助詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'case marker'])) ?: NULL,
-    '係助詞' => reset($term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'binding particle'])) ?: NULL,
+    '指示代名詞' => reset($demonstrative_terms) ?: NULL,
+    '連体格' => reset($adnominal_terms) ?: NULL,
+    '接頭辞' => reset($prefix_terms) ?: NULL,
+    '普通名詞' => reset($common_noun_terms) ?: NULL,
+    '格助詞' => reset($case_marker_terms) ?: NULL,
+    '係助詞' => reset($binding_particle_terms) ?: NULL,
   ];
 
   // Check if all required terms exist.
@@ -42,7 +51,8 @@ function wdb_example_install() {
     }
   }
 
-  $subsystem_term = reset($term_storage->loadByProperties(['vid' => 'subsystem', 'name' => 'genji'])) ?: $term_storage->create(['vid' => 'subsystem', 'name' => 'genji', 'langcode' => 'ja']);
+  $subsystem_terms = $term_storage->loadByProperties(['vid' => 'subsystem', 'name' => 'genji']);
+  $subsystem_term = reset($subsystem_terms) ?: $term_storage->create(['vid' => 'subsystem', 'name' => 'genji', 'langcode' => 'ja']);
   $subsystem_term->save();
 
   // --- 2. Update the subsystem configuration for the example. ---
@@ -59,22 +69,51 @@ function wdb_example_install() {
 
   // --- 3. Create the sample WdbSource entity. ---
   $source_storage = $entity_type_manager->getStorage('wdb_source');
-  $source_entity = reset($source_storage->loadByProperties(['source_identifier' => 'nich-100412001'])) ?: $source_storage->create([
+  $source_entities = $source_storage->loadByProperties(['source_identifier' => 'nich-100412001']);
+  $source_entity = reset($source_entities) ?: $source_storage->create([
     'displayname' => '「源氏物語」桐壺',
     'source_identifier' => 'nich-100412001',
     'subsystem_tags' => [$subsystem_term->id()],
-    'pages' => 1,
+    'pages' => 3,
     'description' => "e国宝「源氏物語 桐壺」 https://emuseum.nich.go.jp/detail?content_base_id=100412&content_part_id=001",
     'langcode' => 'ja',
   ]);
   $source_entity->save();
 
-  // --- 4. Update the auto-created WdbAnnotationPage with sample data. ---
+  // After saving the source, the hook_entity_update in wdb_example.module will
+  // automatically create pages 1, 2, and 3.
+
+  // --- 4. Load all pages and update them with sample data. ---
   $page_storage = $entity_type_manager->getStorage('wdb_annotation_page');
-  $page_entity = reset($page_storage->loadByProperties(['source_ref' => $source_entity->id()])) ?: NULL;
+
+  // *** FIX: Add data for Page 1. ***
+  $page1_entities = $page_storage->loadByProperties(['source_ref' => $source_entity->id(), 'page_number' => 1]);
+  if ($page1_entity = reset($page1_entities)) {
+    $page1_entity->set('page_name', '1ページ目');
+    $page1_entity->set('image_identifier', '100412001000-001.tif');
+    $page1_entity->set('annotation_code', 'nich-100412001_1');
+    $page1_entity->set('langcode', 'ja');
+    $page1_entity->save();
+  }
+
+  // *** FIX: Add data for Page 2. ***
+  $page2_entities = $page_storage->loadByProperties(['source_ref' => $source_entity->id(), 'page_number' => 2]);
+  if ($page2_entity = reset($page2_entities)) {
+    $page2_entity->set('page_name', '2ページ目');
+    $page2_entity->set('image_identifier', '100412001000-002.tif');
+    $page2_entity->set('annotation_code', 'nich-100412001_2');
+    $page2_entity->set('langcode', 'ja');
+    $page2_entity->save();
+  }
+
+  // Load Page 3, which will be used to attach the sample annotations.
+  $page_entities = $page_storage->loadByProperties([
+    'source_ref' => $source_entity->id(),
+    'page_number' => 3,
+  ]);
+  $page_entity = reset($page_entities);
 
   if ($page_entity) {
-    $page_entity->set('page_number', 3);
     $page_entity->set('page_name', '3ページ目');
     $page_entity->set('image_identifier', '100412001000-003.tif');
     $page_entity->set('annotation_code', 'nich-100412001_3');
@@ -82,11 +121,12 @@ function wdb_example_install() {
     $page_entity->save();
   }
   else {
-    $messenger->addError(t('Could not find the auto-created annotation page for the new source.'));
+    $messenger->addError(t('Could not find the auto-created annotation page (page 3) for the new source.'));
     return;
   }
 
-  // --- 5. Create sample word, sign, and annotation data. ---
+  // --- 5. Create sample word, sign, and annotation data (associating with page 3). ---
+  // This part of the code remains the same as it correctly uses $page_entity (which refers to page 3).
   $sample_data = [
     ['wu_id' => 'genji_1_1', 'realized' => 'いつれ', 'basic' => 'いづれ', 'pos' => '指示代名詞', 'chars' => ['い', 'づ', 'れ']],
     ['wu_id' => 'genji_1_2', 'realized' => 'の', 'basic' => 'の', 'pos' => '連体格', 'chars' => ['の']],
@@ -116,16 +156,19 @@ function wdb_example_install() {
 
     // Find or create WdbWord & WdbWordMeaning.
     $word_storage = $entity_type_manager->getStorage('wdb_word');
-    $word_entity = reset($word_storage->loadByProperties(['basic_form' => $word_data['basic']])) ?: $word_storage->create(['basic_form' => $word_data['basic'], 'lexical_category_ref' => $pos_terms[$word_data['pos']]->id(), 'langcode' => 'ja']);
+    $word_entities = $word_storage->loadByProperties(['basic_form' => $word_data['basic']]);
+    $word_entity = reset($word_entities) ?: $word_storage->create(['basic_form' => $word_data['basic'], 'lexical_category_ref' => $pos_terms[$word_data['pos']]->id(), 'langcode' => 'ja']);
     $word_entity->save();
 
     $meaning_storage = $entity_type_manager->getStorage('wdb_word_meaning');
-    $meaning_entity = reset($meaning_storage->loadByProperties(['word_ref' => $word_entity->id()])) ?: $meaning_storage->create(['word_ref' => $word_entity->id(), 'explanation' => 'Example explanation.', 'meaning_identifier' => 1, 'word_meaning_code' => $word_entity->id() . '_1', 'langcode' => 'ja']);
+    $meaning_entities = $meaning_storage->loadByProperties(['word_ref' => $word_entity->id()]);
+    $meaning_entity = reset($meaning_entities) ?: $meaning_storage->create(['word_ref' => $word_entity->id(), 'explanation' => 'Example explanation.', 'meaning_identifier' => 1, 'word_meaning_code' => $word_entity->id() . '_1', 'langcode' => 'ja']);
     $meaning_entity->save();
 
     // Find or create WdbWordUnit.
     $wu_storage = $entity_type_manager->getStorage('wdb_word_unit');
-    $wu_entity = reset($wu_storage->loadByProperties(['original_word_unit_identifier' => $word_data['wu_id']])) ?: $wu_storage->create(['original_word_unit_identifier' => $word_data['wu_id'], 'source_ref' => $source_entity->id(), 'annotation_page_refs' => [$page_entity->id()], 'word_meaning_ref' => $meaning_entity->id(), 'realized_form' => $word_data['realized'], 'word_sequence' => $word_seq, 'langcode' => 'ja']);
+    $wu_entities = $wu_storage->loadByProperties(['original_word_unit_identifier' => $word_data['wu_id']]);
+    $wu_entity = reset($wu_entities) ?: $wu_storage->create(['original_word_unit_identifier' => $word_data['wu_id'], 'source_ref' => $source_entity->id(), 'annotation_page_refs' => [$page_entity->id()], 'word_meaning_ref' => $meaning_entity->id(), 'realized_form' => $word_data['realized'], 'word_sequence' => $word_seq, 'langcode' => 'ja']);
     $wu_entity->save();
 
     foreach ($word_data['chars'] as $char) {
@@ -135,12 +178,14 @@ function wdb_example_install() {
 
       // Find or create WdbSign, WdbSignFunction.
       $sign_storage = $entity_type_manager->getStorage('wdb_sign');
-      $sign_entity = reset($sign_storage->loadByProperties(['sign_code' => $char])) ?: $sign_storage->create(['sign_code' => $char, 'langcode' => 'ja']);
+      $sign_entities = $sign_storage->loadByProperties(['sign_code' => $char]);
+      $sign_entity = reset($sign_entities) ?: $sign_storage->create(['sign_code' => $char, 'langcode' => 'ja']);
       $sign_entity->save();
 
       $function_name = (mb_ereg('[\p{Han}]', $char)) ? 'logogram' : 'phonogram';
       $sf_storage = $entity_type_manager->getStorage('wdb_sign_function');
-      $sf_entity = reset($sf_storage->loadByProperties(['sign_ref' => $sign_entity->id(), 'function_name' => $function_name])) ?: $sf_storage->create(['sign_ref' => $sign_entity->id(), 'function_name' => $function_name, 'langcode' => 'ja']);
+      $sf_entities = $sf_storage->loadByProperties(['sign_ref' => $sign_entity->id(), 'function_name' => $function_name]);
+      $sf_entity = reset($sf_entities) ?: $sf_storage->create(['sign_ref' => $sign_entity->id(), 'function_name' => $function_name, 'langcode' => 'ja']);
       $sf_entity->save();
 
       // Find or create WdbLabel.
@@ -154,18 +199,21 @@ function wdb_example_install() {
         $center_coords['x'] = (min($x_coords) + max($x_coords)) / 2;
         $center_coords['y'] = (min($y_coords) + max($y_coords)) / 2;
       }
-      $label_entity = reset($label_storage->loadByProperties(['label_name' => $label_name, 'annotation_page_ref' => $page_entity->id()])) ?: $label_storage->create(['label_name' => $label_name, 'annotation_page_ref' => $page_entity->id(), 'polygon_points' => $polygon_points_for_storage, 'label_center_x' => $center_coords['x'], 'label_center_y' => $center_coords['y']]);
+      $label_entities = $label_storage->loadByProperties(['label_name' => $label_name, 'annotation_page_ref' => $page_entity->id()]);
+      $label_entity = reset($label_entities) ?: $label_storage->create(['label_name' => $label_name, 'annotation_page_ref' => $page_entity->id(), 'polygon_points' => $polygon_points_for_storage, 'label_center_x' => $center_coords['x'], 'label_center_y' => $center_coords['y']]);
       $label_entity->save();
       $label_entity->set('annotation_uri', Url::fromRoute('entity.wdb_label.canonical', ['wdb_label' => $label_entity->id()], ['absolute' => TRUE])->toString())->save();
 
       // Find or create WdbSignInterpretation.
       $si_storage = $entity_type_manager->getStorage('wdb_sign_interpretation');
-      $si_entity = reset($si_storage->loadByProperties(['label_ref' => $label_entity->id()])) ?: $si_storage->create(['annotation_page_ref' => $page_entity->id(), 'label_ref' => $label_entity->id(), 'sign_function_ref' => $sf_entity->id(), 'sign_interpretation_code' => 'si_' . $label_entity->id(), 'langcode' => 'ja']);
+      $si_entities = $si_storage->loadByProperties(['label_ref' => $label_entity->id()]);
+      $si_entity = reset($si_entities) ?: $si_storage->create(['annotation_page_ref' => $page_entity->id(), 'label_ref' => $label_entity->id(), 'sign_function_ref' => $sf_entity->id(), 'sign_interpretation_code' => 'si_' . $label_entity->id(), 'langcode' => 'ja']);
       $si_entity->save();
 
       // Find or create WdbWordMap.
       $map_storage = $entity_type_manager->getStorage('wdb_word_map');
-      $map_entity = reset($map_storage->loadByProperties(['sign_interpretation_ref' => $si_entity->id(), 'word_unit_ref' => $wu_entity->id()])) ?: $map_storage->create(['sign_interpretation_ref' => $si_entity->id(), 'word_unit_ref' => $wu_entity->id(), 'sign_sequence' => $sign_seq_in_word]);
+      $map_entities = $map_storage->loadByProperties(['sign_interpretation_ref' => $si_entity->id(), 'word_unit_ref' => $wu_entity->id()]);
+      $map_entity = reset($map_entities) ?: $map_storage->create(['sign_interpretation_ref' => $si_entity->id(), 'word_unit_ref' => $wu_entity->id(), 'sign_sequence' => $sign_seq_in_word]);
       $map_entity->save();
     }
   }
