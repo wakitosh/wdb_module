@@ -78,7 +78,17 @@ After installation, all WDB-related management pages are consolidated under the 
 8. **Import Data:** Go to the Import Form (`WDB > Dashboard > Tools & Utilities > Import New Data`), select the language, upload your TSV file, and start the batch import.
 9. **Verify:** Check the gallery page again. The linguistic data should now be displayed in the annotation panel, linked to the character polygons on the viewer.
 
-## **6\. TSV File Format**
+## **6\. Displaying Subsystem Titles**
+
+To display a prominent title for each subsystem (e.g., "Genji Monogatari Database") independently of the main site name, WDB Core provides a dedicated block. This is the recommended way to show visitors which collection they are currently viewing.
+
+1. **Set the Title:** Go to `WDB > Dashboard > Configuration > Module Settings`. In each subsystem's tab, fill in the **Display Title** field with the full title you want to show for that collection.  
+2. **Place the Block:** Go to `Structure > Block layout` (`/admin/structure/block`). Click **Place block** in the region where you want the title to appear (e.g., Header or Content).  
+3. **Select the Block:** In the modal window, find and place the **WDB Subsystem Title** block.  
+4. **Configure the Block:** Uncheck the "Display title" option in the block's configuration form to prevent the block label from appearing.  
+5. **Theme Integration (Recommended):** For the best user experience, it is recommended to hide the default site name in your theme's settings and use this block as the primary title on WDB pages. The block will only appear on pages that belong to a subsystem, so it will not interfere with other parts of your site.
+
+## **7\. TSV File Format**
 
 The following columns are expected in the data import file. Fields marked with \* are mandatory.
 
@@ -98,7 +108,7 @@ The following columns are expected in the data import file. Fields marked with \
 * `explanation`: A description or gloss for the meaning.
 * `verbal_form_name`, `gender_name`, `number_name`, `person_name`, `voice_name`, `aspect_name`, `mood_name`, `grammatical_case_name`: Names of grammatical categories. If a matching term does not exist in the corresponding taxonomy, a new one will be created.
 
-## **7\. Advanced Topics**
+## **8\. Advanced Topics**
 
 ### **Cantaloupe IIIF Server Integration**
 
@@ -206,7 +216,7 @@ The TEI/XML and RDF/XML export templates are rendered using Twig. The main data 
       * `{{ sign.sign_code.value }}`
 
 
-## **8\. For Developers**
+## **9\. For Developers**
 
 ### **Entity Relationships**
 
@@ -309,7 +319,17 @@ Composerを使用してモジュールをインストールすることを推奨
 8. **言語データの投入:** `WDB > ダッシュボード > ツールとユーティリティ > データ新規取込` フォームで、作成したTSVファイルをアップロードします。
 9. **最終確認:** 再度ギャラリーページにアクセスし、ポリゴンと言語データが正しく結びついて表示されることを確認します。
 
-## **6\. TSVファイルの各カラムの書式について**
+## **6\. サブシステム・タイトルの表示**
+
+各サブシステム（資料群）のタイトル（例: 「源氏物語データベース」）を、サイト全体のサイト名とは独立して表示するために、WDB Coreは専用のブロックを提供します。これは、訪問者に現在どの資料群を閲覧しているかを伝えるための推奨される方法です。
+
+1. **タイトルの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。各サブシステムのタブで、**Display Title** フィールドに、その資料群で表示したい正式なタイトルを入力します。  
+2. **ブロックの配置:** `サイト構築 > ブロックレイアウト` (`/admin/structure/block`) に移動します。タイトルを表示したい領域（例: ヘッダーやコンテンツ）の **ブロックを配置** ボタンをクリックします。  
+3. **ブロックの選択:** モーダルウィンドウで **WDB Subsystem Title** ブロックを探し、配置します。  
+4. **ブロックの設定:** ブロックの設定フォームで、「タイトルを表示」のチェックを外すと、ブロックのラベルが表示されず、\<h1\>タグで囲まれたタイトルだけが表示されるため、すっきりとします。  
+5. **テーマとの連携（推奨）:** 最適なユーザー体験のためには、テーマの設定でデフォルトのサイト名を非表示にし、このブロックをWDB関連ページのメインタイトルとして使用することをお勧めします。このブロックは、サブシステムに属するページでのみ表示されるため、サイトの他の部分には影響を与えません。
+
+## **7\. TSVファイルの各カラムの書式について**
 
 データ投入用のTSVファイルは、以下のカラムで構成されます。\* が付いている項目は必須です。
 
@@ -329,7 +349,7 @@ Composerを使用してモジュールをインストールすることを推奨
 * `explanation`: 語義の説明（語釈）。
 * `verbal_form_name`, `gender_name`, `number_name`, `person_name`, `voice_name`, `aspect_name`, `mood_name`, `grammatical_case_name`: 各種文法カテゴリー名。「文法カテゴリー」タクソノミータームとして登録されます（存在しない場合は新規作成）。
 
-## **7\. 高度なトピック**
+## **8\. 高度なトピック**
 
 ### **Cantaloupe IIIF画像サーバとの連携**
 
@@ -438,7 +458,7 @@ TEI/XMLおよびRDF/XMLのエクスポート用テンプレートは、Twigを�
       * `{{ sign.sign_code.value }}`
 
 
-## **8\. 開発者向け情報**
+## **9\. 開発者向け情報**
 
 ### **エンティティの関係性**
 

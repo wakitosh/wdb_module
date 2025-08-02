@@ -59,6 +59,16 @@ class WdbSettingsForm extends ConfigFormBase {
         '#group' => 'vertical_tabs',
       ];
 
+      // --- NEW FIELD ADDED HERE ---
+      $form['subsystems'][$term_id]['display_title'] = [
+        '#type' => 'textfield',
+        '#title' => $this->t('Display Title'),
+        '#description' => $this->t('The title to be displayed for this subsystem on the front end, for example in a block.'),
+        '#default_value' => $config->get('display_title'),
+        '#maxlength' => 255,
+      ];
+      // --- END OF NEW FIELD ---
+
       $form['subsystems'][$term_id]['iiif_settings'] = [
         '#type' => 'details',
         '#title' => $this->t('IIIF Settings'),
@@ -181,6 +191,8 @@ class WdbSettingsForm extends ConfigFormBase {
 
         $config_name = 'wdb_core.subsystem.' . $term_id;
         $this->config($config_name)
+          // --- SAVE NEW FIELD ---
+          ->set('display_title', $values['display_title'])
           ->set('allowAnonymous', $values['allowAnonymous'])
           ->set('pageNavigation', $values['pageNavigation'])
           ->set('hullConcavity', $values['hullConcavity'])
