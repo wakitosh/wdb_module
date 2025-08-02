@@ -66,11 +66,11 @@ After installation, all WDB-related management pages are consolidated under the 
    * **Prerequisite:** Ensure the language for your data is available in Drupal. Go to `Configuration > Regional and language > Languages` (`/admin/config/regional/language`). If the language (e.g., Egyptian) does not exist, add it as a "Custom language".
    * **Create the Term:** Go to `Structure > Taxonomy > Subsystem` and create a new taxonomy term for your collection. Select the language for this subsystem.
 2. **Configure the Subsystem:** Go to `WDB > Dashboard > Configuration > Module Settings`. In the tab for your new subsystem, configure the IIIF server details and access control settings.
-   * **Important:** It is highly recommended to set the **IIIF Identifier Pattern** at this stage, before creating any WDB Source entities. This ensures that `image_identifier` values are generated correctly from the start.
+   * **Important:** It is recommended to set the **IIIF Identifier Pattern** at this stage, before creating any `WDB Source` entities. This ensures that `image_identifier` values are generated correctly from the start. If you want to modify the `image_identifier` after creating the `WDB Source` entity (i.e., after the annotation page entity has been automatically created), enter the **IIIF Identifier Pattern** and click the **Apply pattern to existing pages in "{subsystem_name}"** button in the **Update Existing Pages** section.
    * **IIIF Server Prefix:** Do not URL-encode this value.
    * **Allow anonymous access:** Check this to make the gallery pages for this subsystem public. Otherwise, only users with the "View non-public WDB gallery pages" permission can access them.
    * **Hull Concavity:** Controls the tightness of the auto-generated word polygon. A smaller value creates a tighter, more concave shape. However, `0` results in a convex hull.
-3. **Define a Source:** Go to `WDB > Dashboard > Content Management > Manage Sources` and create a new WDB Source entity. Select the subsystem you just created.
+3. **Define a Source:** Go to `WDB > Dashboard > Content Management > Manage Sources` and create a new `WDB Source` entity. Select the subsystem you just created.
 4. **Update Annotation Pages:** When a new Source is created, Annotation Page entities are automatically generated based on the "Pages" field. Navigate to `WDB > Dashboard > Content Management > Manage Annotation Pages` to edit these pages and confirm the `image_identifier` has been generated correctly. You can also manually override it here if needed.
 5. **View the Gallery:** At this point, you should be able to access the gallery page (`/wdb/{subsystem_name}/gallery/{source_identifier}/{page_number}`) and see the IIIF images.
 6. **Annotate Characters:** In edit mode (`./edit`), draw polygons for each character. Enter a label for each polygon in the popup editor (e.g., a format like "line-character_sequence" like "1-1", "1-2" is recommended, but any readable text is acceptable).
@@ -297,11 +297,11 @@ Composerを使用してモジュールをインストールすることを推奨
    * **事前準備:** 扱うデータの言語がDrupalに登録されていることを確認します。`環境設定 > 地域・言語 > 言語` (`/admin/config/regional/language`) に移動してください。もし言語（例: エジプト語）が存在しない場合は、「カスタム言語を追加」から言語コード（例: egy）を指定して作成します。
    * **タームの作成:** サイト構築 \> タクソノミー \> Subsystem に移動し、資料群に対応する新しいタクソノミータームを作成します。この時、その資料群の主要言語として、先ほど準備した言語を選択します。
 2. **サブシステムの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。新しく作成したサブシステムのタブを開き、IIIF画像サーバの情報や資料の公開方法などを設定します。
-   * **重要:** `image_identifier`を正しく自動生成するために、この段階で **IIIF Identifier Pattern** を設定することを**強く推奨します**。この設定は、`WDB Source`**エンティティを作成する前**に行ってください。
+   * **重要:** `image_identifier`を正しく自動生成するために、この段階で **IIIF Identifier Pattern** を設定することを推奨します。この設定は、`WDB Source`**エンティティを作成する前**に行ってください。`WDB Source`エンティティ作成後（すなわちアノテーションページエンティティが自動作成された後）に`image_identifier`を修正したい場合には、**IIIF Identifier Pattern**を入力した上で、**Update Existing Pages**セクションの**Apply pattern to existing pages in {subsystem_name} ボタン**をクリックしてください。
    * **IIIF Server Prefix:** URLエンコードは不要です。
    * **Allow anonymous access:** これにチェックを入れると、このサブシステムのギャラリーページが匿名ユーザーに公開されます。チェックを外した場合、ギャラリーページを閲覧するには、ユーザーの権限設定で「View non-public WDB gallery pages」の権限が必要になります。初期状態では非公開です。
    * **Hull Concavity:** 文字の集合から単語のポリゴンを生成する際の、座標の密着度（凹みの大きさ）を制御します。値が小さいほど凹みが大きくなります（ただし、0で凸包）。
-3. **資料情報の定義:** `WDB > ダッシュボード > コンテンツ管理 > 資料の管理` に移動し、新しいWDB Sourceエンティティを作成します。先ほど作成したサブシステムを選択してください。
+3. **資料情報の定義:** `WDB > ダッシュボード > コンテンツ管理 > 資料の管理` に移動し、新しい`WDB Source`エンティティを作成します。先ほど作成したサブシステムを選択してください。
 4. **アノテーションページの更新:** 新しい資料を作成すると、そのページ数分のアノテーションページエンティティが自動生成されます。`WDB > ダッシュボード > コンテンツ管理 > アノテーションページの管理` に移動し、`image_identifier`が正しく生成されていることを確認します。必要であれば、ここで個別に値を上書きすることも可能です。
 5. **ギャラリーページの確認:** ここまでの設定が完了すると、`/wdb/{サブシステム名}/gallery/{資料ID}/{ページ番号}` というURLでギャラリーページにアクセスし、IIIF画像が表示されるはずです。
 6. **アノテーションの作成:** 編集モード (`./edit`) に切り替え、ツールバーのボタンを使ってポリゴンを描画します。各ポリゴンには、"1-1"（行番号-文字順）のような、ページ内でユニークなラベル名を入力します。

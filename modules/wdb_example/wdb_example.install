@@ -64,7 +64,7 @@ function wdb_example_install() {
     'source_identifier' => 'nich-100412001',
     'subsystem_tags' => [$subsystem_term->id()],
     'pages' => 1,
-    'description' => 'e国宝「源氏物語 桐壺」 https://emuseum.nich.go.jp/detail?content_base_id=100412&content_part_id=001&content_pict_id=0&langId=ja&webView=0',
+    'description' => "e国宝「源氏物語 桐壺」 https://emuseum.nich.go.jp/detail?content_base_id=100412&content_part_id=001",
     'langcode' => 'ja',
   ]);
   $source_entity->save();
