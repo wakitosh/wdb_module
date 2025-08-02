@@ -240,7 +240,7 @@
         if (mainContainer && !mainContainer.wdbListenerAttached) {
           mainContainer.wdbListenerAttached = true;
 
-          $(mainContainer).on('click', '.nav-button-icon, .is-clickable', function (event) {
+          $(mainContainer).on('click touchend', '.nav-button-icon, .is-clickable', function (event) {
             event.preventDefault();
 
             const clickedElement = $(this);
