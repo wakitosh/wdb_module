@@ -29,6 +29,51 @@ administer wdb_source entities:
   description: 'Allow to access the WDB Source administration page.'
   restrict access: true
 
+administer wdb_annotation_page entities:
+  title: 'Administer WDB Annotation Page entities'
+  description: 'Allow to access the WDB Annotation Page administration page.'
+  restrict access: true
+
+administer wdb_label entities:
+  title: 'Administer WDB Label entities'
+  description: 'Allow to access the WDB Label administration page.'
+  restrict access: true
+
+administer wdb_sign entities:
+  title: 'Administer WDB Sign entities'
+  description: 'Allow to access the WDB Sign administration page.'
+  restrict access: true
+
+administer wdb_sign_function entities:
+  title: 'Administer WDB Sign Function entities'
+  description: 'Allow to access the WDB Sign Function administration page.'
+  restrict access: true
+
+administer wdb_sign_interpretation entities:
+  title: 'Administer WDB Sign Interpretation entities'
+  description: 'Allow to access the WDB Sign Interpretation page.'
+  restrict access: true
+
+administer wdb_word_map entities:
+  title: 'Administer WDB Word Map entities'
+  description: 'Allow to access the WDB Word Map administration page.'
+  restrict access: true
+
+administer wdb_word_unit entities:
+  title: 'Administer WDB Word Unit entities'
+  description: 'Allow to access the WDB Word Unit administration page.'
+  restrict access: true
+
+administer wdb_word_meaning entities:
+  title: 'Administer WDB Word Meaning entities'
+  description: 'Allow to access the WDB Word Meaning administration page.'
+  restrict access: true
+
+administer wdb_word entities:
+  title: 'Administer WDB Word entities'
+  description: 'Allow to access the WDB Word administration page.'
+  restrict access: true
+
 administer wdb pos mappings:
   title: 'Administer WDB POS Mappings'
   description: 'Allows users to manage the mapping rules for Part-of-Speech data import.'
