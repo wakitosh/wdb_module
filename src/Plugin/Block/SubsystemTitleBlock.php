@@ -3,10 +3,12 @@
 namespace Drupal\wdb_core\Plugin\Block;
 
 use Drupal\Core\Block\BlockBase;
+use Drupal\Core\Link;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -81,48 +83,74 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
   public function build() {
     $build = [];
     $title = '';
+    $link_url_string = '';
     $subsystem_name = NULL;
 
-    // --- FIX: More robust logic to determine the subsystem ---
-
-    // 1. First, try to get the subsystem from the route parameter, as it's the most reliable method.
     $subsystem_name = $this->routeMatch->getParameter('subsysname');
-
-    // 2. If the route parameter is not found, parse the URL path as a fallback.
-    // This covers pages like '/wdb/hdb/' where 'hdb' might not be a formal route parameter.
     if (empty($subsystem_name)) {
       $path = $this->requestStack->getCurrentRequest()->getPathInfo();
-      // Use a regular expression to find a pattern like '/wdb/anything/'.
       if (preg_match('#/wdb/([^/]+)#', $path, $matches)) {
         $subsystem_name = $matches[1];
       }
     }
-    // --- END OF FIX ---
 
     if ($subsystem_name) {
-      // Find the subsystem taxonomy term to get its ID.
       $term_storage = $this->entityTypeManager->getStorage('taxonomy_term');
       $terms = $term_storage->loadByProperties(['vid' => 'subsystem', 'name' => $subsystem_name]);
 
       if ($subsystem_term = reset($terms)) {
-        // Load the configuration for this specific subsystem.
         $config_id = 'wdb_core.subsystem.' . $subsystem_term->id();
         $config = $this->configFactory->get($config_id);
         $title = $config->get('display_title');
+        $link_url_string = $config->get('display_title_link');
       }
     }
 
     if (!empty($title)) {
-      $build['title'] = [
-        '#markup' => '<h1 class="subsystem-title">' . $title . '</h1>',
-      ];
+      if (!empty($link_url_string)) {
+        // --- FIX: Use fromUri for external URLs and fromUserInput for internal paths. ---
+        try {
+          $url = NULL;
+          if (strpos($link_url_string, 'http://') === 0 || strpos($link_url_string, 'https://') === 0) {
+            // It's an external URL, so use fromUri.
+            $url = Url::fromUri($link_url_string);
+          }
+          else {
+            // It's an internal path, so use fromUserInput.
+            $url = Url::fromUserInput($link_url_string);
+          }
+
+          $link = Link::fromTextAndUrl($title, $url);
+          $build['title'] = [
+            '#markup' => '<h1 class="subsystem-title">' . $link->toString() . '</h1>',
+          ];
+        }
+        catch (\InvalidArgumentException $e) {
+          // If the URL is invalid, log the error and display the title as plain text.
+          \Drupal::logger('wdb_core')->warning('Invalid URL provided for subsystem title link: @url', ['@url' => $link_url_string]);
+          $build['title'] = [
+            '#markup' => '<h1 class="subsystem-title">' . $this->t($title) . '</h1>',
+          ];
+        }
+      }
+      else {
+        // If no URL, just display the title as plain text.
+        $build['title'] = [
+          '#markup' => '<h1 class="subsystem-title">' . $this->t($title) . '</h1>',
+        ];
+      }
     }
 
-    // This tells Drupal that the block's content is dependent on the URL,
-    // so it will generate a different cache entry for each page.
     $build['#cache']['contexts'][] = 'url.path';
+
+    // --- FIX: Add the configuration cache tag. ---
+    // This tells Drupal that this block's output depends on a specific
+    // configuration object. If that config is changed, this block's cache
+    // will be automatically invalidated.
+    if ($config_id) {
+      $build['#cache']['tags'][] = 'config:' . $config_id;
+    }
 
     return $build;
   }
-
 }

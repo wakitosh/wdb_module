@@ -59,15 +59,20 @@ class WdbSettingsForm extends ConfigFormBase {
         '#group' => 'vertical_tabs',
       ];
 
-      // --- NEW FIELD ADDED HERE ---
       $form['subsystems'][$term_id]['display_title'] = [
         '#type' => 'textfield',
         '#title' => $this->t('Display Title'),
-        '#description' => $this->t('The title to be displayed for this subsystem on the front end, for example in a block.'),
+        '#description' => $this->t('The title to be displayed for this subsystem in a block.'),
         '#default_value' => $config->get('display_title'),
         '#maxlength' => 255,
       ];
-      // --- END OF NEW FIELD ---
+
+      $form['subsystems'][$term_id]['display_title_link'] = [
+        '#type' => 'textfield',
+        '#title' => $this->t('Display Title Link URL'),
+        '#description' => $this->t('If you want to link the subsystem title, enter the URL here. You can use an internal path (e.g., /node/1) or a full external URL (e.g., https://example.com). Leave blank for no link.'),
+        '#default_value' => $config->get('display_title_link'),
+      ];
 
       $form['subsystems'][$term_id]['iiif_settings'] = [
         '#type' => 'details',
@@ -122,7 +127,6 @@ class WdbSettingsForm extends ConfigFormBase {
         '#placeholder' => '{source_identifier}/{page_number}.tif',
       ];
 
-      // Add a button to re-apply the pattern, only if a pattern is saved.
       if (!empty($config->get('iiif_identifier_pattern'))) {
         $form['subsystems'][$term_id]['iiif_settings']['reapply_pattern'] = [
           '#type' => 'details',
@@ -191,8 +195,8 @@ class WdbSettingsForm extends ConfigFormBase {
 
         $config_name = 'wdb_core.subsystem.' . $term_id;
         $this->config($config_name)
-          // --- SAVE NEW FIELD ---
           ->set('display_title', $values['display_title'])
+          ->set('display_title_link', $values['display_title_link'])
           ->set('allowAnonymous', $values['allowAnonymous'])
           ->set('pageNavigation', $values['pageNavigation'])
           ->set('hullConcavity', $values['hullConcavity'])

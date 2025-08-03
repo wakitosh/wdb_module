@@ -7,6 +7,9 @@ wdb_core.subsystem.*:
     display_title:
       type: label
       label: 'Display Title'
+    display_title_link:
+      type: string
+      label: 'Display Title Link URL'
     allowAnonymous:
       type: boolean
       label: 'Allow Anonymous Access to Gallery Pages'
