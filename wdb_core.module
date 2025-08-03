@@ -415,9 +415,20 @@ function wdb_core_taxonomy_term_delete_form_validate(array &$form, FormStateInte
 function wdb_core_preprocess_html(&$variables) {
   /** @var \Drupal\Core\Routing\RouteMatchInterface $route_match */
   $route_match = \Drupal::service('current_route_match');
+  $subsystem_name = NULL;
+
+  // 1. First, try to get the subsystem from the route parameter.
   $subsystem_name = $route_match->getParameter('subsysname');
 
-  // Proceed only if we are on a page with a subsystem parameter in the URL.
+  // 2. If the route parameter is not found, parse the URL path as a fallback.
+  if (empty($subsystem_name)) {
+    $path = \Drupal::service('request_stack')->getCurrentRequest()->getPathInfo();
+    if (preg_match('#/wdb/([^/]+)#', $path, $matches)) {
+      $subsystem_name = $matches[1];
+    }
+  }
+
+  // Proceed only if we have identified a subsystem.
   if ($subsystem_name) {
     $new_site_name = '';
     $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');

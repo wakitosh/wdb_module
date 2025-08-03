@@ -8,6 +8,7 @@ use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Provides a 'WDB Subsystem Title' block.
@@ -42,13 +43,21 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
   protected $entityTypeManager;
 
   /**
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected $requestStack;
+
+  /**
    * Constructs a new SubsystemTitleBlock instance.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, RouteMatchInterface $route_match, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, RouteMatchInterface $route_match, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, RequestStack $request_stack) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->routeMatch = $route_match;
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entity_type_manager;
+    $this->requestStack = $request_stack;
   }
 
   /**
@@ -61,7 +70,8 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
       $plugin_definition,
       $container->get('current_route_match'),
       $container->get('config.factory'),
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('request_stack')
     );
   }
 
@@ -71,9 +81,23 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
   public function build() {
     $build = [];
     $title = '';
+    $subsystem_name = NULL;
 
-    // Get the subsystem machine name from the current URL route.
+    // --- FIX: More robust logic to determine the subsystem ---
+
+    // 1. First, try to get the subsystem from the route parameter, as it's the most reliable method.
     $subsystem_name = $this->routeMatch->getParameter('subsysname');
+
+    // 2. If the route parameter is not found, parse the URL path as a fallback.
+    // This covers pages like '/wdb/hdb/' where 'hdb' might not be a formal route parameter.
+    if (empty($subsystem_name)) {
+      $path = $this->requestStack->getCurrentRequest()->getPathInfo();
+      // Use a regular expression to find a pattern like '/wdb/anything/'.
+      if (preg_match('#/wdb/([^/]+)#', $path, $matches)) {
+        $subsystem_name = $matches[1];
+      }
+    }
+    // --- END OF FIX ---
 
     if ($subsystem_name) {
       // Find the subsystem taxonomy term to get its ID.
@@ -90,17 +114,12 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
 
     if (!empty($title)) {
       $build['title'] = [
-        // Using #markup is fine here as the title is sanitized on input.
-        // You can add a class for CSS styling.
         '#markup' => '<h1 class="subsystem-title">' . $title . '</h1>',
       ];
     }
 
-    // *** FIX: Add the URL path cache context. ***
     // This tells Drupal that the block's content is dependent on the URL,
-    // so it will generate a different cache entry for each page. This
-    // correctly handles cases where the block is empty on some pages and
-    // has a title on others.
+    // so it will generate a different cache entry for each page.
     $build['#cache']['contexts'][] = 'url.path';
 
     return $build;
