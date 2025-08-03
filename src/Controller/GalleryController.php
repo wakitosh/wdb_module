@@ -362,27 +362,44 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     return $build;
   }
 
+
   /**
-   * Redirects from a base gallery URL to the canonical source page.
+   * Builds the source information page when no page number is specified.
    *
    * @param string $subsysname
-   *   The machine name of the subsystem.
+   * The machine name of the subsystem.
    * @param string $source
-   *   The source identifier.
+   * The source identifier.
    *
-   * @return \Symfony\Component\HttpFoundation\RedirectResponse
-   *   A redirect response.
+   * @return array
+   * A render array for the source information page.
    */
-  public function redirectToSource(string $subsysname, string $source): RedirectResponse {
-    $wdb_source_entity = $this->loadWdbSource($source, $subsysname);
-    if ($wdb_source_entity) {
-      // Redirect to the canonical URL of the source entity.
-      $url = $wdb_source_entity->toUrl('canonical')->toString();
-      // A 301 redirect is good for SEO.
-      return new RedirectResponse($url, 301);
+  public function buildSourcePage($subsysname, $source) {
+    // Load the WdbSource entity using its identifier and subsystem.
+    $source_storage = $this->entityTypeManager()->getStorage('wdb_source');
+    $sources = $source_storage->loadByProperties(['source_identifier' => $source]);
+
+    $wdb_source_entity = NULL;
+    foreach ($sources as $source_entity) {
+      foreach ($source_entity->get('subsystem_tags')->referencedEntities() as $tag) {
+        if (strtolower($tag->getName()) === strtolower($subsysname)) {
+          $wdb_source_entity = $source_entity;
+          break 2;
+        }
+      }
     }
-    // Return 404 if not found.
-    throw new NotFoundHttpException();
+
+    if (!$wdb_source_entity) {
+      // If the source is not found, throw a 404 error.
+      throw new NotFoundHttpException();
+    }
+
+    // Use the entity's view builder to render it in the 'full' view mode.
+    // This is the standard Drupal way and respects the entity's display settings.
+    $view_builder = $this->entityTypeManager()->getViewBuilder('wdb_source');
+    $build = $view_builder->view($wdb_source_entity, 'full');
+
+    return $build;
   }
 
   // === Helper Methods ===

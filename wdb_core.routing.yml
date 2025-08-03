@@ -2,7 +2,7 @@
 # 1. Page Display Routes (Pages directly accessed by users)
 # ----------------------------------------------------------------
 
-# Individual source document page.
+# Individual source document page (canonical).
 wdb_core.source_canonical:
   path: '/wdb/source/{source_identifier}'
   defaults:
@@ -11,12 +11,12 @@ wdb_core.source_canonical:
   requirements:
     _permission: 'access content'
 
-# Gallery page redirect route.
-# Catches URLs without a page number.
-wdb_core.gallery_redirect:
+# Individual source document page.
+wdb_core.gallery_source_page:
   path: '/wdb/{subsysname}/gallery/{source}'
   defaults:
-    _controller: '\Drupal\wdb_core\Controller\GalleryController::redirectToSource'
+    _controller: '\Drupal\wdb_core\Controller\GalleryController::buildSourcePage'
+    _title: 'Source Details' # A default title, can be overridden in the controller.
   requirements:
     _permission: 'access content'
 

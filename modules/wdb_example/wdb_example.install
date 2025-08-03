@@ -220,7 +220,10 @@ function wdb_example_install() {
   }
 
   // Display a message with links to the sample page.
-  $source_url = Url::fromRoute('entity.wdb_source.canonical', ['wdb_source' => $source_entity->id()]);
+  $source_url = Url::fromRoute('wdb_core.gallery_source_page', [
+    'subsysname' => $subsystem_term->get('name')->value,
+    'source' => $source_entity->get('source_identifier')->value,
+  ]);
   $gallery_url = Url::fromRoute('wdb_core.gallery_page', [
     'subsysname' => $subsystem_term->get('name')->value,
     'source' => $source_entity->get('source_identifier')->value,
