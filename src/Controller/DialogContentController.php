@@ -2,6 +2,7 @@
 
 namespace Drupal\wdb_core\Controller;
 
+use Drupal\wdb_core\Entity\WdbLabel;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\wdb_core\Service\WdbDataService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -73,11 +74,11 @@ class DialogContentController extends ControllerBase implements ContainerInjecti
       return new JsonResponse(['error' => 'Missing uri parameter.'], 400);
     }
 
-    /** @var \Drupal\wdb_core\Entity\WdbLabel|null $wdb_label */
+    /** @var \Drupal\wdb_core\Entity\WdbLabel[] $wdb_labels */
     $wdb_labels = $this->entityTypeManager()->getStorage('wdb_label')->loadByProperties(['annotation_uri' => $annotation_uri]);
     $wdb_label = !empty($wdb_labels) ? reset($wdb_labels) : NULL;
 
-    if (!$wdb_label) {
+    if (!$wdb_label || !($wdb_label instanceof WdbLabel)) {
       return new JsonResponse(['error' => 'Annotation not found.'], 404);
     }
 
