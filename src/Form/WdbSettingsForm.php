@@ -44,7 +44,15 @@ class WdbSettingsForm extends ConfigFormBase {
 
     // --- Dynamically generate a settings tab for each subsystem ---
     $term_storage = $entity_type_manager->getStorage('taxonomy_term');
-    $tids = $term_storage->getQuery()->condition('vid', 'subsystem')->sort('weight')->accessCheck(FALSE)->execute();
+    
+    // --- FIX: Sort by term name (alphabetically) instead of weight. ---
+    $tids = $term_storage->getQuery()
+      ->condition('vid', 'subsystem')
+      ->sort('name')
+      ->accessCheck(FALSE)
+      ->execute();
+    // --- END OF FIX ---
+      
     $subsystem_terms = $term_storage->loadMultiple($tids);
 
     $form['subsystems'] = ['#type' => 'container', '#tree' => TRUE];
@@ -185,7 +193,6 @@ class WdbSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    // Save settings for each subsystem.
     $subsystems_values = $form_state->getValue('subsystems');
     if (is_array($subsystems_values)) {
       foreach ($subsystems_values as $term_id => $values) {

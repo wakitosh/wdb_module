@@ -53,12 +53,21 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state) {
+  public function buildForm(array $form, FormStateInterface $form_state, $subsysname = NULL) {
     $form['#attached']['library'][] = 'wdb_core/wdb_search';
 
     // 1. Get query parameters from the URL to set default values.
     $request = $this->getRequest();
     $params = $request->query->all();
+
+    // Handle the subsystem context from the URL.
+    $subsystem_tid = NULL;
+    if ($subsysname) {
+      $terms = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['vid' => 'subsystem', 'name' => $subsysname]);
+      if ($term = reset($terms)) {
+        $subsystem_tid = $term->id();
+      }
+    }
 
     // 2. Define form elements.
     $form['search_fieldset'] = [
@@ -70,7 +79,8 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
       '#type' => 'select',
       '#title' => $this->t('Subsystem'),
       '#options' => $this->getTaxonomyTermOptions('subsystem'),
-      '#default_value' => $params['subsystem'] ?? '',
+      // If a subsystem is passed via URL, set it as the default but keep it enabled.
+      '#default_value' => $subsystem_tid ?? ($params['subsystem'] ?? ''),
     ];
     $form['search_fieldset']['ref_filters']['lexical_category'] = [
       '#type' => 'select',

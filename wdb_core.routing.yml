@@ -78,10 +78,11 @@ wdb_core.text_download_page:
 
 # Search form page.
 wdb_core.search_form:
-  path: '/wdb/search'
+  # FIX: Add the {subsysname} parameter to the path.
+  path: '/wdb/{subsysname}/search'
   defaults:
     _form: '\Drupal\wdb_core\Form\WdbSearchForm'
-    _title: 'WDB Search'
+    _title: 'Search'
   requirements:
     _permission: 'access content'
 

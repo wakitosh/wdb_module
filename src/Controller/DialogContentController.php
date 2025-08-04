@@ -88,6 +88,7 @@ class DialogContentController extends ControllerBase implements ContainerInjecti
     $content = [
       '#theme' => 'wdb_annotation_info_content',
       '#data' => $data,
+      '#subsysname' => $subsysname,
     ];
 
     return new JsonResponse([

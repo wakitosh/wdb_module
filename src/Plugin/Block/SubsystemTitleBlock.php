@@ -85,6 +85,7 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
     $title = '';
     $link_url_string = '';
     $subsystem_name = NULL;
+    $config_id = NULL;
 
     $subsystem_name = $this->routeMatch->getParameter('subsysname');
     if (empty($subsystem_name)) {
@@ -108,15 +109,12 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
 
     if (!empty($title)) {
       if (!empty($link_url_string)) {
-        // --- FIX: Use fromUri for external URLs and fromUserInput for internal paths. ---
         try {
           $url = NULL;
           if (strpos($link_url_string, 'http://') === 0 || strpos($link_url_string, 'https://') === 0) {
-            // It's an external URL, so use fromUri.
             $url = Url::fromUri($link_url_string);
           }
           else {
-            // It's an internal path, so use fromUserInput.
             $url = Url::fromUserInput($link_url_string);
           }
 
@@ -126,7 +124,6 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
           ];
         }
         catch (\InvalidArgumentException $e) {
-          // If the URL is invalid, log the error and display the title as plain text.
           \Drupal::logger('wdb_core')->warning('Invalid URL provided for subsystem title link: @url', ['@url' => $link_url_string]);
           $build['title'] = [
             '#markup' => '<h1 class="subsystem-title">' . $this->t($title) . '</h1>',
@@ -134,7 +131,6 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
         }
       }
       else {
-        // If no URL, just display the title as plain text.
         $build['title'] = [
           '#markup' => '<h1 class="subsystem-title">' . $this->t($title) . '</h1>',
         ];
@@ -143,14 +139,11 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
 
     $build['#cache']['contexts'][] = 'url.path';
 
-    // --- FIX: Add the configuration cache tag. ---
-    // This tells Drupal that this block's output depends on a specific
-    // configuration object. If that config is changed, this block's cache
-    // will be automatically invalidated.
     if ($config_id) {
       $build['#cache']['tags'][] = 'config:' . $config_id;
     }
 
     return $build;
   }
+
 }

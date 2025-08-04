@@ -136,11 +136,12 @@
 
             {# Word Information #}
             <p>
-              {% set realized_form_url = url('wdb_core.search_form', {'realized_form': wu_detail.entity.realized_form.value}) %}
-              <strong>{{ 'Realized Form'|t }}:</strong> <a href="{{ realized_form_url }}" target="_blank">{{ wu_detail.entity.realized_form.value }}</a><br>
-              {% if wu_detail.word_info %}
-                <strong>{{ 'Basic Form'|t }}:</strong> <a href="{{ wu_detail.word_info.search_url }}" target="_blank">{{ wu_detail.word_info.basic_form|e }}</a><br>
-              {% endif %}
+            <strong>{{ 'Realized Form'|t }}:</strong> <a href="{{ wu_detail.realized_form_url }}" target="_blank">{{ wu_detail.entity.realized_form.value }}</a><br>
+          
+            {% if wu_detail.word_info %}
+              <strong>{{ 'Basic Form'|t }}:</strong> <a href="{{ wu_detail.word_info.search_url }}" target="_blank">{{ wu_detail.word_info.basic_form|e }}</a><br>
+            {% endif %}
+
               {% if wu_detail.meaning_info.explanation %}
                 <strong>{{ 'Meaning'|t }}:</strong> {{ wu_detail.meaning_info.explanation }}<br>
               {% endif %}

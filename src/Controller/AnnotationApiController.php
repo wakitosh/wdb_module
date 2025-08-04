@@ -326,19 +326,23 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
         $html_body_parts = [];
 
         $realized_form_value = $wu->get('realized_form')->value;
-        $realized_form_search_url = Url::fromRoute('wdb_core.search_form', [], ['query' => ['realized_form' => $realized_form_value], 'absolute' => TRUE])->toString();
+        $realized_form_search_url = Url::fromRoute('wdb_core.search_form', 
+          ['subsysname' => strtolower($subsysname)],
+          ['query' => ['realized_form' => $realized_form_value], 'absolute' => TRUE]
+        )->toString();
+
         $html_body_parts[] = "<strong>Realized Form:</strong> <a href=\"{$realized_form_search_url}\" target=\"_blank\">{$realized_form_value}</a>";
 
         if ($word) {
           $basic_form_value = $word->get('basic_form')->value;
-          $basic_form_search_url = Url::fromRoute('wdb_core.search_form', [], ['query' => ['basic_form' => $basic_form_value], 'absolute' => TRUE])->toString();
+          $basic_form_search_url = Url::fromRoute('wdb_core.search_form', ['subsysname' => strtolower($subsysname)], ['query' => ['basic_form' => $basic_form_value], 'absolute' => TRUE])->toString();
           $html_body_parts[] = "<strong>Basic Form:</strong> <a href=\"{$basic_form_search_url}\" target=\"_blank\">{$basic_form_value}</a>";
         }
 
         $lexical_category_term = $word ? $word->get('lexical_category_ref')->entity : NULL;
         if ($lexical_category_term) {
           $lc_value = $lexical_category_term->getName();
-          $lc_search_url = Url::fromRoute('wdb_core.search_form', [], ['query' => ['lexical_category' => $lexical_category_term->id()], 'absolute' => TRUE])->toString();
+          $lc_search_url = Url::fromRoute('wdb_core.search_form', ['subsysname' => strtolower($subsysname)], ['query' => ['lexical_category' => $lexical_category_term->id()], 'absolute' => TRUE])->toString();
           $html_body_parts[] = "<strong>Lexical Category:</strong> <a href=\"{$lc_search_url}\" target=\"_blank\">{$lc_value}</a>";
         }
 
@@ -355,7 +359,7 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
                 $sign_code = $sign->get('sign_code')->value;
                 $phone = $si->get('phone')->value;
                 $display_text = $phone ? "{$sign_code} [{$phone}]" : $sign_code;
-                $sign_search_url = Url::fromRoute('wdb_core.search_form', [], ['query' => ['sign' => $sign_code], 'absolute' => TRUE])->toString();
+                $sign_search_url = Url::fromRoute('wdb_core.search_form', ['subsysname' => strtolower($subsysname)], ['query' => ['sign' => $sign_code], 'absolute' => TRUE])->toString();
                 $sign_links[] = "<a href=\"{$sign_search_url}\" target=\"_blank\">{$display_text}</a>";
               }
             }

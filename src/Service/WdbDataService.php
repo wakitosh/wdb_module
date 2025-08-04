@@ -181,11 +181,31 @@ class WdbDataService {
    *   A structured data array for the annotation panel.
    */
   public function getAnnotationDetails(WdbLabel $wdb_label_entity, string $subsysname): array {
+    // --- FIX: Robusly determine the subsystem name. ---
+    // If the passed subsysname is empty, try to derive it from the entity
+    // to protect against issues in the calling controller.
+    if (empty($subsysname)) {
+      $page_entity = $wdb_label_entity->get('annotation_page_ref')->entity;
+      if ($page_entity) {
+        $source_entity = $page_entity->get('source_ref')->entity;
+        if ($source_entity) {
+          $subsystem_term = $source_entity->get('subsystem_tags')->entity;
+          if ($subsystem_term) {
+            $subsysname = $subsystem_term->getName();
+          }
+        }
+      }
+    }
+    // If we still don't have a subsystem name, we cannot proceed.
+    if (empty($subsysname)) {
+      $this->logger->error('Could not determine subsystem name when getting annotation details for label ID @id.', ['@id' => $wdb_label_entity->id()]);
+      return ['error_message' => $this->t('Could not determine the subsystem for the requested annotation.')];
+    }
+    // --- END OF FIX ---
+
     // 1. Initialize the data structure to be returned.
     $subsystem_config = $this->getSubsystemConfig($subsysname);
     if (!$subsystem_config) {
-      // In a real scenario, a custom exception might be better here.
-      // Returning an array with an error message for the controller to handle.
       return ['error_message' => $this->t('Subsystem configuration not found for "@subsys".', ['@subsys' => $subsysname])];
     }
 
@@ -280,7 +300,7 @@ class WdbDataService {
         'annotation_uri' => $label ? $label->get('annotation_uri')->value : NULL,
         'search_url' => Url::fromRoute(
           'wdb_core.search_form',
-          [],
+          ['subsysname' => strtolower($subsysname)],
           [
             'query' => ['sign' => $sign_code],
             'absolute' => TRUE,
@@ -298,7 +318,6 @@ class WdbDataService {
       $source_entity = $page_entity->get('source_ref')->entity;
       $subsys_config = $this->getSubsystemConfig($subsysname);
       if (!$subsys_config) {
-        // This should ideally not happen if checked in the parent method.
         return $si_data_item;
       }
       $image_identifier = $page_entity->getImageIdentifier();
@@ -356,7 +375,20 @@ class WdbDataService {
       'grammatical_categories' => [],
       'constituent_signs' => [],
       'thumbnail_data' => NULL,
+      // --- FIX: Add a placeholder for the new URL ---
+      'realized_form_url' => '',
     ];
+
+    // --- FIX: Generate the realized_form_url here in PHP ---
+    $realized_form_value = $wu_entity->get('realized_form')->value;
+    if (!empty($realized_form_value)) {
+      $wu_data_item['realized_form_url'] = Url::fromRoute(
+        'wdb_core.search_form',
+        ['subsysname' => strtolower($subsysname)],
+        ['query' => ['realized_form' => $realized_form_value], 'absolute' => TRUE]
+      )->toString();
+    }
+    // --- END OF FIX ---
 
     $wdb_wmn_entity = $wu_entity->get('word_meaning_ref')->entity;
     if ($wdb_wmn_entity) {
@@ -372,11 +404,8 @@ class WdbDataService {
           'word_code' => $wdb_w_entity->get('word_code')->value,
           'search_url' => Url::fromRoute(
             'wdb_core.search_form',
-            [],
-            [
-              'query' => ['basic_form' => $basic_form_value],
-              'absolute' => TRUE,
-            ]
+            ['subsysname' => strtolower($subsysname)],
+            ['query' => ['basic_form' => $basic_form_value], 'absolute' => TRUE]
           )->toString(),
         ];
         $lc_term = $wdb_w_entity->get('lexical_category_ref')->entity;
@@ -384,11 +413,8 @@ class WdbDataService {
           $wu_data_item['grammatical_categories']['lexical_category_name'] = $lc_term->getName();
           $wu_data_item['grammatical_categories']['lexical_category_search_url'] = Url::fromRoute(
             'wdb_core.search_form',
-            [],
-            [
-              'query' => ['lexical_category' => $lc_term->id()],
-              'absolute' => TRUE,
-            ]
+            ['subsysname' => strtolower($subsysname)],
+            ['query' => ['lexical_category' => $lc_term->id()], 'absolute' => TRUE]
           )->toString();
         }
       }
@@ -473,7 +499,7 @@ class WdbDataService {
             'polygon_points' => $polygon_points_for_sign,
             'search_url' => Url::fromRoute(
               'wdb_core.search_form',
-              [],
+              ['subsysname' => strtolower($subsysname)],
               [
                 'query' => ['sign' => $sign_code_value],
                 'absolute' => TRUE,

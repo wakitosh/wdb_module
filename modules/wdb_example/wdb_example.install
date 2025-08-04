@@ -26,7 +26,6 @@ function wdb_example_install() {
   // --- 1. Get existing taxonomy terms required for the sample data. ---
   $term_storage = $entity_type_manager->getStorage('taxonomy_term');
 
-  // *** FIX: Store loadByProperties result in a variable before passing to reset() to avoid notice. ***
   $demonstrative_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'demonstrative']);
   $adnominal_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'adnominal case marker']);
   $prefix_terms = $term_storage->loadByProperties(['vid' => 'lexical_category', 'name' => 'prefix']);
@@ -43,7 +42,6 @@ function wdb_example_install() {
     '係助詞' => reset($binding_particle_terms) ?: NULL,
   ];
 
-  // Check if all required terms exist.
   foreach ($pos_terms as $name => $term) {
     if (!$term) {
       $messenger->addError(t('Required taxonomy term not found for "@name". Please ensure core data is installed.', ['@name' => $name]));
@@ -81,13 +79,9 @@ function wdb_example_install() {
   ]);
   $source_entity->save();
 
-  // After saving the source, the hook_entity_update in wdb_example.module will
-  // automatically create pages 1, 2, and 3.
-
   // --- 4. Load all pages and update them with sample data. ---
   $page_storage = $entity_type_manager->getStorage('wdb_annotation_page');
 
-  // *** FIX: Add data for Page 1. ***
   $page1_entities = $page_storage->loadByProperties(['source_ref' => $source_entity->id(), 'page_number' => 1]);
   if ($page1_entity = reset($page1_entities)) {
     $page1_entity->set('page_name', '1ページ目');
@@ -97,7 +91,6 @@ function wdb_example_install() {
     $page1_entity->save();
   }
 
-  // *** FIX: Add data for Page 2. ***
   $page2_entities = $page_storage->loadByProperties(['source_ref' => $source_entity->id(), 'page_number' => 2]);
   if ($page2_entity = reset($page2_entities)) {
     $page2_entity->set('page_name', '2ページ目');
@@ -107,7 +100,6 @@ function wdb_example_install() {
     $page2_entity->save();
   }
 
-  // Load Page 3, which will be used to attach the sample annotations.
   $page_entities = $page_storage->loadByProperties([
     'source_ref' => $source_entity->id(),
     'page_number' => 3,
@@ -127,7 +119,6 @@ function wdb_example_install() {
   }
 
   // --- 5. Create sample word, sign, and annotation data (associating with page 3). ---
-  // This part of the code remains the same as it correctly uses $page_entity (which refers to page 3).
   $sample_data = [
     ['wu_id' => 'genji_1_1', 'realized' => 'いつれ', 'basic' => 'いづれ', 'pos' => '指示代名詞', 'chars' => ['い', 'づ', 'れ']],
     ['wu_id' => 'genji_1_2', 'realized' => 'の', 'basic' => 'の', 'pos' => '連体格', 'chars' => ['の']],
@@ -229,7 +220,10 @@ function wdb_example_install() {
     'source' => $source_entity->get('source_identifier')->value,
     'page' => $page_entity->get('page_number')->value,
   ]);
-  $search_url = Url::fromRoute('wdb_core.search_form');
+  // --- FIX: Add the 'subsysname' parameter to the search form URL. ---
+  $search_url = Url::fromRoute('wdb_core.search_form', [
+    'subsysname' => $subsystem_term->get('name')->value,
+  ]);
 
   $message_body = '<ul>';
   $message_body .= '<li>' . Link::fromTextAndUrl(t('View the sample gallery page'), $gallery_url)->toString() . '</li>';
