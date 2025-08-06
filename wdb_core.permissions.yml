@@ -82,6 +82,10 @@ view wdb gallery pages:
   title: 'View non-public WDB gallery pages'
   description: 'Allows users to view gallery pages for subsystems that are not configured for anonymous access.'
 
+access wdb search form:
+  title: 'Access WDB search form'
+  description: 'Allow users to access search form for subsystems that are not configured for anonymous access.'
+
 administer wdb configuration:
   title: 'Administer WDB Core configuration'
   description: 'Access the WDB Core settings page.'

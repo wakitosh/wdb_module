@@ -29,6 +29,8 @@ wdb_core.gallery_page:
   requirements:
     _custom_access: 'wdb_core.access_checker::access'
     page: \d+
+  options:
+    permission: 'view wdb gallery pages'
 
 # Editing page (OpenSeadragon + Annotorious Editor).
 wdb_core.annotation_edit_page:
@@ -78,13 +80,14 @@ wdb_core.text_download_page:
 
 # Search form page.
 wdb_core.search_form:
-  # FIX: Add the {subsysname} parameter to the path.
   path: '/wdb/{subsysname}/search'
   defaults:
     _form: '\Drupal\wdb_core\Form\WdbSearchForm'
     _title: 'Search'
   requirements:
-    _permission: 'access content'
+    _custom_access: '\Drupal\wdb_core\Access\WdbAccessCheck::access'
+  options:
+    permission: 'access wdb search form'
 
 # WDB module settings form.
 wdb_core.settings_form:

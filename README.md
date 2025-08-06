@@ -14,7 +14,7 @@ WDB is designed to transform digital image archives into structured, searchable,
 * **Granular Annotation:** Supports detailed polygon annotations for individual characters (signs). **Word polygons are automatically calculated from these character sets**, enabling precise linguistic analysis.
 * **Flexible Linguistic Data Import:** A batch import system for linguistic data using TSV files, complete with a rollback feature for safe data management.
 * **Template Generation:** Automatically generate TSV templates from morphological analysis results (currently supporting **Japanese formats like WebChaMaMe's "Chaki import format"**) or from existing data within the system, significantly lowering the barrier to entry.
-* **Dynamic Configuration & Access Control:** Manage all module and subsystem settings through a unified administrative UI. Configure whether to **make gallery pages public to anonymous users for each collection** (subsystem) of documents.
+* **Dynamic Configuration & Access Control:** Manage all module and subsystem settings through a unified administrative UI. Configure whether to **make gallery and search pages public to anonymous users for each collection** (subsystem) of documents.
 * **IIIF Presentation API v3 Compliant:** Automatically generates IIIF Presentation API v3 manifests, including word-level annotations with rich, linked-data-ready descriptions, ensuring interoperability with external viewers like Mirador 3\.
 * **Customizable Data Export:** Export linguistic data in **TEI/XML and RDF/XML formats**. **Templates for these formats can be edited directly within the administrative UI**, allowing for user-defined output structures.
 * **Deep Views Integration:** Full integration with Drupal's Views module allows site administrators to create completely customized search result pages and data listings without writing any code.
@@ -68,7 +68,7 @@ After installation, all WDB-related management pages are consolidated under the 
 2. **Configure the Subsystem:** Go to `WDB > Dashboard > Configuration > Module Settings`. In the tab for your new subsystem, configure the IIIF server details and access control settings.
    * **Important:** It is recommended to set the **IIIF Identifier Pattern** at this stage, before creating any `WDB Source` entities. This ensures that `image_identifier` values are generated correctly from the start. If you want to modify the `image_identifier` after creating the `WDB Source` entity (i.e., after the annotation page entity has been automatically created), enter the **IIIF Identifier Pattern** and click the **Apply pattern to existing pages in "{subsystem_name}"** button in the **Update Existing Pages** section.
    * **IIIF Server Prefix:** Do not URL-encode this value.
-   * **Allow anonymous access:** Check this to make the gallery pages for this subsystem public. Otherwise, only users with the "View non-public WDB gallery pages" permission can access them.
+   * **Allow anonymous access:** Check this to make the gallery and search pages for this subsystem public. Otherwise, users will need the "View non-public WDB gallery pages" or "Access WDB search form" permissions, respectively.
    * **Hull Concavity:** Controls the tightness of the auto-generated word polygon. A smaller value creates a tighter, more concave shape. However, `0` results in a convex hull.
 3. **Define a Source:** Go to `WDB > Dashboard > Content Management > Manage Sources` and create a new `WDB Source` entity. Select the subsystem you just created.
 4. **Update Annotation Pages:** When a new Source is created, Annotation Page entities are automatically generated based on the "Pages" field. Navigate to `WDB > Dashboard > Content Management > Manage Annotation Pages` to edit these pages and confirm the `image_identifier` has been generated correctly. You can also manually override it here if needed.
@@ -82,10 +82,10 @@ After installation, all WDB-related management pages are consolidated under the 
 
 To display a prominent title for each subsystem (e.g., "Genji Monogatari Database") independently of the main site name, WDB Core provides a dedicated block. This is the recommended way to show visitors which collection they are currently viewing.
 
-1. **Set the Title:** Go to `WDB > Dashboard > Configuration > Module Settings`. In each subsystem's tab, fill in the **Display Title** field with the full title you want to show for that collection.  
-2. **Place the Block:** Go to `Structure > Block layout` (`/admin/structure/block`). Click **Place block** in the region where you want the title to appear (e.g., Header or Content).  
-3. **Select the Block:** In the modal window, find and place the **WDB Subsystem Title** block.  
-4. **Configure the Block:** Uncheck the "Display title" option in the block's configuration form to prevent the block label from appearing.  
+1. **Set the Title:** Go to `WDB > Dashboard > Configuration > Module Settings`. In each subsystem's tab, fill in the **Display Title** field with the full title you want to show for that collection.
+2. **Place the Block:** Go to `Structure > Block layout` (`/admin/structure/block`). Click **Place block** in the region where you want the title to appear (e.g., Header or Content).
+3. **Select the Block:** In the modal window, find and place the **WDB Subsystem Title** block.
+4. **Configure the Block:** Uncheck the "Display title" option in the block's configuration form to prevent the block label from appearing.
 5. **Theme Integration (Recommended):** For the best user experience, it is recommended to hide the default site name in your theme's settings and use this block as the primary title on WDB pages. The block will only appear on pages that belong to a subsystem, so it will not interfere with other parts of your site.
 
 ## **7\. TSV File Format**
@@ -140,7 +140,7 @@ require 'json'
 # The full URL to your Drupal site's authorization API endpoint.
 DRUPAL_AUTH_ENDPOINT = "https://your.host.name/wdb/api/cantaloupe_auth"
 
-def authorize(options = {})
+def pre_authorize(options = {})
   # Allow requests for info.json unconditionally.
   return true if context['request_uri'].end_with?('info.json')
 
@@ -255,7 +255,7 @@ WDBは、デジタル化された画像アーカイブを、学術研究と公�
 * **詳細なアノテーション機能:** 個々の文字（`sign`）に対するポリゴン形式でのアノテーションをサポート。**単語のポリゴンは、これらの文字の集合から自動的に計算され**、精密な言語分析を可能にします。
 * **柔軟な言語データ投入:** **TSVファイルを用いた言語データ一括投入システム**。安全なデータ管理のためのロールバック機能も完備。
 * **テンプレート生成機能:** 形態素解析結果（現在は**Web茶まめ の「Chakiインポート形式」のような日本語フォーマットに対応**）や、システム内の既存データから、TSVテンプレートを自動生成。データ投入のハードルを大幅に下げます。
-* **動的な設定とアクセス制御:** モジュールとサブシステム（資料群）の全ての設定を、統一された管理画面から操作可能。**資料群ごとに、匿名ユーザーに対してギャラリーページを公開するかどうかを設定できます。**
+* **動的な設定とアクセス制御:** モジュールとサブシステム（資料群）の全ての設定を、統一された管理画面から操作可能。**資料群ごとに、匿名ユーザーに対してギャラリーページと検索フォームを公開するかどうかを設定できます。**
 * **IIIF Presentation API v3準拠:** 単語レベルのアノテーション（豊富なリンク情報付き）を含む、IIIF Presentation API v3準拠のマニフェストを自動生成し、Mirador 3のような外部ビューアとの相互運用性を保証します。
 * **カスタマイズ可能なデータエクスポート:** 言語データを**TEI/XMLおよびRDF/XML形式でエクスポート**できます。これらの**フォーマットのテンプレートは管理画面から直接編集でき**、ユーザーが自由に出力構造を定義できます。
 * **Viewsとの深い連携:** DrupalのViewsモジュールと完全に統合されており、サイト管理者はコードを書くことなく、完全にカスタマイズされた検索結果ページやデータ一覧を作成できます。
@@ -309,7 +309,7 @@ Composerを使用してモジュールをインストールすることを推奨
 2. **サブシステムの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。新しく作成したサブシステムのタブを開き、IIIF画像サーバの情報や資料の公開方法などを設定します。
    * **重要:** `image_identifier`を正しく自動生成するために、この段階で **IIIF Identifier Pattern** を設定することを推奨します。この設定は、`WDB Source`**エンティティを作成する前**に行ってください。`WDB Source`エンティティ作成後（すなわちアノテーションページエンティティが自動作成された後）に`image_identifier`を修正したい場合には、**IIIF Identifier Pattern**を入力した上で、**Update Existing Pages**セクションの**Apply pattern to existing pages in {subsystem_name} ボタン**をクリックしてください。
    * **IIIF Server Prefix:** URLエンコードは不要です。
-   * **Allow anonymous access:** これにチェックを入れると、このサブシステムのギャラリーページが匿名ユーザーに公開されます。チェックを外した場合、ギャラリーページを閲覧するには、ユーザーの権限設定で「View non-public WDB gallery pages」の権限が必要になります。初期状態では非公開です。
+   * **Allow anonymous access:** これにチェックを入れると、このサブシステムのギャラリーページと検索フォームが匿名ユーザーに公開されます。チェックを外した場合、それぞれ「View non-public WDB gallery pages」または「Access WDB search form」の権限が必要になります。初期状態では非公開です。
    * **Hull Concavity:** 文字の集合から単語のポリゴンを生成する際の、座標の密着度（凹みの大きさ）を制御します。値が小さいほど凹みが大きくなります（ただし、0で凸包）。
 3. **資料情報の定義:** `WDB > ダッシュボード > コンテンツ管理 > 資料の管理` に移動し、新しい`WDB Source`エンティティを作成します。先ほど作成したサブシステムを選択してください。
 4. **アノテーションページの更新:** 新しい資料を作成すると、そのページ数分のアノテーションページエンティティが自動生成されます。`WDB > ダッシュボード > コンテンツ管理 > アノテーションページの管理` に移動し、`image_identifier`が正しく生成されていることを確認します。必要であれば、ここで個別に値を上書きすることも可能です。
@@ -323,10 +323,10 @@ Composerを使用してモジュールをインストールすることを推奨
 
 各サブシステム（資料群）のタイトル（例: 「源氏物語データベース」）を、サイト全体のサイト名とは独立して表示するために、WDB Coreは専用のブロックを提供します。これは、訪問者に現在どの資料群を閲覧しているかを伝えるための推奨される方法です。
 
-1. **タイトルの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。各サブシステムのタブで、**Display Title** フィールドに、その資料群で表示したい正式なタイトルを入力します。  
-2. **ブロックの配置:** `サイト構築 > ブロックレイアウト` (`/admin/structure/block`) に移動します。タイトルを表示したい領域（例: ヘッダーやコンテンツ）の **ブロックを配置** ボタンをクリックします。  
-3. **ブロックの選択:** モーダルウィンドウで **WDB Subsystem Title** ブロックを探し、配置します。  
-4. **ブロックの設定:** ブロックの設定フォームで、「タイトルを表示」のチェックを外すと、ブロックのラベルが表示されず、\<h1\>タグで囲まれたタイトルだけが表示されるため、すっきりとします。  
+1. **タイトルの設定:** `WDB > ダッシュボード > 設定 > モジュール設定` に移動します。各サブシステムのタブで、**Display Title** フィールドに、その資料群で表示したい正式なタイトルを入力します。
+2. **ブロックの配置:** `サイト構築 > ブロックレイアウト` (`/admin/structure/block`) に移動します。タイトルを表示したい領域（例: ヘッダーやコンテンツ）の **ブロックを配置** ボタンをクリックします。
+3. **ブロックの選択:** モーダルウィンドウで **WDB Subsystem Title** ブロックを探し、配置します。
+4. **ブロックの設定:** ブロックの設定フォームで、「タイトルを表示」のチェックを外すと、ブロックのラベルが表示されず、\<h1\>タグで囲まれたタイトルだけが表示されるため、すっきりとします。
 5. **テーマとの連携（推奨）:** 最適なユーザー体験のためには、テーマの設定でデフォルトのサイト名を非表示にし、このブロックをWDB関連ページのメインタイトルとして使用することをお勧めします。このブロックは、サブシステムに属するページでのみ表示されるため、サイトの他の部分には影響を与えません。
 
 ## **7\. TSVファイルの各カラムの書式について**
@@ -359,7 +359,7 @@ Composerを使用してモジュールをインストールすることを推奨
 
 1. Cantaloupeに画像のリクエストが来ると、そのDelegateスクリプトが、このサブモジュールが提供する安全なAPIエンドポイント（`/wdb/api/cantaloupe_auth`）に`POST`リクエストを送信します。
 2. スクリプトは、ユーザーのブラウザのCookieと、リクエストされた画像のIdentifierをDrupalのAPIに送ります。
-3. Drupal APIは、受け取ったCookieを元にユーザーのセッションを確認し、そのユーザーが、画像が属するサブシステムの「非公開ギャラリーページの閲覧」権限を持っているかを検証します。
+3. Drupal APIは、受け取ったCookieを元にユーザーのセッションを確認し、そのユーザーが、画像が属するサブシステムの "View non-public WDB gallery pages" 権限を持っているかを検証します。
 4. Drupalは、簡単なJSON形式（`{"authorized": true/false}`）で検証結果を返します。
 5. Delegateスクリプトは、このレスポンスに基づいて、画像を配信するか、「アクセス拒否」エラーを返すかを決定します。
 
@@ -381,7 +381,7 @@ require 'json'
 # Drupalサイトの認証APIエンドポイントの完全なURL
 DRUPAL_AUTH_ENDPOINT = "https://your.host.name/wdb/api/cantaloupe_auth"
 
-def authorize(options = {})
+def pre_authorizeauthorize(options = {})
   # info.json へのリクエストは、無条件で許可する
   return true if context['request_uri'].end_with?('info.json')
 

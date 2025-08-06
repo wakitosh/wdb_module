@@ -71,7 +71,10 @@ class WdbAccessCheck implements AccessInterface, ContainerInjectionInterface {
    */
   public function access(AccountInterface $account, Route $route, string $subsysname = ''): AccessResult {
     if (empty($subsysname)) {
-      return AccessResult::neutral();
+      // If there's no subsystem context, fall back to a standard permission check.
+      // The permission is read from the route definition.
+      $permission = $route->getOption('permission') ?: 'access content';
+      return AccessResult::allowedIfHasPermission($account, $permission);
     }
 
     $subsystem_config = $this->wdbDataService->getSubsystemConfig($subsysname);
@@ -85,7 +88,10 @@ class WdbAccessCheck implements AccessInterface, ContainerInjectionInterface {
       $access_result = AccessResult::allowed();
     }
     else {
-      $access_result = AccessResult::allowedIfHasPermission($account, 'view wdb gallery pages');
+      // FIX: Get the required permission dynamically from the route's options.
+      // Fallback to a sensible default if not specified.
+      $permission = $route->getOption('permission') ?: 'access content';
+      $access_result = AccessResult::allowedIfHasPermission($account, $permission);
     }
 
     // 2. Then, add the configuration as a cacheable dependency.
