@@ -11,6 +11,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * Provides a 'WDB Subsystem Title' block.
@@ -81,6 +82,22 @@ class SubsystemTitleBlock extends BlockBase implements ContainerFactoryPluginInt
    * {@inheritdoc}
    */
   public function build() {
+    $request = $this->requestStack->getCurrentRequest();
+    $exception = $request->attributes->get('exception');
+
+    if ($exception instanceof HttpExceptionInterface) {
+      $status_code = $exception->getStatusCode();
+      if ($status_code == 403 || $status_code == 404) {
+        // --- FIX: Return an empty render array with cache contexts. ---
+        // This ensures the "empty" result is only cached for this specific
+        // error page URL, and doesn't affect other pages.
+        return [
+          '#cache' => [
+            'contexts' => ['url.path'],
+          ],
+        ];
+      }
+    }
 
     $build = [];
     $title = '';
