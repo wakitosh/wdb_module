@@ -35,8 +35,6 @@ WDB is designed to transform digital image archives into structured, searchable,
 
 ## **4\. Installation**
 
-It is recommended to install the module using Composer.
-
 1. Navigate to your Drupal project's root directory.
 2. Place the module directory in `/modules/custom`. *(Once published on Drupal.org, it can be installed via `composer require drupal/wdb_core`)*.
 3. Enable the main module and any desired sub-modules via the Drupal UI (`/admin/modules`) or Drush:
@@ -275,8 +273,6 @@ WDBは、デジタル化された画像アーカイブを、学術研究と公�
   * **IIIF画像サーバ（Cantaloupeを推奨）** （自身で画像を配信する場合）
 
 ## **4\. インストール**
-
-Composerを使用してモジュールをインストールすることを推奨します。
 
 1. Drupalプロジェクトのルートディレクトリに移動します。
 2. モジュールディレクトリを `/modules/custom` に配置してください。（将来的にDrupal.orgで公開された場合は `composer require drupal/wdb_core` でインストールできます。）
