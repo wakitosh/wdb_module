@@ -28,6 +28,18 @@
             gestureSettingsMouse: {
               clickToZoom: false,
             },
+            // Prevent accidental zoom on touch / pen similar to viewer JS.
+            gestureSettingsTouch: {
+              clickToZoom: false,
+              dblClickToZoom: false,
+            },
+            gestureSettingsPen: {
+              clickToZoom: false,
+              dblClickToZoom: false,
+            },
+            gestureSettingsUnknown: {
+              clickToZoom: false,
+            },
           });
 
           const anno = AnnotoriousOSD.createOSDAnnotator(viewer, {
@@ -36,8 +48,74 @@
           });
           anno.setDrawingTool('polygon');
           viewerElement.annotorious = anno;
+
+          // Track last primary pointer type to decide drawingMode (mouse: click, touch: drag).
+          let lastPointerType = 'mouse';
+          viewerElement.addEventListener('pointerdown', (ev) => {
+            if (ev.isPrimary) {
+              lastPointerType = ev.pointerType || 'mouse';
+            }
+          }, { passive: true });
+
+          // Helper to set drawing mode if API exists; fallback to internal config.
+          const setDesiredDrawingMode = (mode) => {
+            try {
+              if (anno.setDrawingMode) {
+                anno.setDrawingMode(mode);
+              }
+              else if (anno._config) {
+                anno._config.drawingMode = mode; // fallback (may depend on internal implementation)
+              }
+              // Flag on instance for reference.
+              anno.__wdbDrawingMode = mode;
+            } catch (e) {
+              console.debug('Failed to set drawing mode dynamically:', e);
+            }
+          };
+
+          // Mitigate unintended panning with pen in selection mode by disabling flick and (if supported) drag.
+          const applyPenSelectionPanMitigation = () => {
+            try {
+              if (!anno.isDrawingEnabled || (typeof anno.isDrawingEnabled === 'function' && !anno.isDrawingEnabled())) {
+                // Selection mode: reduce pen navigation sensitivity.
+                if (viewer.gestureSettingsPen) {
+                  viewer.gestureSettingsPen.flickEnabled = false;
+                  // Some OpenSeadragon builds support dragToPan; if present, disable for pen.
+                  if (Object.prototype.hasOwnProperty.call(viewer.gestureSettingsPen, 'dragToPan')) {
+                    viewer.gestureSettingsPen.dragToPan = false;
+                  }
+                }
+              } else {
+                // Drawing mode re-enable panning if we disabled it.
+                if (viewer.gestureSettingsPen) {
+                  if (Object.prototype.hasOwnProperty.call(viewer.gestureSettingsPen, 'dragToPan')) {
+                    viewer.gestureSettingsPen.dragToPan = true;
+                  }
+                }
+              }
+            } catch (e) {
+              // Silently ignore if API changes.
+            }
+          };
+          // Apply once initially.
+          applyPenSelectionPanMitigation();
+
           // --- Add custom drawing tool buttons to the toolbar ---
           const panelToolbar = document.getElementById('wdb-panel-toolbar');
+          // Inject a reusable style block (once) to disable selection when drawing.
+          if (!document.getElementById('wdb-no-select-style')) {
+            const styleTag = document.createElement('style');
+            styleTag.id = 'wdb-no-select-style';
+            styleTag.textContent = `
+              .wdb-no-select, .wdb-no-select * {
+                -webkit-user-select: none !important;
+                user-select: none !important;
+                -webkit-touch-callout: none !important;
+                -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+              }
+            `;
+            document.head.appendChild(styleTag);
+          }
           if (panelToolbar) {
             const createToolButton = (title, svgPath, toolName) => {
               const button = document.createElement('button');
@@ -72,24 +150,103 @@
               }
             };
 
+            // --- Pan suppression while drawing (touch/pen) ---
+            const originalPanState = {
+              panHorizontal: viewer.panHorizontal,
+              panVertical: viewer.panVertical,
+              gestureSettingsMouse: { ...viewer.gestureSettingsMouse },
+              gestureSettingsTouch: viewer.gestureSettingsTouch ? { ...viewer.gestureSettingsTouch } : null,
+              gestureSettingsPen: viewer.gestureSettingsPen ? { ...viewer.gestureSettingsPen } : null,
+              gestureSettingsUnknown: viewer.gestureSettingsUnknown ? { ...viewer.gestureSettingsUnknown } : null,
+            };
+            let panSuppressed = false;
+            const disableDragPan = (settings) => {
+              if (!settings) return;
+              if ('dragToPan' in settings) settings.dragToPan = false;
+              if ('flickEnabled' in settings) settings.flickEnabled = false;
+            };
+            const enableDragPan = (settings, original) => {
+              if (!settings || !original) return;
+              Object.keys(original).forEach(k => { settings[k] = original[k]; });
+            };
+            const suppressPanForDrawing = () => {
+              if (panSuppressed) return;
+              panSuppressed = true;
+              viewer.panHorizontal = false;
+              viewer.panVertical = false;
+              disableDragPan(viewer.gestureSettingsMouse);
+              disableDragPan(viewer.gestureSettingsTouch);
+              disableDragPan(viewer.gestureSettingsPen);
+              disableDragPan(viewer.gestureSettingsUnknown);
+            };
+            const restorePanAfterDrawing = () => {
+              if (!panSuppressed) return;
+              panSuppressed = false;
+              viewer.panHorizontal = originalPanState.panHorizontal;
+              viewer.panVertical = originalPanState.panVertical;
+              enableDragPan(viewer.gestureSettingsMouse, originalPanState.gestureSettingsMouse);
+              enableDragPan(viewer.gestureSettingsTouch, originalPanState.gestureSettingsTouch);
+              enableDragPan(viewer.gestureSettingsPen, originalPanState.gestureSettingsPen);
+              enableDragPan(viewer.gestureSettingsUnknown, originalPanState.gestureSettingsUnknown);
+            };
+
             // Click event for the select button.
             selectButton.addEventListener('click', (e) => {
               e.preventDefault();
               anno.setDrawingEnabled(false);
               // Update the UI state immediately.
               setActive('select');
+              applyPenSelectionPanMitigation();
+              restorePanAfterDrawing();
             });
 
             // Click event for the polygon button.
             polygonButton.addEventListener('click', (e) => {
               e.preventDefault();
               anno.setDrawingTool('polygon');
+              // Decide drawing mode based on last pointer type / environment.
+              const envPointer = lastPointerType;
+              const isTouchLike = envPointer === 'touch' || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+              const mode = isTouchLike ? 'drag' : 'click';
+              setDesiredDrawingMode(mode);
               anno.setDrawingEnabled(true);
               setActive('polygon');
+              // In drawing mode allow pen panning again if previously disabled.
+              applyPenSelectionPanMitigation();
+              suppressPanForDrawing();
+              // Disable text selection & native gestures during drawing.
+              if (!viewerElement.__origTouchAction) viewerElement.__origTouchAction = viewerElement.style.touchAction;
+              viewerElement.style.touchAction = 'none';
+              viewerElement.classList.add('wdb-drawing-active');
+              viewerElement.classList.add('wdb-no-select');
+              // Some OSD inner elements can still become selectable; attempt to mark them too.
+              const inner = viewerElement.querySelector('.openseadragon-canvas, canvas, .openseadragon-container');
+              if (inner) { inner.classList.add('wdb-no-select'); }
             });
 
             anno.on('setDrawingTool', tool => setActive(tool));
             setActive('select');
+            // If tool becomes polygon via other means, re-apply drawing mode heuristic.
+            anno.on && anno.on('setDrawingTool', (tool) => {
+              if (tool === 'polygon') {
+                const envPointer = lastPointerType;
+                const isTouchLike = envPointer === 'touch' || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+                const mode = isTouchLike ? 'drag' : 'click';
+                setDesiredDrawingMode(mode);
+                suppressPanForDrawing();
+              }
+              else if (tool === 'select') {
+                restorePanAfterDrawing();
+                // Restore touch-action when leaving drawing mode.
+                if (viewerElement.__origTouchAction !== undefined) {
+                  viewerElement.style.touchAction = viewerElement.__origTouchAction;
+                } else {
+                  viewerElement.style.touchAction = '';
+                }
+                viewerElement.classList.remove('wdb-drawing-active');
+                viewerElement.classList.remove('wdb-no-select');
+              }
+            });
           }
 
           // --- Create DOM elements for the custom editor and confirmation modal ---
@@ -214,17 +371,23 @@
 
             // If selection is cleared.
             if (!selection) {
-              // If the editor is open (due to an unintentional click), discard changes and close it.
+              // If deselection occurs while still in drawing mode (e.g. touch single-tap closure),
+              // do NOT auto-remove a brand new annotation; wait for createAnnotation / user action.
               if (currentAnnotation) {
                 const isNew = originalAnnotationBeforeEdit.bodies.length === 0;
-                if (isNew) {
-                  anno.removeAnnotation(currentAnnotation.id);
+                const drawingActive = (typeof anno.isDrawingEnabled === 'function') ? anno.isDrawingEnabled() : true;
+                if (!(isNew && drawingActive)) {
+                  // Proceed with prior cleanup logic only if not a fresh drawing being finalized.
+                  if (isNew) {
+                    anno.removeAnnotation(currentAnnotation.id);
+                  } else {
+                    anno.updateAnnotation(originalAnnotationBeforeEdit);
+                  }
+                  closeEditor();
                 }
-                else {
-                  anno.updateAnnotation(originalAnnotationBeforeEdit);
-                }
+              } else {
+                closeEditor();
               }
-              closeEditor();
               return;
             }
 
@@ -246,6 +409,52 @@
               openEditor(selection, element);
             }
           });
+
+          // --- Touch fallback: some environments fail to emit selectionChanged on first tap ---
+          viewerElement.addEventListener('pointerup', (ev) => {
+            if (ev.pointerType !== 'touch') return;
+            // Let Annotorious process the pointer then inspect current selection.
+            setTimeout(() => {
+              try {
+                if (currentAnnotation) return; // already open
+                if (typeof anno.getSelected === 'function') {
+                  const sel = anno.getSelected();
+                  if (sel && sel.length > 0) {
+                    const first = sel[0];
+                    const element = viewer.element.querySelector('.a9s-annotation.selected');
+                    if (element) {
+                      openEditor(first, element);
+                    }
+                  }
+                }
+              } catch (e) {
+                // silent
+              }
+            }, 10);
+          }, { passive: true });
+
+          // Reinforce no-selection on iOS during active drawing pointer interactions.
+          viewerElement.addEventListener('pointerdown', (ev) => {
+            if (ev.pointerType === 'touch') {
+              const drawing = (typeof anno.isDrawingEnabled === 'function') ? anno.isDrawingEnabled() : true;
+              if (drawing) {
+                viewerElement.classList.add('wdb-no-select');
+              }
+            }
+          }, { passive: true });
+
+          // --- Open editor immediately after annotation creation for touch (if not already opened) ---
+          if (anno.on) {
+            anno.on('createAnnotation', (annotation) => {
+              if (lastPointerType !== 'touch') return;
+              if (currentAnnotation) return; // already editing
+              // Attempt to locate the element; fallback to selected class.
+              const element = viewer.element.querySelector('.a9s-annotation.selected') || viewer.element.querySelector('.a9s-annotation:last-child');
+              if (element) {
+                openEditor(annotation, element);
+              }
+            });
+          }
 
           // --- API Integration ---
           viewer.addHandler('open', () => {
