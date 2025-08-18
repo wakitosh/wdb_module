@@ -51,9 +51,10 @@
           minZoomLevel: 0.5,
           homeFillsViewer: true,
           crossOriginPolicy: 'Anonymous',
-          gestureSettingsMouse: {
-            clickToZoom: false,
-          },
+          gestureSettingsMouse: { clickToZoom: false },
+          gestureSettingsTouch: { clickToZoom: false },
+          gestureSettingsPen: { clickToZoom: false }, // added to prevent pen tap zoom
+          gestureSettingsUnknown: { clickToZoom: false },
         });
 
         // If annotations exist, update the initial text in the panel.
@@ -85,6 +86,14 @@
 
         // Store the anno instance on the DOM element for later access.
         viewerElement.annotorious = anno;
+
+        // --- Selection handling helpers ---
+        let lastPanelAnnotationId = null;          // Last annotation whose details were loaded
+        let programmaticSelection = false;         // Guard so selectAnnotation handler ignores our own sets
+        const safeSetSelected = (id) => {
+          programmaticSelection = true;
+          try { anno.setSelected(id); } finally { setTimeout(() => { programmaticSelection = false; }, 0); }
+        };
 
         /**
          * Helper function to pan the viewer to the center of a given annotation.
@@ -149,11 +158,12 @@
                 if (firstSignItem.length) {
                   const firstSignAnnotationUri = firstSignItem.data('annotation-uri');
                   if (firstSignAnnotationUri && anno.getAnnotationById(firstSignAnnotationUri)) {
-                    anno.setSelected(firstSignAnnotationUri);
+                    safeSetSelected(firstSignAnnotationUri);
                     panToAnnotation(firstSignAnnotationUri);
                   }
                 }
               }
+              lastPanelAnnotationId = annotationUri;
             }
             else {
               panelContent.html($('<p>').text(Drupal.t('Error: Invalid data format received.')));
@@ -183,7 +193,7 @@
                 const highlightId = getHighlightAnnotationFromUrl();
                 if (highlightId) {
                   viewer.addOnceHandler('animation-finish', () => {
-                    anno.setSelected(highlightId);
+                    safeSetSelected(highlightId);
                     updateAnnotationPanel(osdSettings.context.subsysname, highlightId, false);
                   });
                   panToAnnotation(highlightId);
@@ -201,11 +211,23 @@
           }
         });
 
-        // Handle clicks on annotations in the viewer.
+        // Handle clicks on annotations in the viewer (mouse or synthesized). Keep lightweight duplicate guard.
         anno.on('clickAnnotation', (annotation) => {
-          if (annotation.id) {
+          if (annotation?.id && annotation.id !== lastPanelAnnotationId) {
             updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, true);
           }
+        });
+
+        // Unified: fires for mouse, touch, pen. Some Annotorious versions pass an array of selected annotations.
+        anno.on('selectAnnotation', (payload) => {
+          if (programmaticSelection) return;
+            let annotation = payload;
+            if (Array.isArray(payload)) {
+              annotation = payload[0];
+            }
+            if (annotation?.id && annotation.id !== lastPanelAnnotationId) {
+              updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, true);
+            }
         });
 
         // Show tooltip on mouse enter.
@@ -235,12 +257,45 @@
           }
         });
 
+        // --- Touch fallback -------------------------------------------------
+        // Some touch environments may not emit clickAnnotation/selectAnnotation reliably.
+        // Fallback: on a touch pointerup inside the viewer, inspect current selection.
+        viewerElement.addEventListener('pointerup', (ev) => {
+          if (ev.pointerType !== 'touch') return;
+          // Defer slightly to allow internal selection logic to run first.
+          setTimeout(() => {
+            try {
+              if (programmaticSelection) return;
+              if (typeof anno.getSelected === 'function') {
+                const selected = anno.getSelected();
+                if (selected && selected.length > 0) {
+                  const first = selected[0];
+                  const id = first?.id || first; // depending on implementation
+                  if (id && id !== lastPanelAnnotationId) {
+                    updateAnnotationPanel(osdSettings.context.subsysname, id, true);
+                  }
+                }
+              }
+            } catch (e) {
+              // Silent fallback
+            }
+          }, 10);
+        }, { passive: true });
+
         // === Click Listeners within the Panel (Event Delegation) ===
         const mainContainer = document.getElementById('wdb-main-container');
         if (mainContainer && !mainContainer.wdbListenerAttached) {
           mainContainer.wdbListenerAttached = true;
 
-          $(mainContainer).on('click touchend', '.nav-button-icon, .is-clickable', function (event) {
+          // Use Pointer Events (pointerup) to unify mouse/touch/pen. Fallback to click if unsupported.
+          const interactionEvent = window.PointerEvent ? 'pointerup' : 'click';
+          let lastInteractionTime = 0;
+          $(mainContainer).on(interactionEvent, '.nav-button-icon, .is-clickable', function (event) {
+            // Ignore secondary buttons or synthetic duplicates.
+            if (event.button && event.button !== 0) return;
+            const now = Date.now();
+            if (now - lastInteractionTime < 40) return; // simple debounce to avoid duplicate firing on some devices
+            lastInteractionTime = now;
             event.preventDefault();
 
             const clickedElement = $(this);
@@ -288,7 +343,7 @@
                           },
                         };
                         anno.addAnnotation(newAnnotation);
-                        anno.setSelected(newAnnotation.id);
+                        safeSetSelected(newAnnotation.id);
                         panToAnnotation(tempWordAnnotationId);
                       }
                     });
@@ -318,11 +373,15 @@
             }
             // 2. Handle individual sign clicks.
             else if (clickedElement.data('annotation-uri')) {
+              // Sign (thumbnail etc.) tapped/clicked in panel.
               clearTempWordAnnotation();
               const annotationId = clickedElement.data('annotation-uri');
               if (annotationId && anno.getAnnotationById(annotationId)) {
-                anno.setSelected(annotationId);
+                safeSetSelected(annotationId);
                 panToAnnotation(annotationId);
+                if (osdSettings?.context?.subsysname) {
+                  updateAnnotationPanel(osdSettings.context.subsysname, annotationId, false);
+                }
               }
             }
             // 3. Handle word thumbnail clicks.
