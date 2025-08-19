@@ -33,6 +33,13 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
   protected ClientFactory $httpClientFactory;
 
   /**
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected $requestStack;
+
+  /**
    * Constructs a new IiifV3ManifestController object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -55,12 +62,16 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    return new static(
+    $instance = new static(
       $container->get('entity_type.manager'),
       $container->get('config.factory'),
       $container->get('wdb_core.data_service'),
       $container->get('http_client_factory')
     );
+    if ($container->has('request_stack')) {
+      $instance->requestStack = $container->get('request_stack');
+    }
+    return $instance;
   }
 
   /**
@@ -80,6 +91,7 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
     if (empty($source_entities)) {
       throw new NotFoundHttpException();
     }
+    /** @var \Drupal\wdb_core\Entity\WdbSource $source_entity */
     $source_entity = reset($source_entities);
 
     $manifest_uri = Url::fromRoute('wdb_core.iiif_manifest_v3', ['subsysname' => $subsysname, 'source' => $source], ['absolute' => TRUE])->toString();
@@ -110,7 +122,97 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
       $manifest['viewingDirection'] = $page_navigation;
     }
 
-    $image_ext = ltrim($subsys_config->get('iiif_fileExt') ?? 'jpg', '.');
+    // Optional: rights (license), attribution, and logo based on subsystem
+    // config.
+    if ($license = $subsys_config->get('iiif_license')) {
+      // IIIF Presentation API 3 uses the 'rights' property for license URI.
+      $manifest['rights'] = $license;
+    }
+
+    if ($attribution = $subsys_config->get('iiif_attribution')) {
+      // Use requiredStatement with a standard Attribution label.
+      $manifest['requiredStatement'] = [
+        'label' => ['en' => ['Attribution']],
+        'value' => ['en' => [$attribution]],
+      ];
+    }
+
+    if ($logo_url = $subsys_config->get('iiif_logo')) {
+      // Simple media type inference from extension (fallback image/png).
+      $ext = strtolower(pathinfo(parse_url($logo_url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+      $mime_map = [
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'svg' => 'image/svg+xml',
+        'webp' => 'image/webp',
+      ];
+      $format = $mime_map[$ext] ?? 'image/png';
+
+      // In IIIF v3 branding is expressed via provider[].logo[]. If provider
+      // absent, create a minimal one using display_title if available.
+      if (!isset($manifest['provider'])) {
+        $display_title = $subsys_config->get('display_title');
+        $provider_id = $subsys_config->get('display_title_link');
+        if (!$provider_id) {
+          // Fallback to front page if no explicit link configured.
+          try {
+            $provider_id = Url::fromRoute('<front>', [], ['absolute' => TRUE])->toString();
+          }
+          catch (\Exception $e) {
+            // Final fallback: use manifest URI.
+            $provider_id = $manifest_uri;
+          }
+        }
+        // Ensure provider_id is absolute (IIIF requires URI).
+        if ($provider_id && !preg_match('/^https?:\/\//i', $provider_id)) {
+          if ($this->requestStack && ($req = $this->requestStack->getCurrentRequest())) {
+            $base = $req->getSchemeAndHttpHost();
+            $provider_id = rtrim($base, '/') . '/' . ltrim($provider_id, '/');
+          }
+        }
+        $provider = [
+          'id' => $provider_id,
+          'type' => 'Agent',
+          'label' => $display_title ? ['en' => [$display_title]] : ['en' => ['Provider']],
+          'logo' => [
+            [
+              'id' => $logo_url,
+              'type' => 'Image',
+              'format' => $format,
+            ],
+          ],
+        ];
+        $manifest['provider'] = [$provider];
+      }
+      elseif (isset($manifest['provider'][0])) {
+        // Ensure provider has an id if one was previously created without it.
+        if (!isset($manifest['provider'][0]['id'])) {
+          $fallback_id = $subsys_config->get('display_title_link') ?: $manifest_uri;
+          if ($fallback_id && !preg_match('/^https?:\/\//i', $fallback_id)) {
+            if ($this->requestStack && ($req = $this->requestStack->getCurrentRequest())) {
+              $base = $req->getSchemeAndHttpHost();
+              $fallback_id = rtrim($base, '/') . '/' . ltrim($fallback_id, '/');
+            }
+          }
+          $manifest['provider'][0]['id'] = $fallback_id;
+        }
+        if (!isset($manifest['provider'][0]['logo'])) {
+          $manifest['provider'][0]['logo'] = [];
+        }
+        $manifest['provider'][0]['logo'][] = [
+          'id' => $logo_url,
+          'type' => 'Image',
+          'format' => $format,
+        ];
+      }
+    }
+
+    // Determine desired IIIF delivered image file extension; currently we keep
+    // IIIF Image API canonical default (jpg) for delivered tiles and thumbs.
+    // (Extensible if future formats are required.)
+    $image_ext = 'jpg';
 
     foreach ($all_pages as $page_entity) {
       $image_identifier = $page_entity->getImageIdentifier();
@@ -129,7 +231,13 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
         $height = $info_data['height'] ?? 2000;
       }
       catch (\Exception $e) {
-        $this->getLogger('wdb_core')->error('Failed to fetch info.json for @url: @message', ['@url' => $info_json_url, '@message' => $e->getMessage()]);
+        $this->getLogger('wdb_core')->error(
+          'Failed to fetch info.json for @url: @message',
+          [
+            '@url' => $info_json_url,
+            '@message' => $e->getMessage(),
+          ]
+        );
         // Use fallback dimensions on failure.
         $width = 2000;
         $height = 2000;
@@ -148,10 +256,10 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
       $image_service_uri = $iiif_base_url . '/' . rawurlencode($image_identifier);
 
       // Define the URI for the actual image content to be displayed.
-      $image_content_uri = $image_service_uri . '/full/max/0/default.jpg';
+      $image_content_uri = $image_service_uri . '/full/max/0/default.' . $image_ext;
 
       // Generate the thumbnail image URL (150px width, auto height).
-      $thumbnail_image_uri = $image_service_uri . '/full/150,/0/default.jpg';
+      $thumbnail_image_uri = $image_service_uri . '/full/150,/0/default.' . $image_ext;
 
       $canvas = [
         'id' => $canvas_uri,
@@ -211,6 +319,23 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
         ],
       ];
       $manifest['items'][] = $canvas;
+    }
+
+    // Normalize provider IDs to absolute URLs (in case request stack was not
+    // available during provider construction or a relative path was stored).
+    if (!empty($manifest['provider']) && is_array($manifest['provider'])) {
+      $scheme = parse_url($manifest_uri, PHP_URL_SCHEME);
+      $host = parse_url($manifest_uri, PHP_URL_HOST);
+      $port = parse_url($manifest_uri, PHP_URL_PORT);
+      if ($scheme && $host) {
+        $base = $scheme . '://' . $host . ($port ? ':' . $port : '');
+        foreach ($manifest['provider'] as &$prov) {
+          if (isset($prov['id']) && is_string($prov['id']) && !preg_match('/^https?:\/\//i', $prov['id'])) {
+            $prov['id'] = rtrim($base, '/') . '/' . ltrim($prov['id'], '/');
+          }
+        }
+        unset($prov);
+      }
     }
 
     $response = new JsonResponse($manifest);
