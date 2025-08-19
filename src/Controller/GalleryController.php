@@ -15,7 +15,7 @@ use Drupal\wdb_core\Entity\WdbSource;
 use Drupal\wdb_core\Entity\WdbAnnotationPage;
 use Drupal\wdb_core\Service\WdbDataService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -46,6 +46,13 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
   protected WdbDataService $wdbDataService;
 
   /**
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected RequestStack $requestStack;
+
+  /**
    * Constructs a new GalleryController object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -60,6 +67,8 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
    *   The HTTP client factory.
    * @param \Drupal\wdb_core\Service\WdbDataService $wdbDataService
    *   The WDB data service.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The request stack service.
    */
   public function __construct(
     EntityTypeManagerInterface $entity_type_manager,
@@ -68,6 +77,7 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     UrlGeneratorInterface $url_generator,
     ClientFactory $http_client_factory,
     WdbDataService $wdbDataService,
+    RequestStack $request_stack,
   ) {
     $this->entityTypeManager = $entity_type_manager;
     $this->configFactory = $config_factory;
@@ -75,6 +85,7 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     $this->urlGenerator = $url_generator;
     $this->httpClientFactory = $http_client_factory;
     $this->wdbDataService = $wdbDataService;
+    $this->requestStack = $request_stack;
   }
 
   /**
@@ -88,6 +99,7 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
       $container->get('url_generator'),
       $container->get('http_client_factory'),
       $container->get('wdb_core.data_service'),
+      $container->get('request_stack'),
     );
   }
 
@@ -140,15 +152,6 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     if (!$wdb_annotation_page_entity) {
       throw new NotFoundHttpException();
     }
-    $image_identifier = $wdb_annotation_page_entity->getImageIdentifier();
-    if (empty($image_identifier)) {
-      return [
-        '#markup' => $this->t('The IIIF Image Identifier for this page has not been set, and no generation pattern is configured for the subsystem. Please configure it in the <a href=":url">module settings</a>.', [
-          ':url' => Url::fromRoute('wdb_core.settings_form')->toString(),
-        ]),
-      ];
-    }
-
     $label_count = $this->entityTypeManager()->getStorage('wdb_label')->getQuery()
       ->condition('annotation_page_ref', $wdb_annotation_page_entity->id())
       ->accessCheck(FALSE)
@@ -169,14 +172,8 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
       throw new NotFoundHttpException('IIIF configuration is incomplete for this subsystem.');
     }
 
+    // Image identifier already validated above when loading annotation page.
     $image_identifier = $wdb_annotation_page_entity->getImageIdentifier();
-    if (empty($image_identifier)) {
-      return [
-        '#markup' => $this->t('The IIIF Image Identifier for this page has not been set, and no generation pattern is configured for the subsystem. Please configure it in the <a href=":url">module settings</a>.', [
-          ':url' => Url::fromRoute('wdb_core.settings_form')->toString(),
-        ]),
-      ];
-    }
 
     $info_json_url = $iiif_base_url . '/' . rawurlencode($image_identifier) . '/info.json';
     $page_navigation = $subsys_config->get('pageNavigation') ?? 'left-to-right';
@@ -287,7 +284,8 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
       'defaultZoomLevel' => 0,
       'toolbarUrls' => $toolbar_urls,
       'subsystemConfig' => [
-        'hullConcavity' => (int) $subsys_config->get('hullConcavity') ?? 20,
+          // Use default (20) only when config value is NULL.
+        'hullConcavity' => (int) ($subsys_config->get('hullConcavity') ?? 20),
       ],
       'hasAnnotations' => $has_annotations,
     ];
@@ -344,7 +342,11 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
             ],
             '#markup' => $this->t('Full Text'),
           ],
-          'content' => ['#type' => 'container', '#attributes' => ['id' => 'wdb-full-text-content'], '#markup' => '<p>' . $this->t('Loading full text...') . '</p>'],
+          'content' => [
+            '#type' => 'container',
+            '#attributes' => ['id' => 'wdb-full-text-content'],
+            '#markup' => '<p>' . $this->t('Loading full text...') . '</p>',
+          ],
         ],
       ],
     ];
@@ -362,29 +364,33 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     return $build;
   }
 
-
   /**
    * Builds the source information page when no page number is specified.
    *
    * @param string $subsysname
-   * The machine name of the subsystem.
+   *   The machine name of the subsystem.
    * @param string $source
-   * The source identifier.
+   *   The source identifier.
    *
    * @return array
-   * A render array for the source information page.
+   *   A render array for the source information page.
    */
-  public function buildSourcePage($subsysname, $source) {
+  public function buildSourcePage(string $subsysname, string $source): array {
     // Load the WdbSource entity using its identifier and subsystem.
     $source_storage = $this->entityTypeManager()->getStorage('wdb_source');
     $sources = $source_storage->loadByProperties(['source_identifier' => $source]);
 
     $wdb_source_entity = NULL;
     foreach ($sources as $source_entity) {
-      foreach ($source_entity->get('subsystem_tags')->referencedEntities() as $tag) {
-        if (strtolower($tag->getName()) === strtolower($subsysname)) {
-          $wdb_source_entity = $source_entity;
-          break 2;
+      /** @var \Drupal\wdb_core\Entity\WdbSource $source_entity */
+      $field = $source_entity->get('subsystem_tags');
+      if ($field && !$field->isEmpty()) {
+        foreach ($field as $item) {
+          $tag_entity = $item->entity;
+          if ($tag_entity && strtolower($tag_entity->getName()) === strtolower($subsysname)) {
+            $wdb_source_entity = $source_entity;
+            break 2;
+          }
         }
       }
     }
@@ -393,16 +399,16 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
       // If the source is not found, throw a 404 error.
       throw new NotFoundHttpException();
     }
-
-    // Use the entity's view builder to render it in the 'full' view mode.
-    // This is the standard Drupal way and respects the entity's display settings.
+    // Use entity view builder for 'full' mode (respects display settings).
     $view_builder = $this->entityTypeManager()->getViewBuilder('wdb_source');
     $build = $view_builder->view($wdb_source_entity, 'full');
 
     return $build;
   }
 
-  // === Helper Methods ===
+  /**
+   * Helper methods.
+   */
 
   /**
    * Helper to load all page entities for a source.
@@ -438,10 +444,14 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
     $source_storage = $this->entityTypeManager()->getStorage('wdb_source');
     $sources = $source_storage->loadByProperties(['source_identifier' => $source_identifier]);
     $wdb_source_entity = reset($sources);
-    if ($wdb_source_entity) {
-      foreach ($wdb_source_entity->get('subsystem_tags')->referencedEntities() as $tag) {
-        if (strtolower($tag->getName()) === strtolower($subsysname)) {
-          return $wdb_source_entity;
+    if ($wdb_source_entity instanceof WdbSource) {
+      $field = $wdb_source_entity->get('subsystem_tags');
+      if ($field && !$field->isEmpty()) {
+        foreach ($field as $item) {
+          $tag_entity = $item->entity;
+          if ($tag_entity && strtolower($tag_entity->getName()) === strtolower($subsysname)) {
+            return $wdb_source_entity;
+          }
         }
       }
     }
@@ -481,7 +491,7 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
    *   The absolute manifest URI.
    */
   private function getManifestUri(WdbSource $wdb_source_entity, string $subsysname): string {
-    $request = \Drupal::request();
+    $request = $this->requestStack->getCurrentRequest();
     $source_identifier = $wdb_source_entity->get('source_identifier')->value;
     return $request->getSchemeAndHttpHost() . '/wdb/' . $subsysname . '/gallery/' . $source_identifier . '/manifest';
   }
@@ -500,7 +510,7 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
   private function getCanvasUri(WdbAnnotationPage $page_entity, string $manifest_id_uri_base): string {
     if ($page_entity->hasField('canvas_identifier_fragment') && !$page_entity->get('canvas_identifier_fragment')->isEmpty()) {
       $fragment = $page_entity->get('canvas_identifier_fragment')->value;
-      return \Drupal::request()->getSchemeAndHttpHost() . $fragment;
+      return $this->requestStack->getCurrentRequest()->getSchemeAndHttpHost() . $fragment;
     }
     $page_identifier = $page_entity->get('page_number')->value;
     return rtrim($manifest_id_uri_base, '/') . '/canvas/' . $page_identifier;

@@ -68,6 +68,7 @@ services:
       - '@url_generator'
       - '@http_client_factory'
       - '@wdb_core.data_service'
+      - '@request_stack'
     tags:
       - { name: controller.service_arguments }
 
