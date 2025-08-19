@@ -29,20 +29,29 @@
 }
 
 .wdb-editor-popup .form-actions {
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
-
-.wdb-editor-popup .button {
-  margin-left: 10px;
+.wdb-editor-popup .form-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-
+.wdb-editor-popup .form-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.wdb-editor-popup .button { margin: 0; }
 .wdb-editor-popup .button.delete {
-  float: left; /* Position the delete button to the left */
-  margin-left: 0;
-  margin-right: 10px;
+  margin: 0;
+  padding: 2px 4px;
 }
 .wdb-editor-popup .button.delete svg {
-  stroke: #dc3545; /* Red color */
+  stroke: #dc3545;
   stroke-width: 2px;
   width:24px;
   height:24px;
