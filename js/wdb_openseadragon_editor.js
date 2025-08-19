@@ -138,9 +138,12 @@
 
             const selectButton = createToolButton(Drupal.t('Select'), ICONS.select, 'select');
             const polygonButton = createToolButton(Drupal.t('Draw Polygon'), ICONS.polygon, 'polygon');
-
-            panelToolbar.prepend(polygonButton);
-            panelToolbar.prepend(selectButton);
+            // Order classes align with toolbar ordering spec.
+            polygonButton.classList.add('order-draw');
+            selectButton.classList.add('order-select');
+            // Append so existing view/edit + prev/next + pager appear before them; CSS order values place them correctly.
+            panelToolbar.appendChild(polygonButton);
+            panelToolbar.appendChild(selectButton);
 
             const setActive = (tool) => {
               panelToolbar.querySelectorAll('[data-tool]').forEach(btn => btn.classList.remove('is-active'));
@@ -257,9 +260,13 @@
               <textarea placeholder="Enter label..."></textarea>
             </div>
             <div class="form-actions">
-              <button class="button delete" data-action="delete" title="Delete"><svg viewBox="0 0 48 48"><defs><style> .a {fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2px; }</style></defs><line class="a" x1="9" y1="12" x2="39" y2="12"/><polyline class="a" points="17 12 20 8 28 8 31 12"/><polyline class="a" points="36 16 34.222 40 13.778 40 12 16"/><g><line class="a" x1="24" y1="18" x2="24" y2="32"/><line class="a" x1="30" y1="18" x2="30" y2="32"/><line class="a" x1="18" y1="18" x2="18" y2="32"/></g></svg></button>
-              <button class="button button--danger" data-action="cancel">Cancel</button>
-              <button class="button button--primary" data-action="save">OK</button>
+              <div class="form-actions-left">
+                <button class="button delete" data-action="delete" title="Delete"><svg viewBox="0 0 48 48"><defs><style> .a {fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2px; }</style></defs><line class="a" x1="9" y1="12" x2="39" y2="12"/><polyline class="a" points="17 12 20 8 28 8 31 12"/><polyline class="a" points="36 16 34.222 40 13.778 40 12 16"/><g><line class="a" x1="24" y1="18" x2="24" y2="32"/><line class="a" x1="30" y1="18" x2="30" y2="32"/><line class="a" x1="18" y1="18" x2="18" y2="32"/></g></svg></button>
+              </div>
+              <div class="form-actions-right">
+                <button class="button button--danger" data-action="cancel">Cancel</button>
+                <button class="button button--primary" data-action="save">OK</button>
+              </div>
             </div>
           `;
           document.body.appendChild(editorElement);
@@ -305,6 +312,16 @@
             currentAnnotation = null;
             originalAnnotationBeforeEdit = null;
           };
+
+          // ESC キーでポップアップを閉じる
+          document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+              if (editorElement.style.display === 'block') {
+                e.preventDefault();
+                closeEditor();
+              }
+            }
+          });
 
           saveButton.addEventListener('click', () => {
             if (currentAnnotation) {
