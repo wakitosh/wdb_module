@@ -21,11 +21,9 @@ class WdbWordUnitListBuilder extends EntityListBuilder {
   public function buildHeader() {
     // Defines the table header for the entity list.
     $header['id'] = $this->t('ID');
-    $header['original_word_unit_identifier'] = $this->t('Original ID');
-    $header['source_ref'] = $this->t('Source');
+    $header['annotation_page_refs'] = $this->t('Page Occurrences');
     $header['realized_form'] = $this->t('Realized Form');
     $header['word_sequence'] = $this->t('Sequence');
-    $header['annotation_page_refs'] = $this->t('Page Occurrences');
     $header['word_meaning_ref'] = $this->t('Word Meaning');
     $header['person_ref'] = $this->t('Person');
     $header['gender_ref'] = $this->t('Gender');
@@ -47,20 +45,6 @@ class WdbWordUnitListBuilder extends EntityListBuilder {
     /** @var \Drupal\wdb_core\Entity\WdbWordUnit $entity */
     // Defines the data for each row of the table.
     $row['id'] = $entity->id();
-    $row['original_word_unit_identifier'] = $entity->get('original_word_unit_identifier')->value;
-
-    // Get the referenced WdbSource entity.
-    $source_entity = $entity->get('source_ref')->entity;
-    if ($source_entity instanceof WdbSource) {
-      $row['source_ref'] = $source_entity->label();
-    }
-    else {
-      $target_id = $entity->get('source_ref')->target_id;
-      $row['source_ref'] = $this->t('Error: Source (ID: @id) not found.', ['@id' => $target_id ?? 'N/A']);
-    }
-
-    $row['realized_form'] = $entity->get('realized_form')->value;
-    $row['word_sequence'] = $entity->get('word_sequence')->value;
 
     // Get the labels of all referenced annotation pages.
     $page_entities = $entity->get('annotation_page_refs')->referencedEntities();
@@ -70,6 +54,9 @@ class WdbWordUnitListBuilder extends EntityListBuilder {
       $page_labels[] = $page_entity->label();
     }
     $row['annotation_page_refs'] = !empty($page_labels) ? implode(', ', $page_labels) : $this->t('None');
+
+    $row['realized_form'] = $entity->get('realized_form')->value;
+    $row['word_sequence'] = $entity->get('word_sequence')->value;
 
     // Get the referenced WdbWordMeaning entity.
     $word_meaning_entity = $entity->get('word_meaning_ref')->entity;

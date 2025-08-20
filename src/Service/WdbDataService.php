@@ -24,6 +24,7 @@ use Drupal\wdb_core\Lib\HullJsPhp\HullPHP;
 class WdbDataService {
   use StringTranslationTrait;
 
+
   /**
    * The entity type manager.
    *

@@ -160,8 +160,6 @@ class WdbDataImporterService {
     }
   }
 
-  // === Helper Methods ===
-
   /**
    * Finds an existing taxonomy term by name, or creates one.
    *
@@ -502,12 +500,54 @@ class WdbDataImporterService {
     $storage = $this->entityTypeManager->getStorage('wdb_sign_function');
     // Normalize to empty string (no NULL) for uniqueness consistency.
     $normalized_fn = $function_name === '' ? '' : $function_name;
+    // IMPORTANT: WdbSignFunction preSave() overrides langcode to the sign's
+    // langcode. If we search with the *import* langcode (which may differ),
+    // we will fail to find an existing function and create a duplicate.
+    // Therefore derive the effective langcode from the sign entity first.
+    $effective_langcode = $sign_entity->language()->getId() ?: $langcode;
+    // Special handling: when function_name is blank we must treat existing
+    // rows where the field storage may persist NULL instead of '' (Field API
+    // often stores empty simple fields as NULL). A lookup with an empty
+    // string won't match NULL rows, so we first manually scan
+    // candidates by sign + langcode and pick one with empty value.
+    if ($normalized_fn === '') {
+      $candidate_ids = $storage->getQuery()
+        ->condition('sign_ref', $sign_entity->id())
+        ->condition('langcode', $effective_langcode)
+        ->accessCheck(FALSE)
+        ->range(0, 10)
+        ->execute();
+      if ($candidate_ids) {
+        $candidates = $storage->loadMultiple($candidate_ids);
+        foreach ($candidates as $cand) {
+          if ($cand instanceof WdbSignFunction) {
+            $val = $cand->get('function_name')->value;
+            if ($val === '' || $cand->get('function_name')->isEmpty()) {
+              // Reuse existing blank function.
+              return $cand;
+            }
+          }
+        }
+      }
+    }
     $lookup = [
       'sign_ref' => $sign_entity->id(),
       'function_name' => $normalized_fn,
-      'langcode' => $langcode,
+      'langcode' => $effective_langcode,
     ];
     $entities = $storage->loadByProperties($lookup);
+    // Fallback: For blank function_name reuse any existing
+    // (regardless of langcode) because language will be
+    // normalized to the sign's langcode anyway.
+    if (!$entities && $normalized_fn === '') {
+      $fallback = $storage->loadByProperties([
+        'sign_ref' => $sign_entity->id(),
+        'function_name' => '',
+      ]);
+      if ($fallback) {
+        $entities = $fallback;
+      }
+    }
     if ($entities) {
       $entity = reset($entities);
       /**

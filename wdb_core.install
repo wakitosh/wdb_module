@@ -283,3 +283,173 @@ function wdb_core_update_10002() {
 /**
  * Strip HTML from existing rich-text values in description / explanation fields.
  */
+
+/**
+ * Add a composite unique index for WdbSignFunction.
+ *
+ * Ensures database-level enforcement matching the application-level
+ * WdbCompositeUnique validator (sign_ref + function_name) while also
+ * including langcode for clarity / future-proofing. Because the entity is
+ * translatable but both sign_ref and function_name are NOT translatable,
+ * duplicates would only arise in the base table. We normalize NULL
+ * function_name values to empty string prior to adding the unique key to
+ * avoid duplicate NULL groups.
+ */
+function wdb_core_update_10003() {
+  $connection = \Drupal::database();
+  $schema = $connection->schema();
+  $table = 'wdb_sign_function';
+  $unique_key_name = 'wdb_sign_func__uniq_sign_ref_fn_lang';
+
+  // 1. Normalize NULL function_name values to empty string for consistency
+  //    with preSave() behavior (and to allow the unique key to be added).
+  try {
+    $connection->update($table)
+      ->fields(['function_name' => ''])
+      ->isNull('function_name')
+      ->execute();
+  }
+  catch (\Exception $e) {
+    \Drupal::logger('wdb_core')->warning('Failed to normalize NULL function_name values: @msg', ['@msg' => $e->getMessage()]);
+  }
+
+  // 2. Detect and collapse duplicates (same sign_ref + function_name + langcode).
+  //    Keep the lowest id (oldest record) and delete the rest.
+  try {
+    $duplicate_query = $connection->select($table, 'sf');
+    $duplicate_query->addField('sf', 'sign_ref');
+    $duplicate_query->addField('sf', 'function_name');
+    $duplicate_query->addField('sf', 'langcode');
+    $duplicate_query->addExpression('COUNT(*)', 'dupe_count');
+    $duplicate_query->groupBy('sign_ref');
+    $duplicate_query->groupBy('function_name');
+    $duplicate_query->groupBy('langcode');
+    $duplicate_query->having('COUNT(*) > 1');
+    $dupe_rows = $duplicate_query->execute()->fetchAll();
+
+    foreach ($dupe_rows as $dupe) {
+      $ids_query = $connection->select($table, 'sf2')
+        ->fields('sf2', ['id'])
+        ->condition('sign_ref', $dupe->sign_ref)
+        ->condition('function_name', $dupe->function_name)
+        ->condition('langcode', $dupe->langcode)
+        ->orderBy('id', 'ASC');
+      $ids = $ids_query->execute()->fetchCol();
+      if (count($ids) > 1) {
+        $keep_id = array_shift($ids); // Preserve the earliest.
+        // Delete the remaining duplicate IDs.
+        $connection->delete($table)
+          ->condition('id', $ids, 'IN')
+          ->execute();
+        \Drupal::logger('wdb_core')->notice('Removed @count duplicate wdb_sign_function rows for sign_ref=@sign_ref, function_name="@fn", langcode=@lang (kept id=@keep).', [
+          '@count' => count($ids),
+            '@sign_ref' => $dupe->sign_ref,
+            '@fn' => $dupe->function_name,
+            '@lang' => $dupe->langcode,
+            '@keep' => $keep_id,
+        ]);
+      }
+    }
+  }
+  catch (\Exception $e) {
+    \Drupal::logger('wdb_core')->error('Error collapsing duplicate wdb_sign_function rows: @msg', ['@msg' => $e->getMessage()]);
+    // Continue; attempt to add the index anyway (may still fail, surfacing issue).
+  }
+
+  // 3. Add the unique key if not already present.
+  // Schema API exposes indexExists() which also returns TRUE for unique keys
+  // (internally stored as indexes). So we just check indexExists().
+  if (!$schema->indexExists($table, $unique_key_name)) {
+    try {
+      $schema->addUniqueKey($table, $unique_key_name, ['sign_ref', 'function_name', 'langcode']);
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('wdb_core')->error('Failed adding unique key (@name) on @table: @msg', [
+        '@name' => $unique_key_name,
+        '@table' => $table,
+        '@msg' => $e->getMessage(),
+      ]);
+      return t('Attempted to add unique key, but an error occurred. Check logs.');
+    }
+    return t('Added unique key (@name) on @table (sign_ref, function_name, langcode).', ['@name' => $unique_key_name, '@table' => $table]);
+  }
+
+  return t('Unique key (@name) already exists on @table.', ['@name' => $unique_key_name, '@table' => $table]);
+}
+
+/**
+ * Normalize NULL function_name values in field data and enforce uniqueness.
+ *
+ * Rationale: The existing unique index on the data table is
+ * (langcode, sign_ref, function_name). In MySQL, UNIQUE permits multiple
+ * rows where a column is NULL, so past rows with function_name IS NULL
+ * bypassed logical uniqueness. Current preSave() normalizes blanks to '' but
+ * legacy rows remain. We (1) collapse duplicate NULL groups per
+ * (langcode, sign_ref), then (2) set remaining NULLs to ''. This lets the
+ * existing unique index start enforcing the intended rule.
+ */
+function wdb_core_update_10004() {
+  $connection = \Drupal::database();
+  $table = 'wdb_sign_function_field_data';
+  $logger = \Drupal::logger('wdb_core');
+  $deleted_total = 0;
+  $normalized_total = 0;
+
+  // 1. Identify duplicate groups among NULL function_name rows.
+  try {
+    $dupe_query = $connection->select($table, 'sf');
+    $dupe_query->addField('sf', 'sign_ref');
+    $dupe_query->addField('sf', 'langcode');
+    $dupe_query->addExpression('COUNT(*)', 'dupe_count');
+    $dupe_query->isNull('function_name');
+    $dupe_query->groupBy('sign_ref');
+    $dupe_query->groupBy('langcode');
+    $dupe_query->having('COUNT(*) > 1');
+    $dupes = $dupe_query->execute()->fetchAll();
+
+    foreach ($dupes as $row) {
+      $ids_query = $connection->select($table, 'sf2')
+        ->fields('sf2', ['id'])
+        ->condition('sign_ref', $row->sign_ref)
+        ->condition('langcode', $row->langcode)
+        ->isNull('function_name')
+        ->orderBy('id', 'ASC');
+      $ids = $ids_query->execute()->fetchCol();
+      if (count($ids) > 1) {
+        $keep_id = array_shift($ids);
+        if (!empty($ids)) {
+          $connection->delete($table)
+            ->condition('id', $ids, 'IN')
+            ->condition('langcode', $row->langcode)
+            ->execute();
+          $deleted_total += count($ids);
+          $logger->notice('Removed @count duplicate NULL function_name rows for sign_ref=@sign_ref langcode=@lang (kept id=@keep).', [
+            '@count' => count($ids),
+            '@sign_ref' => $row->sign_ref,
+            '@lang' => $row->langcode,
+            '@keep' => $keep_id,
+          ]);
+        }
+      }
+    }
+  }
+  catch (\Exception $e) {
+    $logger->error('Failed while collapsing NULL function_name duplicates: @msg', ['@msg' => $e->getMessage()]);
+  }
+
+  // 2. Convert remaining NULL function_name values to ''.
+  try {
+    $normalized_total = $connection->update($table)
+      ->fields(['function_name' => ''])
+      ->isNull('function_name')
+      ->execute();
+  }
+  catch (\Exception $e) {
+    $logger->error('Failed normalizing NULL function_name values: @msg', ['@msg' => $e->getMessage()]);
+  }
+
+  return t('wdb_core_update_10004: Deleted @deleted duplicates; normalized @normalized NULL function_name rows to empty string.', [
+    '@deleted' => $deleted_total,
+    '@normalized' => $normalized_total,
+  ]);
+}
