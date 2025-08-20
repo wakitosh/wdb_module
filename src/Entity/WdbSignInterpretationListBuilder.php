@@ -21,7 +21,6 @@ class WdbSignInterpretationListBuilder extends EntityListBuilder {
   public function buildHeader() {
     // Defines the table header for the entity list.
     $header['id'] = $this->t('ID');
-    $header['sign_interpretation_code'] = $this->t('Sign Interpretation Code');
     $header['annotation_page_ref'] = $this->t('Annotation Page');
     $header['label_ref'] = $this->t('Label');
     $header['sign_function_ref'] = $this->t('Sign Function');
@@ -37,23 +36,19 @@ class WdbSignInterpretationListBuilder extends EntityListBuilder {
    */
   public function buildRow(EntityInterface $entity) {
     /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation $entity */
-    // Defines the data for each row of the table.
     $row['id'] = $entity->id();
-    $row['sign_interpretation_code'] = $entity->get('sign_interpretation_code')->value;
 
-    // Get the referenced WdbAnnotationPage entity from the 'annotation_page_ref' field.
+    // Annotation page.
     $annotation_page_entity = $entity->get('annotation_page_ref')->entity;
     if ($annotation_page_entity instanceof WdbAnnotationPage) {
-      // Display the label of the referenced entity.
       $row['annotation_page_ref'] = $annotation_page_entity->label();
     }
     else {
-      // Handle cases where the referenced entity is not found or is of an unexpected type.
       $target_id = $entity->get('annotation_page_ref')->target_id;
       $row['annotation_page_ref'] = $this->t('Error: Page (ID: @id) not found.', ['@id' => $target_id ?? 'N/A']);
     }
 
-    // Get the referenced WdbLabel entity from the 'label_ref' field.
+    // Label reference.
     if (!$entity->get('label_ref')->isEmpty()) {
       /** @var \Drupal\wdb_core\Entity\WdbLabel $label_entity */
       $label_entity = $entity->get('label_ref')->entity;
@@ -66,27 +61,41 @@ class WdbSignInterpretationListBuilder extends EntityListBuilder {
       }
     }
     else {
-      // Handle case where label_ref is empty (NULL).
       $row['label_ref'] = $this->t('(No Associated Label)');
     }
 
-    // Get the referenced WdbSignFunction entity from the 'sign_function_ref' field.
-    $sign_function_entity = $entity->get('sign_function_ref')->entity;
-    if ($sign_function_entity instanceof WdbSignFunction) {
-      // Display the label of the referenced entity.
-      $row['sign_function_ref'] = $sign_function_entity->label();
+    // Sign function reference with fallbacks.
+    if ($entity->get('sign_function_ref')->isEmpty()) {
+      $row['sign_function_ref'] = $this->t('(None)');
     }
     else {
-      // Handle cases where the referenced entity is not found or is of an unexpected type.
-      $target_id = $entity->get('sign_function_ref')->target_id;
-      $row['sign_function_ref'] = $this->t('Error: Function (ID: @id) not found.', ['@id' => $target_id ?? 'N/A']);
+      $sign_function_entity = $entity->get('sign_function_ref')->entity;
+      if ($sign_function_entity instanceof WdbSignFunction) {
+        $code = $sign_function_entity->get('sign_function_code')->value;
+        if ($code === '' || $code === NULL) {
+          /** @var \Drupal\wdb_core\Entity\WdbSign $sign_entity_for_fn */
+          $sign_entity_for_fn = $sign_function_entity->get('sign_ref')->entity;
+          if ($sign_entity_for_fn instanceof WdbSign && $sign_entity_for_fn->hasField('sign_code')) {
+            $reconstructed = $sign_entity_for_fn->get('sign_code')->value . '_';
+            $row['sign_function_ref'] = $reconstructed ?: $this->t('(Unnamed Function)');
+          }
+          else {
+            $row['sign_function_ref'] = $this->t('(Unnamed Function)');
+          }
+        }
+        else {
+          $row['sign_function_ref'] = $code;
+        }
+      }
+      else {
+        $target_id = $entity->get('sign_function_ref')->target_id;
+        $row['sign_function_ref'] = $this->t('Error: Function (ID: @id) not found.', ['@id' => $target_id ?? 'N/A']);
+      }
     }
 
     $row['line_number'] = $entity->get('line_number')->value;
     $row['phone'] = $entity->get('phone')->value;
     $row['priority'] = $entity->get('priority')->value;
-
-    // Explicitly get the 'value' of the text_long field to avoid rendering issues.
     $note_field = $entity->get('note');
     $row['note'] = $note_field ? $note_field->value : '';
 

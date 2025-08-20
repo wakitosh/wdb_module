@@ -38,8 +38,28 @@ class WdbWordMapListBuilder extends EntityListBuilder {
     // Get the referenced WdbSignInterpretation entity.
     $sign_interpretation_entity = $entity->get('sign_interpretation_ref')->entity;
     if ($sign_interpretation_entity instanceof WdbSignInterpretation) {
-      // Display the label of the referenced entity.
-      $row['sign_interpretation_ref'] = $sign_interpretation_entity->label();
+      // Show the related sign_function_code instead of interpretation label.
+      $sign_function_entity = $sign_interpretation_entity->get('sign_function_ref')->entity;
+      if ($sign_function_entity instanceof WdbSignFunction) {
+        $code = $sign_function_entity->get('sign_function_code')->value;
+        if ($code === '' || $code === NULL) {
+          // Reconstruct code if blank (sign_code + underscore).
+          /** @var \Drupal\wdb_core\Entity\WdbSign $sign_entity_for_fn */
+          $sign_entity_for_fn = $sign_function_entity->get('sign_ref')->entity;
+          if ($sign_entity_for_fn instanceof WdbSign && $sign_entity_for_fn->hasField('sign_code')) {
+            $row['sign_interpretation_ref'] = ($sign_entity_for_fn->get('sign_code')->value ?: '?') . '_';
+          }
+          else {
+            $row['sign_interpretation_ref'] = $this->t('(Unnamed Function)');
+          }
+        }
+        else {
+          $row['sign_interpretation_ref'] = $code;
+        }
+      }
+      else {
+        $row['sign_interpretation_ref'] = $this->t('(No Function)');
+      }
     }
     else {
       // Handle cases where the referenced entity is not found.
