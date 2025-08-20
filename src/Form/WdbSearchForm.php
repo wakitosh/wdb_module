@@ -5,6 +5,7 @@ namespace Drupal\wdb_core\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -25,13 +26,23 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
   protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
+   * Entity repository (for contextual translations of taxonomy terms).
+   *
+   * @var \Drupal\Core\Entity\EntityRepositoryInterface
+   */
+  protected EntityRepositoryInterface $entityRepository;
+
+  /**
    * Constructs a new WdbSearchForm object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
+   * @param \Drupal\Core\Entity\EntityRepositoryInterface $entity_repository
+   *   The entity repository service.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, EntityRepositoryInterface $entity_repository) {
     $this->entityTypeManager = $entity_type_manager;
+    $this->entityRepository = $entity_repository;
   }
 
   /**
@@ -39,7 +50,8 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('entity.repository')
     );
   }
 
@@ -63,7 +75,10 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
     // Handle the subsystem context from the URL.
     $subsystem_tid = NULL;
     if ($subsysname) {
-      $terms = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['vid' => 'subsystem', 'name' => $subsysname]);
+      $terms = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties([
+        'vid' => 'subsystem',
+        'name' => $subsysname,
+      ]);
       if ($term = reset($terms)) {
         $subsystem_tid = $term->id();
       }
@@ -79,7 +94,7 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
       '#type' => 'select',
       '#title' => $this->t('Subsystem'),
       '#options' => $this->getTaxonomyTermOptions('subsystem'),
-      // If a subsystem is passed via URL, set it as the default but keep it enabled.
+    // If a subsystem is in the URL, set it as default but keep it editable.
       '#default_value' => $subsystem_tid ?? ($params['subsystem'] ?? ''),
     ];
     $form['search_fieldset']['ref_filters']['lexical_category'] = [
@@ -88,6 +103,8 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
       '#options' => $this->getTaxonomyTermOptions('lexical_category', TRUE),
       '#default_value' => $params['lexical_category'] ?? '',
     ];
+    // Ensure per-interface-language cache variation for translated options.
+    $form['search_fieldset']['ref_filters']['lexical_category']['#cache']['contexts'][] = 'languages:language_interface';
     $form['search_fieldset']['ref_filters']['include_children'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Include child categories in search'),
@@ -204,10 +221,35 @@ class WdbSearchForm extends FormBase implements ContainerInjectionInterface {
    */
   private function getTaxonomyTermOptions(string $vid, bool $show_depth = FALSE): array {
     $options = ['' => $this->t('- Any -')];
-    $terms = $this->entityTypeManager->getStorage('taxonomy_term')->loadTree($vid);
-    foreach ($terms as $term) {
-      $label = $show_depth ? str_repeat('--', $term->depth) . ' ' . $term->name : $term->name;
-      $options[$term->tid] = $label;
+    // Use taxonomy term storage loadTree (TermStorageInterface method).
+    $taxonomy_storage = $this->entityTypeManager->getStorage('taxonomy_term');
+    if (!method_exists($taxonomy_storage, 'loadTree')) {
+      return $options;
+    }
+    $tree = $taxonomy_storage->loadTree($vid);
+    if (empty($tree)) {
+      return $options;
+    }
+    $tids = [];
+    foreach ($tree as $item) {
+      if (isset($item->tid)) {
+        $tids[] = $item->tid;
+      }
+    }
+    $loaded = $this->entityTypeManager->getStorage('taxonomy_term')->loadMultiple($tids);
+    foreach ($tree as $item) {
+      if (!isset($item->tid)) {
+        continue;
+      }
+      $term_entity = $loaded[$item->tid] ?? NULL;
+      $translated_label = NULL;
+      if ($term_entity) {
+        $translated = $this->entityRepository->getTranslationFromContext($term_entity);
+        $translated_label = $translated->label();
+      }
+      $base_label = $translated_label ?? ($item->name ?? '');
+      $label = $show_depth ? str_repeat('--', (int) $item->depth) . ' ' . $base_label : $base_label;
+      $options[$item->tid] = $label;
     }
     return $options;
   }
