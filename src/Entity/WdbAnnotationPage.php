@@ -12,9 +12,9 @@ use Drupal\Core\Url;
 /**
  * Defines the WDB Annotation Page entity.
  *
- * This entity represents a single page (or canvas) within a WDB Source document,
- * linking it to a specific IIIF image and serving as a container for
- * annotations on that page.
+ * Represents a single page (canvas) in a source document, linking it to a
+ * specific IIIF image and serving as a container for annotations on that
+ * page.
  *
  * @ContentEntityType(
  *   id = "wdb_annotation_page",
@@ -78,15 +78,14 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
     $fields['annotation_code'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Annotation Code'))
       ->setDescription(t('The original unique identifier (e.g., bm10221_3).'))
-      // ->setRequired(TRUE) // Not required here as it is set dynamically in preSave().
+      ->setReadOnly(TRUE)
       ->setSetting('max_length', 100)
       ->addConstraint('UniqueField')
       ->setDisplayOptions('view', ['label' => 'inline', 'type' => 'string', 'weight' => -5])
-      ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => -5])
-      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('form', FALSE)
       ->setDisplayConfigurable('view', TRUE);
 
-    // An entity reference field corresponding to the 'source' (FK to WdbSource) column.
+    // Source reference (FK to WdbSource).
     $fields['source_ref'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Source Document'))
       ->setDescription(t('Reference to the WDB Source entity.'))
@@ -116,8 +115,7 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-    // A computed field to dynamically generate a string like "Source Label - Page X"
-    // for use as the entity label (specified in entity_keys.label).
+    // Computed label (entity_keys.label).
     $fields['page_name_computed'] = BaseFieldDefinition::create('string_long')
       ->setLabel(t('Computed Page Label'))
       ->setDescription(t('A computed label for the page (e.g., Source Title - Page X).'))
@@ -138,7 +136,7 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
     $fields['canvas_identifier_fragment'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Canvas Identifier Fragment'))
       ->setDescription(t('A unique fragment of the Canvas URI (e.g., /wdb/hdb/gallery/source_id/canvas/page_num) used for lookup.'))
-      // ->setRequired(TRUE) // Not required here as it is set dynamically in preSave().
+      ->setReadOnly(TRUE)
       ->setSetting('max_length', 255)
       ->addConstraint('UniqueField')
       ->setDisplayConfigurable('form', FALSE)
@@ -157,17 +155,20 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
     $source_entity = $this->get('source_ref')->entity;
     $page_number = $this->get('page_number')->value;
 
-    // This logic runs before the entity is saved to automatically generate values
-    // for the annotation_code and canvas_identifier_fragment fields based on the
-    // parent source and page number.
+    // Generate annotation_code & canvas_identifier_fragment before save.
     if ($source_entity instanceof WdbSource && $source_entity->hasField('source_identifier') && $page_number !== NULL) {
       $source_identifier = $source_entity->get('source_identifier')->value;
       if (!empty($source_identifier)) {
         $this->set('annotation_code', $source_identifier . '_' . $page_number);
 
-        // Construct the canvas URI fragment, including the subsystem name if available.
+        // Build canvas URI fragment (uses subsystem name if available).
         $subsys_name = '';
-        $subsystem_tags = $source_entity->get('subsystem_tags')->referencedEntities();
+        // Safely obtain referenced subsystem tags.
+        $subsystem_field = $source_entity->get('subsystem_tags');
+        $subsystem_tags = [];
+        if (method_exists($subsystem_field, 'referencedEntities')) {
+          $subsystem_tags = $subsystem_field->referencedEntities();
+        }
         if (!empty($subsystem_tags)) {
           $first_tag = reset($subsystem_tags);
           $subsys_name = strtolower($first_tag->getName());
@@ -201,7 +202,7 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
    *   The image identifier, or NULL if it cannot be determined.
    */
   public function getImageIdentifier(bool $force_regeneration = FALSE): ?string {
-    // If a value is already explicitly set and we are not forcing regeneration, use it.
+    // Early return if already set and not forcing regeneration.
     if (!$force_regeneration && $this->hasField('image_identifier') && !$this->get('image_identifier')->isEmpty()) {
       return $this->get('image_identifier')->value;
     }
@@ -224,7 +225,7 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
     $pattern = $subsystem_config->get('iiif_identifier_pattern');
 
     if (empty($pattern)) {
-      // If there's no pattern, return the existing value (if any) unless forced.
+      // No pattern: return existing value unless forced regeneration.
       return $force_regeneration ? NULL : ($this->get('image_identifier')->value ?? NULL);
     }
 
@@ -253,7 +254,7 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
     }
 
     // Fallback logic to construct the URI from route parameters.
-    // This might be useful if the entity was created before the preSave logic was in place.
+    // Fallback for entities predating preSave logic.
     /** @var \Drupal\wdb_core\Entity\WdbSource $source */
     $source = $this->get('source_ref')->entity;
     if ($source) {

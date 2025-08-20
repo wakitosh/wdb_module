@@ -48,21 +48,44 @@ class WdbSignFunctionForm extends ContentEntityForm {
   public function buildForm(array $form, FormStateInterface $form_state) {
     $form = parent::buildForm($form, $form_state);
 
-    if ($this->entity->isNew() && isset($form['sign_ref']['widget']['#options'])) {
+    $is_new = $this->entity->isNew();
+
+    if ($is_new && isset($form['sign_ref']['widget']['#options'])) {
       $sign_storage = $this->entityTypeManager->getStorage('wdb_sign');
       $signs = $sign_storage->loadMultiple();
       $options = [];
       foreach ($signs as $sign) {
-        $options[$sign->id()] = $sign->label();
+        $label = $sign->label();
+        $lang = $sign->language()->getId();
+        // Append langcode in parentheses for disambiguation (e.g., "い(ja)").
+        $options[$sign->id()] = $label . '(' . $lang . ')';
       }
-      asort($options, SORT_NATURAL | SORT_FLAG_CASE);
+      natcasesort($options);
       if (isset($form['sign_ref']['widget']['#options']['_none'])) {
         $options = ['_none' => $this->t('- None -')] + $options;
       }
       $form['sign_ref']['widget']['#options'] = $options;
     }
-    elseif (!$this->entity->isNew() && isset($form['sign_ref'])) {
+    elseif (!$is_new && isset($form['sign_ref'])) {
+      // Replace the single selected option label to include langcode.
+      if (isset($form['sign_ref']['widget']['#default_value']) && $form['sign_ref']['widget']['#default_value']) {
+        $selected = $form['sign_ref']['widget']['#default_value'];
+        if (is_array($selected)) {
+          $selected = reset($selected);
+        }
+        $sign = $this->entityTypeManager->getStorage('wdb_sign')->load($selected);
+        if ($sign) {
+          $label = $sign->label();
+          $lang = $sign->language()->getId();
+          $form['sign_ref']['widget']['#options'] = [$sign->id() => $label . '(' . $lang . ')'];
+        }
+      }
       $form['sign_ref']['#disabled'] = TRUE;
+    }
+
+    // Hide the langcode selector for all forms; it inherits from sign.
+    if (isset($form['langcode'])) {
+      $form['langcode']['#access'] = FALSE;
     }
 
     return $form;

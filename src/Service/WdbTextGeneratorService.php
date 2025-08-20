@@ -103,11 +103,16 @@ class WdbTextGeneratorService {
         }
 
         // Add data-* attributes to the span for client-side interactivity.
+        // Defensive: missing values may be NULL; cast to string.
+        $original_id_value = (string) ($wu_entity->get('original_word_unit_identifier')->value ?? '');
+        $realized_form_value = (string) ($wu_entity->get('realized_form')->value ?? '');
+        $points_json = json_encode($all_points_for_word) ?: '[]';
+
         $html .= '<span class="word-unit is-clickable" ' .
-                 'data-word-unit-original-id="' . Html::escape($wu_entity->get('original_word_unit_identifier')->value) . '" ' .
-                 'data-word-points="' . Html::escape(json_encode($all_points_for_word)) . '">' .
-                 Html::escape($wu_entity->get('realized_form')->value) .
-                 '</span> ';
+          'data-word-unit-original-id="' . Html::escape($original_id_value) . '" ' .
+          'data-word-points="' . Html::escape($points_json) . '">' .
+          Html::escape($realized_form_value) .
+          '</span> ';
       }
     }
     return [

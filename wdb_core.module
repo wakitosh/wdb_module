@@ -8,6 +8,9 @@
  */
 
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
+use Drupal\taxonomy\TermInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\wdb_core\Entity\WdbSource;
 use Drupal\Core\Routing\RouteMatchInterface;
@@ -24,6 +27,30 @@ function wdb_core_theme($existing, $type, $theme, $path) {
       'variables' => ['data' => NULL],
     ],
   ];
+}
+
+/**
+ * Safely returns the entity from the current form if available.
+ *
+ * Some generic form interfaces used by contributed modules may not implement
+ * an entity form with getEntity(). We therefore defensively check for the
+ * method and the returned type.
+ *
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *   The form state.
+ *
+ * @return \Drupal\Core\Entity\ContentEntityInterface|null
+ *   The underlying entity or NULL when not an entity form.
+ */
+function _wdb_core_get_form_entity(FormStateInterface $form_state) {
+  $form_object = $form_state->getFormObject();
+  if ($form_object && method_exists($form_object, 'getEntity')) {
+    $entity = $form_object->getEntity();
+  if ($entity instanceof ContentEntityInterface) {
+      return $entity;
+    }
+  }
+  return NULL;
 }
 
 /**
@@ -47,12 +74,13 @@ function _wdb_core_alter_wdb_annotation_page_form_fields(&$form, FormStateInterf
     $form['annotation_code']['widget'][0]['value']['#disabled'] = TRUE;
     $form['annotation_code']['widget'][0]['value']['#description'] = t('This value is automatically generated based on the referenced Source Document and Page Number after saving.');
 
-    $entity = $form_state->getFormObject()->getEntity();
-    if (!$entity->isNew() && $entity->get('annotation_code')->value) {
-      $form['annotation_code']['widget'][0]['value']['#value'] = $entity->get('annotation_code')->value;
-    }
-    elseif ($entity->isNew()) {
-      $form['annotation_code']['widget'][0]['value']['#value'] = t('(auto-generated on save)');
+  if ($entity = _wdb_core_get_form_entity($form_state)) { /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
+      if (!$entity->isNew() && $entity->get('annotation_code')->value) {
+        $form['annotation_code']['widget'][0]['value']['#value'] = $entity->get('annotation_code')->value;
+      }
+      elseif ($entity->isNew()) {
+        $form['annotation_code']['widget'][0]['value']['#value'] = t('(auto-generated on save)');
+      }
     }
   }
 }
@@ -84,12 +112,13 @@ function _wdb_core_alter_wdb_sign_function_form_fields(&$form, FormStateInterfac
     $form['sign_function_code']['widget'][0]['value']['#type'] = 'textfield';
     $form['sign_function_code']['widget'][0]['value']['#disabled'] = TRUE;
     $form['sign_function_code']['widget'][0]['value']['#description'] = t('This value is automatically generated based on the referenced Sign Code and Function Name after saving.');
-    $entity = $form_state->getFormObject()->getEntity();
-    if (!$entity->isNew() && $entity->get('sign_function_code')->value) {
-      $form['sign_function_code']['widget'][0]['value']['#value'] = $entity->get('sign_function_code')->value;
-    }
-    elseif ($entity->isNew()) {
-      $form['sign_function_code']['widget'][0]['value']['#value'] = t('(auto-generated on save)');
+  if ($entity = _wdb_core_get_form_entity($form_state)) { /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
+      if (!$entity->isNew() && $entity->get('sign_function_code')->value) {
+        $form['sign_function_code']['widget'][0]['value']['#value'] = $entity->get('sign_function_code')->value;
+      }
+      elseif ($entity->isNew()) {
+        $form['sign_function_code']['widget'][0]['value']['#value'] = t('(auto-generated on save)');
+      }
     }
   }
 }
@@ -251,6 +280,12 @@ function wdb_core_form_wdb_annotation_page_edit_form_alter(&$form, FormStateInte
  * Implements hook_page_attachments_alter().
  */
 function wdb_core_page_attachments_alter(array &$page) {
+  // Always attach the admin library so the custom toolbar icon CSS is present
+  // on every page where the admin toolbar may appear (front-end included).
+  // (Modules cannot auto-attach libraries globally via .info.yml; that works
+  // only for themes, so we do it here.)
+  $page['#attached']['library'][] = 'wdb_core/wdb_admin';
+
   $route_match = \Drupal::routeMatch();
   $route_name = $route_match->getRouteName();
 
@@ -266,10 +301,13 @@ function wdb_core_page_attachments_alter(array &$page) {
     if ($sources) {
       foreach ($sources as $source_entity) {
         /** @var \Drupal\wdb_core\Entity\WdbSource $source_entity */
-        foreach ($source_entity->get('subsystem_tags')->referencedEntities() as $tag) {
-          if (strtolower($tag->getName()) === strtolower($subsys_name)) {
-            $wdb_source = $source_entity;
-            break 2;
+        $subsystem_tags = $source_entity->get('subsystem_tags');
+        if ($subsystem_tags instanceof EntityReferenceFieldItemListInterface) {
+          foreach ($subsystem_tags->referencedEntities() as $tag) { /** @var \Drupal\taxonomy\TermInterface $tag */
+            if (strtolower($tag->getName()) === strtolower($subsys_name)) {
+              $wdb_source = $source_entity;
+              break 2;
+            }
           }
         }
       }
@@ -344,14 +382,6 @@ function wdb_core_page_attachments_alter(array &$page) {
   }
 }
 
-/**
- * Implements hook_page_attachments().
- *
- * Attaches assets to all admin pages.
- */
-function wdb_core_page_attachments(array &$attachments) {
-  $attachments['#attached']['library'][] = 'wdb_core/wdb_admin';
-}
 
 /**
  * Implements hook_form_alter().
@@ -379,7 +409,10 @@ function wdb_core_form_alter(&$form, FormStateInterface $form_state, $form_id) {
 function wdb_core_taxonomy_term_delete_form_validate(array &$form, FormStateInterface $form_state) {
   // Get the term entity being deleted from the form object.
   /** @var \Drupal\taxonomy\TermInterface $entity */
-  $entity = $form_state->getFormObject()->getEntity();
+  $entity = _wdb_core_get_form_entity($form_state);
+  if (!$entity) {
+    return;
+  }
 
   // Double-check that the entity is a term from the 'subsystem' vocabulary.
   if ($entity->bundle() === 'subsystem') {

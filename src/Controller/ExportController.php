@@ -4,7 +4,6 @@ namespace Drupal\wdb_core\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\wdb_core\Service\WdbTextGeneratorService;
@@ -55,8 +54,6 @@ class ExportController extends ControllerBase implements ContainerInjectionInter
    *   The WDB data service.
    * @param \Drupal\wdb_core\Service\WdbTextGeneratorService $textGenerator
    *   The WDB text generator service.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
-   *   The config factory.
    * @param \Drupal\wdb_core\Lib\HullJsPhp\HullPHP $hullCalculator
    *   The HullPHP calculation service.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -64,10 +61,9 @@ class ExportController extends ControllerBase implements ContainerInjectionInter
    * @param \Drupal\Core\Render\RendererInterface $renderer
    *   The renderer service.
    */
-  public function __construct(WdbDataService $wdbDataService, WdbTextGeneratorService $textGenerator, ConfigFactoryInterface $configFactory, HullPHP $hullCalculator, EntityTypeManagerInterface $entity_type_manager, RendererInterface $renderer) {
+  public function __construct(WdbDataService $wdbDataService, WdbTextGeneratorService $textGenerator, HullPHP $hullCalculator, EntityTypeManagerInterface $entity_type_manager, RendererInterface $renderer) {
     $this->wdbDataService = $wdbDataService;
     $this->textGenerator = $textGenerator;
-    $this->configFactory = $configFactory;
     $this->hullCalculator = $hullCalculator;
     $this->entityTypeManager = $entity_type_manager;
     $this->renderer = $renderer;
@@ -80,7 +76,6 @@ class ExportController extends ControllerBase implements ContainerInjectionInter
     return new static(
       $container->get('wdb_core.data_service'),
       $container->get('wdb_core.text_generator'),
-      $container->get('config.factory'),
       $container->get('wdb_core.hull_calculator'),
       $container->get('entity_type.manager'),
       $container->get('renderer')
@@ -226,7 +221,7 @@ class ExportController extends ControllerBase implements ContainerInjectionInter
   }
 
   /**
-   * Gets the first annotation URI associated with a given Word Unit original ID.
+   * Gets the first annotation URI for a given Word Unit original ID.
    *
    * @param string $wdb_word_unit_original_id
    *   The original_word_unit_identifier of the Word Unit entity.
@@ -259,10 +254,14 @@ class ExportController extends ControllerBase implements ContainerInjectionInter
 
     // 3. From the first sign, find the corresponding WdbLabel and return its
     // annotation_uri.
+    /** @var \Drupal\wdb_core\Entity\WdbWordMap|null $first_map */
     $first_map = $map_storage->load(reset($map_ids));
-    /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation $si */
-    $si = $first_map->get('sign_interpretation_ref')->entity;
-    /** @var \Drupal\wdb_core\Entity\WdbLabel $label */
+    if (!$first_map) {
+      return new JsonResponse(['error' => 'Word map entity could not be loaded.'], 500);
+    }
+    /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation|null $si */
+    $si = $first_map->get('sign_interpretation_ref')->entity ?? NULL;
+    /** @var \Drupal\wdb_core\Entity\WdbLabel|null $label */
     $label = $si ? $si->get('label_ref')->entity : NULL;
 
     if ($label && $label->get('annotation_uri')->value) {

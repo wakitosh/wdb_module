@@ -122,7 +122,13 @@ class WdbDataImporterService {
       if (!empty($label_name)) {
         $wdb_label_entity = $this->findWdbLabel($wdb_annotation_page_entity, $label_name);
         if (!$wdb_label_entity) {
-          $context['results']['warnings'][] = $this->t('Row @row_num: Label entity "@label" not found, proceeding without label link.', ['@row_num' => $row_num, '@label' => $label_name]);
+          $context['results']['warnings'][] = $this->t(
+                'Row @row_num: Label entity "@label" not found, proceeding without label link.',
+                [
+                  '@row_num' => $row_num,
+                  '@label' => $label_name,
+                ]
+            );
         }
       }
 
@@ -143,7 +149,13 @@ class WdbDataImporterService {
     }
     catch (\Exception $e) {
       $context['results']['failed']++;
-      $context['results']['errors'][] = $this->t('Failed to process row @row_num. Error: @message', ['@row_num' => $row_num, '@message' => $e->getMessage()]);
+      $context['results']['errors'][] = $this->t(
+        'Failed to process row @row_num. Error: @message',
+        [
+          '@row_num' => $row_num,
+          '@message' => $e->getMessage(),
+        ]
+      );
       return FALSE;
     }
   }
@@ -187,19 +199,22 @@ class WdbDataImporterService {
     $tids = $query->execute();
 
     if (!empty($tids)) {
-      return $term_storage->load(reset($tids));
+      $loaded = $term_storage->load(reset($tids));
+      return $loaded instanceof TermInterface ? $loaded : NULL;
     }
 
     // If no term with this name exists in any language, create a new one.
     // The provided langcode will be set as the term's language.
-    $term = $term_storage->create([
-      'vid' => $vid,
-      'name' => $name,
-      'langcode' => $langcode,
-    ]);
+    $term = $term_storage->create(
+          [
+            'vid' => $vid,
+            'name' => $name,
+            'langcode' => $langcode,
+          ]
+      );
     $term->save();
     $context['results']['created_entities'][] = ['type' => 'taxonomy_term', 'id' => $term->id()];
-    return $term;
+    return $term instanceof TermInterface ? $term : NULL;
   }
 
   /**
@@ -218,22 +233,47 @@ class WdbDataImporterService {
    *   The word entity.
    */
   private function findOrCreateWdbWord(string $basic_form, TermInterface $lexical_category_term, string $langcode, array &$context): ?WdbWord {
-    $word_code = $basic_form . '_' . $lexical_category_term->id();
     $storage = $this->entityTypeManager->getStorage('wdb_word');
-    $words = $storage->loadByProperties(['word_code' => $word_code, 'langcode' => $langcode]);
-    if (!empty($words)) {
-      return reset($words);
-    }
-
-    $word = $storage->create([
-      'word_code' => $word_code,
+    $lookup = [
       'basic_form' => $basic_form,
       'lexical_category_ref' => $lexical_category_term->id(),
       'langcode' => $langcode,
-    ]);
-    $word->save();
-    $context['results']['created_entities'][] = ['type' => 'wdb_word', 'id' => $word->id()];
-    return $word;
+    ];
+    $existing = $storage->loadByProperties($lookup);
+    if ($existing) {
+      $entity = reset($existing);
+      /**
+* @var \Drupal\wdb_core\Entity\WdbWord $entity
+*/
+      return $entity instanceof WdbWord ? $entity : NULL;
+    }
+    // Word_code is generated in preSave().
+    $entity = $storage->create($lookup);
+    /**
+* @var \Drupal\wdb_core\Entity\WdbWord $entity
+*/
+    try {
+      $entity->save();
+      $context['results']['created_entities'][] = ['type' => 'wdb_word', 'id' => $entity->id()];
+      if (!$entity instanceof WdbWord) {
+        throw new \RuntimeException('Unexpected entity type (WdbWord) after creation.');
+      }
+      return $entity;
+    }
+    catch (\Exception $e) {
+      // Duplicate race (concurrent) – re-fetch existing.
+      if (strpos($e->getMessage(), '1062') !== FALSE || str_contains($e->getMessage(), 'Duplicate')) {
+        $retry = $storage->loadByProperties($lookup);
+        if ($retry) {
+          $r = reset($retry);
+          /**
+* @var \Drupal\wdb_core\Entity\WdbWord $r
+*/
+          return $r instanceof WdbWord ? $r : NULL;
+        }
+      }
+      throw $e;
+    }
   }
 
   /**
@@ -254,29 +294,58 @@ class WdbDataImporterService {
    *   The word meaning entity.
    */
   private function findOrCreateWdbWordMeaning(WdbWord $word_entity, int $meaning_id, string $explanation, string $langcode, array &$context): ?WdbWordMeaning {
-    $word_meaning_code = $word_entity->get('word_code')->value . '_' . $meaning_id;
     $storage = $this->entityTypeManager->getStorage('wdb_word_meaning');
-    $meanings = $storage->loadByProperties(['word_meaning_code' => $word_meaning_code, 'langcode' => $langcode]);
-    if (!empty($meanings)) {
-      return reset($meanings);
-    }
-
-    $meaning = $storage->create([
-      'word_meaning_code' => $word_meaning_code,
+    $lookup = [
       'word_ref' => $word_entity->id(),
       'meaning_identifier' => $meaning_id,
-      'explanation' => $explanation,
       'langcode' => $langcode,
-    ]);
-    $meaning->save();
-    $context['results']['created_entities'][] = ['type' => 'wdb_word_meaning', 'id' => $meaning->id()];
-    return $meaning;
+    ];
+    $existing = $storage->loadByProperties($lookup);
+    if ($existing) {
+      $entity = reset($existing);
+      /**
+* @var \Drupal\wdb_core\Entity\WdbWordMeaning $entity
+*/
+      return $entity instanceof WdbWordMeaning ? $entity : NULL;
+    }
+    $entity = $storage->create(
+          array_merge(
+              $lookup, [
+                'explanation' => $explanation,
+              ]
+          )
+      );
+    // Code is generated in preSave().
+    /**
+* @var \Drupal\wdb_core\Entity\WdbWordMeaning $entity
+*/
+    try {
+      $entity->save();
+      $context['results']['created_entities'][] = ['type' => 'wdb_word_meaning', 'id' => $entity->id()];
+      if (!$entity instanceof WdbWordMeaning) {
+        throw new \RuntimeException('Unexpected entity type (WdbWordMeaning) after creation.');
+      }
+      return $entity;
+    }
+    catch (\Exception $e) {
+      if (strpos($e->getMessage(), '1062') !== FALSE || str_contains($e->getMessage(), 'Duplicate')) {
+        $retry = $storage->loadByProperties($lookup);
+        if ($retry) {
+          $r = reset($retry);
+          /**
+* @var \Drupal\wdb_core\Entity\WdbWordMeaning $r
+*/
+          return $r instanceof WdbWordMeaning ? $r : NULL;
+        }
+      }
+      throw $e;
+    }
   }
 
   /**
    * Finds an existing WdbAnnotationPage, or creates one.
    *
-   * If an existing page is found, it updates the image identifier if it's empty.
+   * If a page exists, it reuses it (and could update metadata if blank).
    *
    * @param \Drupal\wdb_core\Entity\WdbSource $source_entity
    *   The parent source entity.
@@ -292,25 +361,37 @@ class WdbDataImporterService {
     $storage = $this->entityTypeManager->getStorage('wdb_annotation_page');
 
     // First, search by source and page number.
-    $entities = $storage->loadByProperties([
-      'source_ref' => $source_entity->id(),
-      'page_number' => $page_num,
-    ]);
+    $entities = $storage->loadByProperties(
+          [
+            'source_ref' => $source_entity->id(),
+            'page_number' => $page_num,
+          ]
+      );
 
     if ($entity = reset($entities)) {
+      /**
+* @var \Drupal\wdb_core\Entity\WdbAnnotationPage $entity
+*/
+      if (!$entity instanceof WdbAnnotationPage) {
+        throw new \RuntimeException('Unexpected entity type (WdbAnnotationPage) on existing load.');
+      }
       return $entity;
     }
 
     // If not found, create a new entity.
-    $entity = $storage->create([
-      'source_ref' => $source_entity->id(),
-      'page_number' => $page_num,
-    // Temporary page name.
-      'page_name' => 'p. ' . $page_num,
-    ]);
+    $entity = $storage->create(
+          [
+            'source_ref' => $source_entity->id(),
+            'page_number' => $page_num,
+          // Temporary page name.
+            'page_name' => 'p. ' . $page_num,
+          ]
+      );
     $entity->save();
     $context['results']['created_entities'][] = ['type' => 'wdb_annotation_page', 'id' => $entity->id()];
-
+    if (!$entity instanceof WdbAnnotationPage) {
+      throw new \RuntimeException('Unexpected entity type (WdbAnnotationPage) after creation.');
+    }
     return $entity;
   }
 
@@ -342,10 +423,12 @@ class WdbDataImporterService {
    */
   private function findWdbLabel(WdbAnnotationPage $page_entity, string $label_name): ?WdbLabel {
     $storage = $this->entityTypeManager->getStorage('wdb_label');
-    $entities = $storage->loadByProperties([
-      'annotation_page_ref' => $page_entity->id(),
-      'label_name' => $label_name,
-    ]);
+    $entities = $storage->loadByProperties(
+          [
+            'annotation_page_ref' => $page_entity->id(),
+            'label_name' => $label_name,
+          ]
+      );
     return !empty($entities) ? reset($entities) : NULL;
   }
 
@@ -364,15 +447,40 @@ class WdbDataImporterService {
    */
   private function findOrCreateWdbSign(string $sign_code, string $langcode, array &$context): ?WdbSign {
     $storage = $this->entityTypeManager->getStorage('wdb_sign');
-    $entities = $storage->loadByProperties(['sign_code' => $sign_code, 'langcode' => $langcode]);
-    if (!empty($entities)) {
-      return reset($entities);
+    $lookup = ['sign_code' => $sign_code, 'langcode' => $langcode];
+    $entities = $storage->loadByProperties($lookup);
+    if ($entities) {
+      $entity = reset($entities);
+      /**
+* @var \Drupal\wdb_core\Entity\WdbSign $entity
+*/
+      return $entity instanceof WdbSign ? $entity : NULL;
     }
-
-    $entity = $storage->create(['sign_code' => $sign_code, 'langcode' => $langcode]);
-    $entity->save();
-    $context['results']['created_entities'][] = ['type' => 'wdb_sign', 'id' => $entity->id()];
-    return $entity;
+    $entity = $storage->create($lookup);
+    /**
+* @var \Drupal\wdb_core\Entity\WdbSign $entity
+*/
+    try {
+      $entity->save();
+      $context['results']['created_entities'][] = ['type' => 'wdb_sign', 'id' => $entity->id()];
+      if (!$entity instanceof WdbSign) {
+        throw new \RuntimeException('Unexpected entity type (WdbSign) after creation.');
+      }
+      return $entity;
+    }
+    catch (\Exception $e) {
+      if (strpos($e->getMessage(), '1062') !== FALSE || str_contains($e->getMessage(), 'Duplicate')) {
+        $retry = $storage->loadByProperties($lookup);
+        if ($retry) {
+          $r = reset($retry);
+          /**
+* @var \Drupal\wdb_core\Entity\WdbSign $r
+*/
+          return $r instanceof WdbSign ? $r : NULL;
+        }
+      }
+      throw $e;
+    }
   }
 
   /**
@@ -392,37 +500,53 @@ class WdbDataImporterService {
    */
   private function findOrCreateWdbSignFunction(WdbSign $sign_entity, string $function_name, string $langcode, array &$context): ?WdbSignFunction {
     $storage = $this->entityTypeManager->getStorage('wdb_sign_function');
-
-    // Since 'sign_function_code' is computed, we must search for existing
-    // entities using the fields it depends on.
-    $properties = [
+    // Normalize to empty string (no NULL) for uniqueness consistency.
+    $normalized_fn = $function_name === '' ? '' : $function_name;
+    $lookup = [
       'sign_ref' => $sign_entity->id(),
-      'function_name' => $function_name,
+      'function_name' => $normalized_fn,
       'langcode' => $langcode,
     ];
-    $entities = $storage->loadByProperties($properties);
-
-    if (!empty($entities)) {
-      return reset($entities);
+    $entities = $storage->loadByProperties($lookup);
+    if ($entities) {
+      $entity = reset($entities);
+      /**
+* @var \Drupal\wdb_core\Entity\WdbSignFunction $entity
+*/
+      return $entity instanceof WdbSignFunction ? $entity : NULL;
     }
-
-    // Create a new entity without setting the computed 'sign_function_code'.
-    // The value will be generated automatically when the entity is saved.
-    $entity = $storage->create([
-      'sign_ref' => $sign_entity->id(),
-      'function_name' => $function_name,
-      'langcode' => $langcode,
-    ]);
-    $entity->save();
-    $context['results']['created_entities'][] = ['type' => 'wdb_sign_function', 'id' => $entity->id()];
-    return $entity;
+    $entity = $storage->create($lookup);
+    /**
+* @var \Drupal\wdb_core\Entity\WdbSignFunction $entity
+*/
+    try {
+      $entity->save();
+      $context['results']['created_entities'][] = ['type' => 'wdb_sign_function', 'id' => $entity->id()];
+      if (!$entity instanceof WdbSignFunction) {
+        throw new \RuntimeException('Unexpected entity type (WdbSignFunction) after creation.');
+      }
+      return $entity;
+    }
+    catch (\Exception $e) {
+      if (strpos($e->getMessage(), '1062') !== FALSE || str_contains($e->getMessage(), 'Duplicate')) {
+        $retry = $storage->loadByProperties($lookup);
+        if ($retry) {
+          $r = reset($retry);
+          /**
+* @var \Drupal\wdb_core\Entity\WdbSignFunction $r
+*/
+          return $r instanceof WdbSignFunction ? $r : NULL;
+        }
+      }
+      throw $e;
+    }
   }
 
   /**
    * Finds or creates multiple grammar-related taxonomy terms.
    *
    * @param array $grammar_category_names
-   *   An associative array where keys are vocabulary IDs and values are term names.
+   *   Assoc array: vocabulary ID => term name.
    * @param string $langcode
    *   The language code.
    * @param array $context
@@ -483,11 +607,19 @@ class WdbDataImporterService {
     $entities = $storage->loadByProperties($properties);
 
     if (!empty($entities)) {
-      return reset($entities);
+      $entity = reset($entities);
+      /**
+* @var \Drupal\wdb_core\Entity\WdbSignInterpretation $entity
+*/
+      if (!$entity instanceof WdbSignInterpretation) {
+        throw new \RuntimeException('Unexpected entity type (WdbSignInterpretation) on existing load.');
+      }
+      return $entity;
     }
 
     // Create a new one.
-    $code = 'si_' . $page->id() . '_' . ($label ? $label->id() : 'nolabel') . '_' . $sign_function->id() . '_' . microtime(TRUE);
+    $code = 'si_' . $page->id() . '_' . ($label ? $label->id() : 'nolabel') . '_' .
+      $sign_function->id() . '_' . microtime(TRUE);
     $values = [
       'sign_interpretation_code' => substr(hash('sha256', $code), 0, 20),
       'annotation_page_ref' => $page->id(),
@@ -500,8 +632,14 @@ class WdbDataImporterService {
     ];
 
     $entity = $storage->create($values);
+    /**
+* @var \Drupal\wdb_core\Entity\WdbSignInterpretation $entity
+*/
     $entity->save();
     $context['results']['created_entities'][] = ['type' => 'wdb_sign_interpretation', 'id' => $entity->id()];
+    if (!$entity instanceof WdbSignInterpretation) {
+      throw new \RuntimeException('Unexpected entity type (WdbSignInterpretation) after creation.');
+    }
     return $entity;
   }
 
@@ -540,6 +678,9 @@ class WdbDataImporterService {
 
     if (!empty($entities)) {
       $entity = reset($entities);
+      /**
+* @var \Drupal\wdb_core\Entity\WdbWordUnit $entity
+*/
       $existing_page_refs = array_column($entity->get('annotation_page_refs')->getValue(), 'target_id');
       if (!in_array($page->id(), $existing_page_refs)) {
         $entity->get('annotation_page_refs')->appendItem($page->id());
@@ -558,6 +699,9 @@ class WdbDataImporterService {
       'langcode' => $langcode,
     ];
     $entity = $storage->create(array_merge($values, $grammar_refs));
+    /**
+ * @var \Drupal\wdb_core\Entity\WdbWordUnit $entity
+*/
     $entity->save();
 
     $context['results']['created_entities'][] = ['type' => 'wdb_word_unit', 'id' => $entity->id()];
@@ -581,21 +725,35 @@ class WdbDataImporterService {
    */
   private function findOrCreateWdbWordMap(WdbSignInterpretation $si, WdbWordUnit $wu, float $sign_seq, array &$context): WdbWordMap {
     $storage = $this->entityTypeManager->getStorage('wdb_word_map');
-    $entities = $storage->loadByProperties([
-      'sign_interpretation_ref' => $si->id(),
-      'word_unit_ref' => $wu->id(),
-    ]);
+    $entities = $storage->loadByProperties(
+          [
+            'sign_interpretation_ref' => $si->id(),
+            'word_unit_ref' => $wu->id(),
+          ]
+      );
     if (!empty($entities)) {
-      return reset($entities);
+      $entity = reset($entities);
+      /**
+* @var \Drupal\wdb_core\Entity\WdbWordMap $entity
+*/
+      if (!$entity instanceof WdbWordMap) {
+        throw new \RuntimeException('Unexpected entity type (WdbWordMap) on existing load.');
+      }
+      return $entity;
     }
 
-    $entity = $storage->create([
-      'sign_interpretation_ref' => $si->id(),
-      'word_unit_ref' => $wu->id(),
-      'sign_sequence' => $sign_seq,
-    ]);
+    $entity = $storage->create(
+          [
+            'sign_interpretation_ref' => $si->id(),
+            'word_unit_ref' => $wu->id(),
+            'sign_sequence' => $sign_seq,
+          ]
+      );
     $entity->save();
     $context['results']['created_entities'][] = ['type' => 'wdb_word_map', 'id' => $entity->id()];
+    if (!$entity instanceof WdbWordMap) {
+      throw new \RuntimeException('Unexpected entity type (WdbWordMap) after creation.');
+    }
     return $entity;
   }
 

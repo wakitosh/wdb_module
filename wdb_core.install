@@ -279,3 +279,7 @@ function wdb_core_update_10002() {
   }
   return t("The legacy 'image_extension' field was already removed.");
 }
+
+/**
+ * Strip HTML from existing rich-text values in description / explanation fields.
+ */

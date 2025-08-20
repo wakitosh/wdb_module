@@ -55,13 +55,14 @@ class WdbImportLogListBuilder extends EntityListBuilder {
    * {@inheritdoc}
    */
   public function buildHeader() {
+    $build = parent::buildHeader();
     $header['label'] = $this->t('Import Job');
     $header['source_filename'] = $this->t('Source File');
     $header['language'] = $this->t('Language');
     $header['user_id'] = $this->t('Author');
     $header['created'] = $this->t('Date');
     $header['summary'] = $this->t('Summary / Status');
-    return $header + parent::buildHeader();
+    return $header + $build;
   }
 
   /**
@@ -107,19 +108,47 @@ class WdbImportLogListBuilder extends EntityListBuilder {
     /** @var \Drupal\wdb_core\Entity\WdbImportLog $entity */
     $operations = parent::getDefaultOperations($entity);
 
-    // Add a "Rollback" operation only if there are entities to roll back.
+    // Always present a rollback line (B案): active if there are created
+    // entities, otherwise disabled (no link) to show no-op state.
     $created_entities_json = $entity->get('created_entities')->value;
     $created_entities = !empty($created_entities_json) ? json_decode($created_entities_json, TRUE) : [];
 
-    if (!empty($created_entities) && $entity->access('delete') && $entity->hasLinkTemplate('rollback-form')) {
-      $operations['rollback'] = [
-        'title' => $this->t('Rollback'),
-        'weight' => 20,
-        'url' => $this->ensureDestination($entity->toUrl('rollback-form')),
-      ];
+    $has_created = !empty($created_entities);
+    if ($entity->access('delete') && $entity->hasLinkTemplate('rollback-form')) {
+      if ($has_created) {
+        $operations['rollback'] = [
+          'title' => $this->t('Rollback'),
+          'weight' => 20,
+          'url' => $this->ensureDestination($entity->toUrl('rollback-form')),
+        ];
+      }
+      else {
+        // Disabled placeholder: keep ordering & clarity without confusing link.
+        $operations['rollback_disabled'] = [
+          'title' => $this->t('Rollback'),
+          'weight' => 20,
+          'url' => $entity->toUrl(),
+          'attributes' => [
+            'class' => ['is-disabled', 'disabled'],
+            'aria-disabled' => 'true',
+            'tabindex' => '-1',
+            'onclick' => 'return false;',
+          ],
+        ];
+      }
     }
 
     return $operations;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function render() {
+    $build = parent::render();
+    // Attach admin library globally to the listing for disabled styling.
+    $build['#attached']['library'][] = 'wdb_core/wdb_admin';
+    return $build;
   }
 
 }

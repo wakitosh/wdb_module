@@ -4,10 +4,8 @@ namespace Drupal\wdb_core\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Http\ClientFactory;
 use Drupal\Core\Routing\UrlGeneratorInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
@@ -24,12 +22,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class GalleryController extends ControllerBase implements ContainerInjectionInterface {
   use StringTranslationTrait;
 
-  /**
-   * The HTTP client factory.
-   *
-   * @var \Drupal\Core\Http\ClientFactory
-   */
-  protected ClientFactory $httpClientFactory;
 
   /**
    * The URL generator service.
@@ -57,14 +49,10 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The config factory.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler.
    * @param \Drupal\Core\Routing\UrlGeneratorInterface $url_generator
    *   The URL generator service.
-   * @param \Drupal\Core\Http\ClientFactory $http_client_factory
-   *   The HTTP client factory.
    * @param \Drupal\wdb_core\Service\WdbDataService $wdbDataService
    *   The WDB data service.
    * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
@@ -72,18 +60,14 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
    */
   public function __construct(
     EntityTypeManagerInterface $entity_type_manager,
-    ConfigFactoryInterface $config_factory,
     ModuleHandlerInterface $module_handler,
     UrlGeneratorInterface $url_generator,
-    ClientFactory $http_client_factory,
     WdbDataService $wdbDataService,
     RequestStack $request_stack,
   ) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->configFactory = $config_factory;
     $this->moduleHandler = $module_handler;
     $this->urlGenerator = $url_generator;
-    $this->httpClientFactory = $http_client_factory;
     $this->wdbDataService = $wdbDataService;
     $this->requestStack = $request_stack;
   }
@@ -94,10 +78,8 @@ class GalleryController extends ControllerBase implements ContainerInjectionInte
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('entity_type.manager'),
-      $container->get('config.factory'),
       $container->get('module_handler'),
       $container->get('url_generator'),
-      $container->get('http_client_factory'),
       $container->get('wdb_core.data_service'),
       $container->get('request_stack'),
     );

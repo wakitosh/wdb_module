@@ -73,15 +73,16 @@ class WdbSignFunction extends ContentEntityBase implements ContentEntityInterfac
       ->setDisplayOptions('form', ['type' => 'language_select', 'weight' => -10])
       ->setDisplayConfigurable('form', TRUE);
 
-    // A unique code for the sign function, generated automatically in preSave().
+    // A unique code for the sign function,
+    // generated automatically in preSave().
     // This is used as the entity label.
     $fields['sign_function_code'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Sign Function Code'))
-      ->setDescription(t('A unique identifier for the sign function, combining the sign code and function name.'))
+      ->setDescription(t('Identifier combining the sign code and function name.'))
+      ->setReadOnly(TRUE)
       ->setSetting('max_length', 255)
       ->setDisplayOptions('view', ['label' => 'inline', 'type' => 'string', 'weight' => -5])
-      ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => -5])
-      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('form', FALSE)
       ->setDisplayConfigurable('view', TRUE);
 
     // Reference to the parent WDB Sign entity.
@@ -96,15 +97,30 @@ class WdbSignFunction extends ContentEntityBase implements ContentEntityInterfac
       ->setDisplayConfigurable('view', TRUE);
 
     // The name of the function (e.g., "phonetic", "ideographic").
+    // DESIGN NOTE: This field is intentionally optional to reduce
+    // friction for humanities researchers preparing TSV imports. When
+    // left blank the generated sign_function_code becomes
+    // "<sign_code>_" (trailing underscore). Application-level
+    // validation prevents creating another entity with the same
+    // (langcode, sign_ref, function_name='') combination and also
+    // guards against duplicate generated sign_function_code values.
+    // This differs from WdbWordMeaning where meaning_identifier is
+    // required but explanation may be blank; here we prioritize rapid
+    // data entry where the function label is sometimes unknown or
+    // deferred.
     $fields['function_name'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Function Name'))
+      ->setDescription(t('Optional. Can be left blank for quicker data entry; an empty value produces a sign function code in the form <sign_code>_.'))
       ->setSetting('max_length', 100)
       ->setTranslatable(FALSE)
       ->setRequired(FALSE)
       ->setDisplayOptions('view', ['label' => 'above', 'type' => 'string', 'weight' => -3])
       ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => -3])
       ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
+      ->setDisplayConfigurable('view', TRUE)
+      ->addConstraint('WdbCompositeUnique', [
+        'fields' => ['sign_ref', 'function_name'],
+      ]);
 
     // A detailed description of the sign's function.
     $fields['description'] = BaseFieldDefinition::create('text_long')
@@ -124,15 +140,26 @@ class WdbSignFunction extends ContentEntityBase implements ContentEntityInterfac
   public function preSave(EntityStorageInterface $storage) {
     parent::preSave($storage);
 
-    // Automatically generate the 'sign_function_code' by concatenating the
-    // parent sign's code and the function name.
+    // Normalize NULL function_name to '' so UNIQUE
+    // (langcode, sign_ref, function_name) works and
+    // prevents duplicate NULL groups.
+    if ($this->get('function_name')->isEmpty() || $this->get('function_name')->value === NULL) {
+      $this->set('function_name', '');
+    }
+
+    // Automatically generate the 'sign_function_code'.
     $sign_entity = $this->get('sign_ref')->entity;
     $function_name_value = $this->get('function_name')->value ?? '';
-
     if ($sign_entity instanceof WdbSign && $sign_entity->hasField('sign_code')) {
       $sign_code = $sign_entity->get('sign_code')->value;
       if (isset($sign_code)) {
         $this->set('sign_function_code', $sign_code . '_' . $function_name_value);
+      }
+      // Inherit the langcode from the referenced sign to avoid cross-language
+      // inconsistencies. Only override if different or empty.
+      $sign_lang = $sign_entity->language()->getId();
+      if ($sign_lang && $this->language()->getId() !== $sign_lang) {
+        $this->set('langcode', $sign_lang);
       }
     }
   }

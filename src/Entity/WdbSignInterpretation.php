@@ -59,8 +59,11 @@ class WdbSignInterpretation extends ContentEntityBase implements ContentEntityIn
     // A unique code for the interpretation, used as the entity label.
     $fields['sign_interpretation_code'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Sign Interpretation Code'))
-      ->setRequired(TRUE)->setSetting('max_length', 20)->addConstraint('UniqueField')
-      ->setDisplayConfigurable('form', TRUE)->setDisplayConfigurable('view', TRUE);
+      ->setRequired(TRUE)
+      ->setSetting('max_length', 20)
+      ->addConstraint('UniqueField')
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
 
     // Reference to the WdbAnnotationPage where this interpretation occurs.
     $fields['annotation_page_ref'] = BaseFieldDefinition::create('entity_reference')
@@ -78,7 +81,8 @@ class WdbSignInterpretation extends ContentEntityBase implements ContentEntityIn
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-    // Reference to the WdbSignFunction, defining what this sign means in this context.
+    // Reference to the WdbSignFunction, defining what this sign means
+    // in this context.
     $fields['sign_function_ref'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Sign Function'))
       ->setSetting('target_type', 'wdb_sign_function')

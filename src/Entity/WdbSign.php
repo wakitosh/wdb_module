@@ -79,14 +79,16 @@ class WdbSign extends ContentEntityBase implements ContentEntityInterface {
     // This unique code is used as the entity label.
     $fields['sign_code'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Sign Code'))
-      ->setDescription(t('The unique code for the sign (original primary key).'))
+      ->setDescription(t('The unique code for the sign.'))
       ->setRequired(TRUE)
       ->setSetting('max_length', 20)
-      ->addConstraint('UniqueField')
       ->setDisplayOptions('view', ['label' => 'inline', 'type' => 'string', 'weight' => -5])
       ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => -5])
       ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
+      ->setDisplayConfigurable('view', TRUE)
+      ->addConstraint('WdbCompositeUnique', [
+        'fields' => ['sign_code'],
+      ]);
 
     return $fields;
   }

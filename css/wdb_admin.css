@@ -3,18 +3,38 @@
  * Adds a custom icon to the WDB top-level admin menu item.
  */
 
-.toolbar-menu a.toolbar-icon-wdb-core-admin-menu::before {
-    content: '';
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cellipse cx='8' cy='4' rx='6' ry='2'/%3e%3cpath d='M2 4v8c0 1.1 2.69 2 6 2s6-0.9 6-2V4'/%3e%3cpath d='M2 8c0 1.1 2.69 2 6 2s6-0.9 6-2'/%3e%3c/svg%3e");  
-    position: absolute;
-    top: 0;
-    left: 0.6667em;
-    display: block;
-    width: 1.538em;
-    height: 100%;
-    background-color: transparent;
-    background-repeat: no-repeat;
-    background-attachment: scroll;
-    background-position: center center;
-    background-size: 100% auto;
+/* WDB top-level admin menu icon (simple single rule). */
+.toolbar-icon-wdb-core-admin-menu::before {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3e%3cellipse cx='8' cy='4' rx='6' ry='2' fill='none' stroke='%23787878' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3cpath d='M2 4v8c0 1.1 2.69 2 6 2s6-0.9 6-2V4' fill='none' stroke='%23787878' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3cpath d='M2 8c0 1.1 2.69 2 6 2s6-0.9 6-2' fill='none' stroke='%23787878' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e") !important;
+    -webkit-mask: none !important;
+    mask: none !important;
+}
+
+/* Disabled rollback operation styling (entity operations use dropbutton) */
+.operations li a.is-disabled,
+.operations li a.disabled,
+.operations li span.is-disabled,
+.operations li span.disabled,
+.dropbutton li a.is-disabled,
+.dropbutton li a.disabled,
+.dropbutton li span.is-disabled,
+.dropbutton li span.disabled,
+.dropbutton li a[aria-disabled='true'],
+.dropbutton li span[aria-disabled='true'] {
+    pointer-events: none;
+    color: #999 !important;
+    border: 1px solid #ccc;
+    background: #f5f5f5;
+    text-decoration: none;
+    opacity: .65;
+    cursor: not-allowed;
+}
+
+.operations li a.is-disabled:hover,
+.operations li a.disabled:hover,
+.dropbutton li a.is-disabled:hover,
+.dropbutton li a.disabled:hover,
+.dropbutton li a[aria-disabled='true']:hover {
+    color: #999;
+    background: #f5f5f5;
 }

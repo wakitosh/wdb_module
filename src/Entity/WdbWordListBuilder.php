@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Defines a class to build a listing of WDB Word entities.
@@ -14,6 +15,23 @@ use Drupal\Core\Entity\EntityListBuilder;
  * @see \Drupal\wdb_core\Entity\WdbWord
  */
 class WdbWordListBuilder extends EntityListBuilder {
+
+  /**
+   * Entity repository for contextual translations.
+   *
+   * @var \Drupal\Core\Entity\EntityRepositoryInterface
+   */
+  protected $entityRepository;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function createInstance(ContainerInterface $container, $entity_type) {
+    /** @var static $instance */
+    $instance = parent::createInstance($container, $entity_type);
+    $instance->entityRepository = $container->get('entity.repository');
+    return $instance;
+  }
 
   /**
    * {@inheritdoc}
@@ -40,8 +58,12 @@ class WdbWordListBuilder extends EntityListBuilder {
 
     // Retrieves and formats the names of the referenced lexical category terms.
     $lexical_category_terms = [];
-    foreach ($entity->get('lexical_category_ref')->referencedEntities() as $term) {
-      $lexical_category_terms[] = $term->getName();
+    if ($entity->hasField('lexical_category_ref') && !$entity->get('lexical_category_ref')->isEmpty()) {
+      $term = $entity->get('lexical_category_ref')->entity;
+      if ($term) {
+        $translated = $this->entityRepository->getTranslationFromContext($term);
+        $lexical_category_terms[] = $translated->label();
+      }
     }
     $row['lexical_category_ref'] = !empty($lexical_category_terms) ? implode(', ', $lexical_category_terms) : $this->t('- None -');
 

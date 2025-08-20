@@ -5,12 +5,12 @@ namespace Drupal\wdb_core\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Http\ClientFactory;
 use Drupal\Core\Url;
 use Drupal\wdb_core\Service\WdbDataService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -37,41 +37,37 @@ class IiifV3ManifestController extends ControllerBase implements ContainerInject
    *
    * @var \Symfony\Component\HttpFoundation\RequestStack
    */
-  protected $requestStack;
+  protected RequestStack $requestStack;
 
   /**
    * Constructs a new IiifV3ManifestController object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The config factory.
    * @param \Drupal\wdb_core\Service\WdbDataService $wdb_data_service
    *   The WDB data service.
    * @param \Drupal\Core\Http\ClientFactory $http_client_factory
    *   The HTTP client factory.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The request stack.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory, WdbDataService $wdb_data_service, ClientFactory $http_client_factory) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, WdbDataService $wdb_data_service, ClientFactory $http_client_factory, RequestStack $request_stack) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->configFactory = $config_factory;
     $this->wdbDataService = $wdb_data_service;
     $this->httpClientFactory = $http_client_factory;
+    $this->requestStack = $request_stack;
   }
 
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    $instance = new static(
+    return new static(
       $container->get('entity_type.manager'),
-      $container->get('config.factory'),
       $container->get('wdb_core.data_service'),
-      $container->get('http_client_factory')
+      $container->get('http_client_factory'),
+      $container->get('request_stack'),
     );
-    if ($container->has('request_stack')) {
-      $instance->requestStack = $container->get('request_stack');
-    }
-    return $instance;
   }
 
   /**

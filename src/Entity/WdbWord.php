@@ -94,12 +94,10 @@ class WdbWord extends ContentEntityBase implements ContentEntityInterface {
     // A unique code for the word, generated automatically in preSave().
     $fields['word_code'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Word Code'))
-      ->setRequired(TRUE)
-      ->addConstraint('UniqueField')
+      ->setReadOnly(TRUE)
       ->setSetting('max_length', 120)
       ->setDisplayOptions('view', ['label' => 'inline', 'type' => 'string', 'weight' => -5])
-      ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => -5])
-      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('form', FALSE)
       ->setDisplayConfigurable('view', TRUE);
 
     // The basic or dictionary form of the word, used as the entity label.
@@ -109,7 +107,10 @@ class WdbWord extends ContentEntityBase implements ContentEntityInterface {
       ->setDisplayOptions('view', ['label' => 'above', 'type' => 'string', 'weight' => -4])
       ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => -4])
       ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
+      ->setDisplayConfigurable('view', TRUE)
+      ->addConstraint('WdbCompositeUnique', [
+        'fields' => ['basic_form', 'lexical_category_ref'],
+      ]);
 
     // Reference to the lexical category (e.g., "noun", "verb") taxonomy term.
     $fields['lexical_category_ref'] = BaseFieldDefinition::create('entity_reference')

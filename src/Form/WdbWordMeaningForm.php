@@ -8,6 +8,8 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\wdb_core\Entity\WdbWord;
+use Drupal\wdb_core\Entity\WdbWordMeaning;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -78,43 +80,180 @@ class WdbWordMeaningForm extends ContentEntityForm {
       }
     }
 
-    // When editing an existing entity, disable the 'langcode' and 'word_ref'
-    // fields to prevent changes that could lead to data inconsistency.
-    if (!$this->entity->isNew()) {
-      if (isset($form['langcode'])) {
-        $form['langcode']['#disabled'] = TRUE;
-      }
-      if (isset($form['word_ref'])) {
-        $form['word_ref']['#disabled'] = TRUE;
-      }
-    }
-    else {
-      // When creating a new entity, sort the 'word_ref' options by label.
-      if (isset($form['word_ref']['widget']['#options'])) {
-        $word_storage = $this->entityTypeManager->getStorage('wdb_word');
-        $words = $word_storage->loadMultiple();
+    $is_new = $this->entity->isNew();
 
-        $options = [];
-        foreach ($words as $word) {
-          $options[$word->id()] = $word->label();
-        }
-
-        // Sort the options alphabetically by label, maintaining key association.
-        asort($options, SORT_NATURAL | SORT_FLAG_CASE);
-
-        // For non-required fields, re-add the empty option to the top.
-        if (isset($form['word_ref']['widget']['#options']['_none'])) {
-          $options = ['_none' => $this->t('- None -')] + $options;
-        }
-
-        // Replace the default options with the sorted ones.
-        $form['word_ref']['widget']['#options'] = $options;
-      }
+    // Hide langcode entirely; inherit from referenced word.
+    if (isset($form['langcode'])) {
+      $form['langcode']['#access'] = FALSE;
     }
 
-    // Note: To dynamically preview the code with JavaScript, AJAX properties
-    // could be added to the 'word_ref' and 'meaning_identifier' fields here.
+    $word_storage = $this->entityTypeManager->getStorage('wdb_word');
+
+    if ($is_new && isset($form['word_ref']['widget']['#options'])) {
+      $words = $word_storage->loadMultiple();
+      $options = [];
+      foreach ($words as $word) {
+        if (!$word instanceof WdbWord) {
+          continue;
+        }
+        // Translate the word label in the current interface language.
+        $translated_word = $this->entityRepository->getTranslationFromContext($word);
+        $basic = $translated_word->label();
+        $lex = '';
+        if ($word->hasField('lexical_category_ref') && !$word->get('lexical_category_ref')->isEmpty()) {
+          $lex_entity = $word->get('lexical_category_ref')->entity;
+          if ($lex_entity) {
+            $lex_entity = $this->entityRepository->getTranslationFromContext($lex_entity);
+            $lex = $lex_entity->label();
+          }
+        }
+        $lang = $word->language()->getId();
+        // Format: basic (lexical / lang)  - lexical optional.
+        if ($lex !== '') {
+          $label = $basic . ' (' . $lex . ' / ' . $lang . ')';
+        }
+        else {
+          $label = $basic . ' (' . $lang . ')';
+        }
+        $options[$word->id()] = $label;
+      }
+      natcasesort($options);
+      if (isset($form['word_ref']['widget']['#options']['_none'])) {
+        $options = ['_none' => $this->t('- None -')] + $options;
+      }
+      $form['word_ref']['widget']['#options'] = $options;
+      // Ensure correct per-language caching of translated option labels.
+      $form['word_ref']['widget']['#cache']['contexts'][] = 'languages:language_interface';
+    }
+    elseif (!$is_new && isset($form['word_ref'])) {
+      // Replace displayed label with formatted composite and disable.
+      $selected = NULL;
+      if (isset($form['word_ref']['widget']['#default_value'])) {
+        $selected = $form['word_ref']['widget']['#default_value'];
+        if (is_array($selected)) {
+          $selected = reset($selected);
+        }
+      }
+      if (!$selected && $this->entity->get('word_ref')->target_id) {
+        $selected = $this->entity->get('word_ref')->target_id;
+      }
+      if ($selected) {
+        $word = $word_storage->load($selected);
+        if ($word instanceof WdbWord) {
+          $translated_word = $this->entityRepository->getTranslationFromContext($word);
+          $basic = $translated_word->label();
+          $lex = '';
+          if ($word->hasField('lexical_category_ref') && !$word->get('lexical_category_ref')->isEmpty()) {
+            $lex_entity = $word->get('lexical_category_ref')->entity;
+            if ($lex_entity) {
+              $lex_entity = $this->entityRepository->getTranslationFromContext($lex_entity);
+              $lex = $lex_entity->label();
+            }
+          }
+          $lang = $word->language()->getId();
+          if ($lex !== '') {
+            $label = $basic . ' (' . $lex . ' / ' . $lang . ')';
+          }
+          else {
+            $label = $basic . ' (' . $lang . ')';
+          }
+          $form['word_ref']['widget']['#options'] = [$word->id() => $label];
+          $form['word_ref']['widget']['#cache']['contexts'][] = 'languages:language_interface';
+        }
+      }
+      $form['word_ref']['#disabled'] = TRUE;
+    }
+
+    // Auto-suggest next meaning_identifier via AJAX when word_ref changes.
+    if ($is_new && isset($form['word_ref']['widget'])) {
+      // Attach AJAX to the select element. The options_select widget stores
+      // the select items directly under ['widget'].
+      $form['word_ref']['widget']['#ajax'] = [
+        'callback' => '::updateSuggestedMeaningIdentifier',
+        'event' => 'change',
+        'wrapper' => 'meaning-identifier-wrapper',
+        'progress' => ['type' => 'throbber'],
+      ];
+    }
+    if (isset($form['meaning_identifier'])) {
+      // Wrap to allow AJAX replace.
+      $form['meaning_identifier']['#prefix'] = '<div id="meaning-identifier-wrapper">';
+      $form['meaning_identifier']['#suffix'] = '</div>';
+      // Determine selected word id from form state. Support both shapes the
+      // entity reference widget may produce.
+      $selected_word_id = NULL;
+      $word_value = $form_state->getValue('word_ref');
+      if (is_array($word_value)) {
+        if (isset($word_value[0]['target_id']) && $word_value[0]['target_id'] !== '') {
+          $selected_word_id = (int) $word_value[0]['target_id'];
+        }
+        elseif (isset($word_value['target_id']) && $word_value['target_id'] !== '') {
+          $selected_word_id = (int) $word_value['target_id'];
+        }
+      }
+      if ($is_new && $form_state->getTriggeringElement() && $selected_word_id) {
+        // Track whether current value was auto-suggested previously.
+        $auto_state = $form_state->get('auto_meaning_identifier') ?? [];
+        $current_val = $form_state->getValue(['meaning_identifier', 0, 'value']);
+        $was_auto = !empty($auto_state['suggested']) && isset($auto_state['value']) && (string) $auto_state['value'] === (string) $current_val;
+
+        // Re-suggest if empty OR still auto from previous suggestion.
+        if ($current_val === NULL || $current_val === '' || $was_auto) {
+          $suggested = $this->computeNextMeaningIdentifier($selected_word_id);
+          if ($suggested !== NULL) {
+            $form['meaning_identifier']['widget'][0]['value']['#value'] = $suggested;
+            $form_state->set('auto_meaning_identifier', [
+              'suggested' => TRUE,
+              'value' => $suggested,
+              'word_id' => $selected_word_id,
+            ]);
+          }
+        }
+        else {
+          // User changed it manually; stop auto updates.
+          $form_state->set('auto_meaning_identifier', [
+            'suggested' => FALSE,
+            'value' => $current_val,
+            'word_id' => $selected_word_id,
+          ]);
+        }
+      }
+    }
+
     return $form;
+  }
+
+  /**
+   * AJAX callback to update suggested meaning identifier.
+   */
+  public function updateSuggestedMeaningIdentifier(array &$form, FormStateInterface $form_state) {
+    return $form['meaning_identifier'];
+  }
+
+  /**
+   * Compute next meaning_identifier for given word id.
+   */
+  protected function computeNextMeaningIdentifier(int $word_id): ?int {
+    if ($word_id <= 0) {
+      return NULL;
+    }
+    $storage = $this->entityTypeManager->getStorage('wdb_word_meaning');
+    $query = $storage->getQuery()
+      ->condition('word_ref', $word_id)
+      ->accessCheck(FALSE)
+      ->sort('meaning_identifier', 'DESC')
+      ->range(0, 1);
+    $ids = $query->execute();
+    if (!$ids) {
+      return 1;
+    }
+    $entities = $storage->loadMultiple($ids);
+    $wm = reset($entities);
+    if ($wm instanceof WdbWordMeaning && !$wm->get('meaning_identifier')->isEmpty()) {
+      $current = (int) $wm->get('meaning_identifier')->value;
+      return $current + 1;
+    }
+    return 1;
   }
 
   /**

@@ -100,4 +100,4 @@ wdb_search:
 wdb_admin:
   css:
     theme:
-      css/wdb_admin.css: {}
+      css/wdb_admin.css: { weight: 999 }

@@ -77,13 +77,11 @@ class WdbWordMeaning extends ContentEntityBase implements ContentEntityInterface
     // This is used as the entity label.
     $fields['word_meaning_code'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Word Meaning Code'))
-      ->setDescription(t('A unique identifier for the word meaning, combining the word code and meaning identifier.'))
-      // ->setRequired(TRUE) // Not required here as it is set dynamically in preSave().
+      ->setDescription(t('Identifier combining the word code and meaning identifier.'))
+      ->setReadOnly(TRUE)
       ->setSetting('max_length', 240)
-      ->addConstraint('UniqueField')
       ->setDisplayOptions('view', ['label' => 'inline', 'type' => 'string', 'weight' => -5])
-      ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => -5])
-      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('form', FALSE)
       ->setDisplayConfigurable('view', TRUE);
 
     // Reference to the parent WDB Word entity.
@@ -105,7 +103,10 @@ class WdbWordMeaning extends ContentEntityBase implements ContentEntityInterface
       ->setDisplayOptions('view', ['label' => 'inline', 'type' => 'number_integer', 'weight' => -3])
       ->setDisplayOptions('form', ['type' => 'number', 'weight' => -3])
       ->setDisplayConfigurable('form', TRUE)
-      ->setDisplayConfigurable('view', TRUE);
+      ->setDisplayConfigurable('view', TRUE)
+      ->addConstraint('WdbCompositeUnique', [
+        'fields' => ['word_ref', 'meaning_identifier'],
+      ]);
 
     // The explanation or definition of the word's meaning.
     $fields['explanation'] = BaseFieldDefinition::create('text_long')
@@ -134,6 +135,12 @@ class WdbWordMeaning extends ContentEntityBase implements ContentEntityInterface
       $word_code = $word_entity->get('word_code')->value;
       if (!empty($word_code)) {
         $this->set('word_meaning_code', $word_code . '_' . $meaning_id_value);
+      }
+      // Inherit langcode from the referenced word if different to prevent
+      // cross-language mismatches.
+      $parent_lang = $word_entity->language()->getId();
+      if ($parent_lang && $this->language()->getId() !== $parent_lang) {
+        $this->set('langcode', $parent_lang);
       }
     }
   }

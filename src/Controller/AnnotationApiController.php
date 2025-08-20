@@ -2,7 +2,6 @@
 
 namespace Drupal\wdb_core\Controller;
 
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -15,6 +14,7 @@ use Drupal\wdb_core\Service\WdbDataService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Controller for WDB Annotation API endpoints.
@@ -23,7 +23,6 @@ use Symfony\Component\HttpFoundation\Request;
  * annotations, compatible with clients like Annotorious.
  */
 class AnnotationApiController extends ControllerBase implements ContainerInjectionInterface {
-
 
   /**
    * The URL generator service.
@@ -47,25 +46,32 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
   protected WdbDataService $wdbDataService;
 
   /**
-   * Constructs a new AnnotationApiController object.
+   * The request stack.
    *
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected RequestStack $requestStack;
+
+  /**
+   * Constructs a new AnnotationApiController.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    * @param \Drupal\Core\Routing\UrlGeneratorInterface $url_generator
-   *   The URL generator service.
+   *   The URL generator.
    * @param \Drupal\wdb_core\Lib\HullJsPhp\HullPHP $hull_calculator
-   *   The HullPHP calculation service.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The config factory.
+   *   The hull calculator.
    * @param \Drupal\wdb_core\Service\WdbDataService $wdbDataService
-   *   The WDB data service.
+   *   The data service.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The request stack.
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, UrlGeneratorInterface $url_generator, HullPHP $hull_calculator, ConfigFactoryInterface $config_factory, WdbDataService $wdbDataService) {
-    $this->entityTypeManager = $entityTypeManager;
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, UrlGeneratorInterface $url_generator, HullPHP $hull_calculator, WdbDataService $wdbDataService, RequestStack $request_stack) {
+    $this->entityTypeManager = $entity_type_manager;
     $this->urlGenerator = $url_generator;
     $this->hullCalculator = $hull_calculator;
-    $this->configFactory = $config_factory;
     $this->wdbDataService = $wdbDataService;
+    $this->requestStack = $request_stack;
   }
 
   /**
@@ -76,8 +82,8 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
       $container->get('entity_type.manager'),
       $container->get('url_generator'),
       $container->get('wdb_core.hull_calculator'),
-      $container->get('config.factory'),
-      $container->get('wdb_core.data_service')
+      $container->get('wdb_core.data_service'),
+      $container->get('request_stack'),
     );
   }
 
@@ -110,6 +116,7 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
     $annotations_array = [];
     if (!empty($wdb_labels)) {
       foreach ($wdb_labels as $wdb_label) {
+        /** @var \Drupal\wdb_core\Entity\WdbLabel $wdb_label */
         $annotation = $this->buildAnnotationV3($wdb_label);
         if ($annotation) {
           $annotations_array[] = $annotation;
@@ -155,6 +162,7 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
       $points_for_storage = array_map(fn($p) => ['value' => $p], $polygon_points_array);
       $center_coords = $this->calculatePolygonCenter($polygon_points_array);
 
+      /** @var \Drupal\wdb_core\Entity\WdbLabel $wdb_label */
       $wdb_label = $this->entityTypeManager->getStorage('wdb_label')->create([
         'label_name' => strip_tags($label_name),
         'annotation_page_ref' => $wdb_annotation_page->id(),
@@ -168,7 +176,6 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
       // Set the canonical URI of the new entity as its annotation URI.
       $annotation_uri = Url::fromRoute('entity.wdb_label.canonical', ['wdb_label' => $wdb_label->id()], ['absolute' => TRUE])->toString();
       $wdb_label->set('annotation_uri', $annotation_uri)->save();
-
       return new JsonResponse($this->buildAnnotationV3($wdb_label), 201);
     }
     catch (\Exception $e) {
@@ -195,6 +202,7 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
     }
 
     $labels = $this->entityTypeManager->getStorage('wdb_label')->loadByProperties(['annotation_uri' => $annotation_uri]);
+    /** @var \Drupal\wdb_core\Entity\WdbLabel|false $wdb_label */
     $wdb_label = reset($labels);
     if (!$wdb_label) {
       return new JsonResponse(['error' => 'Annotation not found for update.'], 404);
@@ -212,7 +220,6 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
       $polygon_points_array = array_map(fn($p) => "{$p[0]},{$p[1]}", $points);
       $points_for_storage = array_map(fn($p) => ['value' => $p], $polygon_points_array);
       $center_coords = $this->calculatePolygonCenter($polygon_points_array);
-
       $wdb_label->set('label_name', strip_tags($label_name));
       $wdb_label->set('polygon_points', $points_for_storage);
       $wdb_label->set('label_center_x', $center_coords['x'] ?? NULL);
@@ -222,7 +229,10 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
       return new JsonResponse($this->buildAnnotationV3($wdb_label), 200);
     }
     catch (\Exception $e) {
-      $this->getLogger('wdb_core')->error('Failed to update WdbLabel @id: @message', ['@id' => $wdb_label->id(), '@message' => $e->getMessage()]);
+      $this->getLogger('wdb_core')->error('Failed to update WdbLabel @id: @message', [
+        '@id' => $wdb_label ? $wdb_label->id() : 'N/A',
+        '@message' => $e->getMessage(),
+      ]);
       return new JsonResponse(['error' => 'Server error while updating annotation.'], 500);
     }
   }
@@ -294,6 +304,7 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
         $map_ids = $map_storage->getQuery()->condition('word_unit_ref', $wu->id())->accessCheck(FALSE)->execute();
         $all_points = [];
         foreach ($map_storage->loadMultiple($map_ids) as $map) {
+          /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
           $si = $map->get('sign_interpretation_ref')->entity;
           if ($si && $si->get('label_ref')->entity) {
             $label = $si->get('label_ref')->entity;
@@ -326,23 +337,41 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
         $html_body_parts = [];
 
         $realized_form_value = $wu->get('realized_form')->value;
-        $realized_form_search_url = Url::fromRoute('wdb_core.search_form', 
+        $realized_form_search_url = Url::fromRoute(
+          'wdb_core.search_form',
           ['subsysname' => strtolower($subsysname)],
-          ['query' => ['realized_form' => $realized_form_value], 'absolute' => TRUE]
+          [
+            'query' => ['realized_form' => $realized_form_value],
+            'absolute' => TRUE,
+          ]
         )->toString();
 
         $html_body_parts[] = "<strong>Realized Form:</strong> <a href=\"{$realized_form_search_url}\" target=\"_blank\">{$realized_form_value}</a>";
 
         if ($word) {
           $basic_form_value = $word->get('basic_form')->value;
-          $basic_form_search_url = Url::fromRoute('wdb_core.search_form', ['subsysname' => strtolower($subsysname)], ['query' => ['basic_form' => $basic_form_value], 'absolute' => TRUE])->toString();
+          $basic_form_search_url = Url::fromRoute(
+            'wdb_core.search_form',
+            ['subsysname' => strtolower($subsysname)],
+            [
+              'query' => ['basic_form' => $basic_form_value],
+              'absolute' => TRUE,
+            ]
+          )->toString();
           $html_body_parts[] = "<strong>Basic Form:</strong> <a href=\"{$basic_form_search_url}\" target=\"_blank\">{$basic_form_value}</a>";
         }
 
         $lexical_category_term = $word ? $word->get('lexical_category_ref')->entity : NULL;
         if ($lexical_category_term) {
           $lc_value = $lexical_category_term->getName();
-          $lc_search_url = Url::fromRoute('wdb_core.search_form', ['subsysname' => strtolower($subsysname)], ['query' => ['lexical_category' => $lexical_category_term->id()], 'absolute' => TRUE])->toString();
+          $lc_search_url = Url::fromRoute(
+            'wdb_core.search_form',
+            ['subsysname' => strtolower($subsysname)],
+            [
+              'query' => ['lexical_category' => $lexical_category_term->id()],
+              'absolute' => TRUE,
+            ]
+          )->toString();
           $html_body_parts[] = "<strong>Lexical Category:</strong> <a href=\"{$lc_search_url}\" target=\"_blank\">{$lc_value}</a>";
         }
 
@@ -351,6 +380,7 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
           $maps_for_signs = $map_storage->loadMultiple($map_ids_for_signs);
           $sign_links = [];
           foreach ($maps_for_signs as $map) {
+            /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
             $si = $map->get('sign_interpretation_ref')->entity;
             if ($si) {
               $sf = $si->get('sign_function_ref')->entity;
@@ -359,7 +389,14 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
                 $sign_code = $sign->get('sign_code')->value;
                 $phone = $si->get('phone')->value;
                 $display_text = $phone ? "{$sign_code} [{$phone}]" : $sign_code;
-                $sign_search_url = Url::fromRoute('wdb_core.search_form', ['subsysname' => strtolower($subsysname)], ['query' => ['sign' => $sign_code], 'absolute' => TRUE])->toString();
+                $sign_search_url = Url::fromRoute(
+                  'wdb_core.search_form',
+                  ['subsysname' => strtolower($subsysname)],
+                  [
+                    'query' => ['sign' => $sign_code],
+                    'absolute' => TRUE,
+                  ]
+                )->toString();
                 $sign_links[] = "<a href=\"{$sign_search_url}\" target=\"_blank\">{$display_text}</a>";
               }
             }
@@ -411,7 +448,9 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
     return new JsonResponse($response_data);
   }
 
-  // === Helper Methods ===
+  /**
+   * Helper methods.
+   */
 
   /**
    * Builds an Annotorious v3 native compliant JSON object.
@@ -547,7 +586,8 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
    *   The absolute Canvas URI.
    */
   private function getCanvasUri(WdbAnnotationPage $page): string {
-    return \Drupal::request()->getSchemeAndHttpHost() . $page->get('canvas_identifier_fragment')->value;
+    $request = $this->requestStack->getCurrentRequest();
+    return $request->getSchemeAndHttpHost() . $page->get('canvas_identifier_fragment')->value;
   }
 
   /**
@@ -622,55 +662,5 @@ class AnnotationApiController extends ControllerBase implements ContainerInjecti
     ];
   }
 
-  /**
-   * Extracts polygon points from an annotation payload.
-   *
-   * @param array $payload
-   *   The annotation data array.
-   *
-   * @return array|null
-   *   An array of "X,Y" strings, or NULL.
-   */
-  private function extractPolygonPointsFromPayload(array $payload): ?array {
-    $target_data = $payload['target'] ?? NULL;
-    $selector_data = $target_data['selector'] ?? NULL;
-    if (empty($selector_data)) {
-      return NULL;
-    }
-
-    if (isset($selector_data['type']) && $selector_data['type'] === 'SvgSelector' && isset($selector_data['value'])) {
-      $svg_string = $selector_data['value'];
-      $doc = new \DOMDocument();
-      if (@$doc->loadXML($svg_string)) {
-        $polygon_elements = $doc->getElementsByTagName('polygon');
-        if ($polygon_elements->length > 0) {
-          $points_attribute = $polygon_elements->item(0)->getAttribute('points');
-          return $this->parsePolygonPointsAttribute($points_attribute);
-        }
-      }
-    }
-    return NULL;
-  }
-
-  /**
-   * Parses a polygon's "points" attribute string into an array.
-   *
-   * @param string $points_str
-   *   The string from the 'points' attribute.
-   *
-   * @return array
-   *   An array of "X,Y" strings.
-   */
-  private function parsePolygonPointsAttribute(string $points_str): array {
-    $points = [];
-    $coord_pairs = preg_split('/\s+/', trim($points_str), -1, PREG_SPLIT_NO_EMPTY);
-    foreach ($coord_pairs as $pair) {
-      $coords = explode(',', $pair);
-      if (count($coords) === 2 && is_numeric($coords[0]) && is_numeric($coords[1])) {
-        $points[] = round((float) $coords[0]) . ',' . round((float) $coords[1]);
-      }
-    }
-    return $points;
-  }
-
+  // End of controller.
 }

@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Form;
 
 use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -20,13 +21,23 @@ class WdbPosMappingForm extends EntityForm {
   protected $entityTypeManager;
 
   /**
+   * The entity repository service.
+   *
+   * @var \Drupal\Core\Entity\EntityRepositoryInterface
+   */
+  protected $entityRepository;
+
+  /**
    * Constructs a WdbPosMappingForm object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
+   * @param \Drupal\Core\Entity\EntityRepositoryInterface $entity_repository
+   *   The entity repository service (for contextual translations).
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, EntityRepositoryInterface $entity_repository) {
     $this->entityTypeManager = $entity_type_manager;
+    $this->entityRepository = $entity_repository;
   }
 
   /**
@@ -34,7 +45,8 @@ class WdbPosMappingForm extends EntityForm {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('entity.repository')
     );
   }
 
@@ -70,12 +82,20 @@ class WdbPosMappingForm extends EntityForm {
       '#default_value' => $pos_mapping->source_pos_string,
       '#required' => TRUE,
     ];
-
-    // Build a list of available lexical category taxonomy terms.
+    // Build a list of lexical category terms (translated to UI language).
+    $term_storage = $this->entityTypeManager->getStorage('taxonomy_term');
+    /** @var \Drupal\taxonomy\TermStorageInterface $term_storage */
+    $tree = $term_storage->loadTree('lexical_category');
     $lc_options = [];
-    $lc_terms = $this->entityTypeManager->getStorage('taxonomy_term')->loadTree('lexical_category');
-    foreach ($lc_terms as $term) {
-      $lc_options[$term->tid] = str_repeat('--', $term->depth) . ' ' . $term->name;
+    foreach ($tree as $item) {
+      /** @var \stdClass $item */
+      $term_entity = $term_storage->load($item->tid);
+      if (!$term_entity) {
+        continue;
+      }
+      $translated = $this->entityRepository->getTranslationFromContext($term_entity);
+      $label = $translated->label();
+      $lc_options[$item->tid] = str_repeat('--', (int) $item->depth) . ' ' . $label;
     }
 
     $form['target_lexical_category'] = [

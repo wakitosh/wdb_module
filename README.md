@@ -1,5 +1,7 @@
 # **WDB: Word-Database Module for Drupal**
 
+> Documentation note: A full Japanese explanation is provided in the latter half of this file. / 後半に日本語での詳細説明があります。
+
 ## **1\. Overview**
 
 The Word-Database (WDB) Core module is a comprehensive toolkit for Drupal designed for linguists, historians, philologists, and digital humanists. A key feature of WDB is its flexibility, allowing for the management of **multiple linguistic materials from various eras and regions on a single, unified platform.**
@@ -228,6 +230,19 @@ The WDB module is built upon a rich set of custom content entities. The primary 
 * **WdbWordUnit** is composed of one or more **WdbSignInterpretation**s, linked via the **WdbWordMap** entity.
 * **WdbSignInterpretation** is linked to a **WdbLabel** (the annotation polygon) and a **WdbSignFunction**.
 * **WdbSignFunction** belongs to a single **WdbSign** (the character).
+
+### **Design Notes**
+
+*Optional Sign Function Name*
+
+`WdbSignFunction.function_name` is intentionally optional. If it is left blank the generated `sign_function_code` becomes `<sign_code>_` (a trailing underscore). Two safeguards enforce logical uniqueness:
+
+1. A composite uniqueness validator on `(langcode, sign_ref, function_name)` treats an empty string as a real value so duplicate blank entries for the same Sign + language are rejected before hitting the database.
+2. An additional validator step predicts the final `sign_function_code` and blocks duplicates (relevant when `function_name` is blank or identical).
+
+Rationale: During early data creation and TSV preparation, researchers (often in the humanities rather than computational specialists) may not yet wish to categorise every sign function. Allowing an empty value lowers friction while still guaranteeing stable identifiers and preventing silent duplication. This is analogous—but not identical—to `WdbWordMeaning`, where `meaning_identifier` is required but `explanation` is optional.
+
+If a future project phase requires making the function name mandatory, it can be flipped to required without breaking existing codes; existing blank entries already yield consistent `sign_function_code` values.
 
 ### **Key Services**
 
@@ -468,6 +483,19 @@ WDBモジュールは、豊富なカスタムコンテントエンティティ�
 * **WdbWordUnit** は、一つ以上の **WdbSignInterpretation** から構成され、**WdbWordMap** エンティティを介して結びつきます。
 * **WdbSignInterpretation** は、**WdbLabel** (アノテーションのポリゴン) と **WdbSignFunction** に結びつきます。
 * **WdbSignFunction** は、単一の **WdbSign** (文字) に属します。
+
+### 設計ノート: Sign Function の function_name が任意である理由
+
+`WdbSignFunction.function_name` フィールドは、TSV 作成や初期投入時の負担軽減を優先し「必須ではない」設計としています。未入力（空文字）の場合、生成される `sign_function_code` は `<sign_code>_` （末尾アンダースコア）となります。これは **一時的に機能ラベルを未確定のまま識別子だけ確保したい** という人文学系ワークフローを想定しています。
+
+重複防止は二段構えで保証されます:
+
+1. `(langcode, sign_ref, function_name)` の複合一意性バリデーション（空文字も実際の値として扱い、同一 Sign + 言語で複数の空 function_name を禁止）。
+2. 生成前に予測される `sign_function_code`（`<sign_code>_` など）での追加重複チェック。
+
+これにより、function_name を後から追記しても識別子の一貫性が損なわれず、同時に空のままの重複行が静かに増殖することを防ぎます。将来的に要件が変わり必須化したい場合は、フィールドを required に変更するだけで、既存データの識別子（`sign_function_code`）はそのまま利用できます。
+
+参考: `WdbWordMeaning` では `meaning_identifier` を必須とし `explanation` を任意とする対称ではない設計ですが、Sign Function 側は「まず最小限の符号機能エンティティを大量投入 → 後で機能名を意味的に整理」という運用を想定したためこの差異があります。
 
 ### **主要なサービス**
 

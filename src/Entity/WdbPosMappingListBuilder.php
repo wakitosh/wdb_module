@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityRepositoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -24,29 +25,40 @@ class WdbPosMappingListBuilder extends DraggableListBuilder {
   protected $entityTypeManager;
 
   /**
+   * Entity repository for contextual translations.
+   *
+   * @var \Drupal\Core\Entity\EntityRepositoryInterface
+   */
+  protected $entityRepository;
+
+  /**
    * {@inheritdoc}
    */
   public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) {
     return new static(
       $entity_type,
       $container->get('entity_type.manager')->getStorage($entity_type->id()),
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('entity.repository')
     );
   }
 
   /**
-   * Constructs a new WdbPosMappingListBuilder object.
+   * Constructs the list builder.
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
    *   The entity type definition.
    * @param \Drupal\Core\Entity\EntityStorageInterface $storage
-   *   The entity storage class.
+   *   The storage handler.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
+   * @param \Drupal\Core\Entity\EntityRepositoryInterface $entity_repository
+   *   The entity repository service.
    */
-  public function __construct(EntityTypeInterface $entity_type, EntityStorageInterface $storage, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(EntityTypeInterface $entity_type, EntityStorageInterface $storage, EntityTypeManagerInterface $entity_type_manager, EntityRepositoryInterface $entity_repository) {
     parent::__construct($entity_type, $storage);
     $this->entityTypeManager = $entity_type_manager;
+    $this->entityRepository = $entity_repository;
   }
 
   /**
@@ -80,7 +92,13 @@ class WdbPosMappingListBuilder extends DraggableListBuilder {
     $target_term_id = $entity->target_lexical_category;
     if ($target_term_id) {
       $term = $this->entityTypeManager->getStorage('taxonomy_term')->load($target_term_id);
-      $term_name = $term ? $term->getName() : $this->t('Term not found');
+      if ($term) {
+        $translated = $this->entityRepository->getTranslationFromContext($term);
+        $term_name = $translated->label();
+      }
+      else {
+        $term_name = $this->t('Term not found');
+      }
     }
     else {
       $term_name = $this->t('Not set');

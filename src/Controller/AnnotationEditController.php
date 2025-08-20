@@ -4,11 +4,9 @@ namespace Drupal\wdb_core\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Http\ClientFactory;
-use Drupal\Core\Routing\UrlGeneratorInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
 use Drupal\wdb_core\Entity\WdbSource;
@@ -28,20 +26,6 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
   use StringTranslationTrait;
 
   /**
-   * The URL generator service.
-   *
-   * @var \Drupal\Core\Routing\UrlGeneratorInterface
-   */
-  protected UrlGeneratorInterface $urlGenerator;
-
-  /**
-   * The HTTP client factory.
-   *
-   * @var \Drupal\Core\Http\ClientFactory
-   */
-  protected ClientFactory $httpClientFactory;
-
-  /**
    * The WDB data service.
    *
    * @var \Drupal\wdb_core\Service\WdbDataService
@@ -49,35 +33,29 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
   protected WdbDataService $wdbDataService;
 
   /**
-   * Constructs a new AnnotationEditController object.
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected RequestStack $requestStack;
+
+  /**
+   * Constructs a new AnnotationEditController.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The config factory.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler.
-   * @param \Drupal\Core\Routing\UrlGeneratorInterface $url_generator
-   *   The URL generator service.
-   * @param \Drupal\Core\Http\ClientFactory $http_client_factory
-   *   The HTTP client factory.
    * @param \Drupal\wdb_core\Service\WdbDataService $wdbDataService
-   *   The WDB data service.
+   *   The data service.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The request stack.
    */
-  public function __construct(
-    EntityTypeManagerInterface $entity_type_manager,
-    ConfigFactoryInterface $config_factory,
-    ModuleHandlerInterface $module_handler,
-    UrlGeneratorInterface $url_generator,
-    ClientFactory $http_client_factory,
-    WdbDataService $wdbDataService,
-  ) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, WdbDataService $wdbDataService, RequestStack $request_stack) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->configFactory = $config_factory;
     $this->moduleHandler = $module_handler;
-    $this->urlGenerator = $url_generator;
-    $this->httpClientFactory = $http_client_factory;
     $this->wdbDataService = $wdbDataService;
+    $this->requestStack = $request_stack;
   }
 
   /**
@@ -86,11 +64,9 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('entity_type.manager'),
-      $container->get('config.factory'),
       $container->get('module_handler'),
-      $container->get('url_generator'),
-      $container->get('http_client.factory'),
-      $container->get('wdb_core.data_service')
+      $container->get('wdb_core.data_service'),
+      $container->get('request_stack'),
     );
   }
 
@@ -110,7 +86,10 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
   public function getPageTitle(string $subsysname, string $source, int $page): string {
     $wdb_source_entity = $this->loadWdbSource($source, $subsysname);
     if ($wdb_source_entity) {
-      return $this->t('Edit Annotations: @source_label - Page @page', ['@source_label' => $wdb_source_entity->label(), '@page' => $page]);
+      return $this->t('Edit Annotations: @source_label - Page @page', [
+        '@source_label' => $wdb_source_entity->label(),
+        '@page' => $page,
+      ]);
     }
     return $this->t('Edit Annotations');
   }
@@ -130,7 +109,7 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
    * @return array
    *   A render array for the annotation editor page.
    */
-  public function buildPage(Request $request, string $subsysname, string $source, int $page) {
+  public function buildPage(Request $request, string $subsysname, string $source, int $page): array {
     $wdb_source_entity = $this->loadWdbSource($source, $subsysname);
     if (!$wdb_source_entity) {
       throw new NotFoundHttpException();
@@ -169,8 +148,14 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
     $manifest_base_uri = $this->getManifestUri($wdb_source_entity, $subsysname);
     $canvas_id_uri = $this->getCanvasUri($wdb_annotation_page_entity, $manifest_base_uri);
 
-    // *** FIX: Use Url::fromRoute for all URL generation to handle language prefixes correctly. ***
-    $annotation_list_uri = Url::fromRoute('wdb_core.annotation_search', [], ['query' => ['uri' => $canvas_id_uri], 'absolute' => TRUE])->toString();
+    $annotation_list_uri = Url::fromRoute(
+      'wdb_core.annotation_search',
+      [],
+      [
+        'query' => ['uri' => $canvas_id_uri],
+        'absolute' => TRUE,
+      ]
+    )->toString();
 
     // Get all page information for the thumbnail pager.
     $page_list = [];
@@ -199,7 +184,7 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
 
     $module_path = $this->moduleHandler()->getModule('wdb_core')->getPath();
     $toolbar_urls = [
-      // The "View" link is always available for users who can access the edit page.
+    // View link always available for users with access.
       'view' => Url::fromRoute('wdb_core.gallery_page', [
         'subsysname' => $subsysname,
         'source' => $source,
@@ -308,13 +293,17 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
    *   The loaded entity or NULL.
    */
   private function loadWdbSource(string $source_identifier, string $subsysname): ?WdbSource {
-    $source_storage = $this->entityTypeManager()->getStorage('wdb_source');
-    $sources = $source_storage->loadByProperties(['source_identifier' => $source_identifier]);
-    $wdb_source_entity = reset($sources);
-    if ($wdb_source_entity) {
-      foreach ($wdb_source_entity->get('subsystem_tags')->referencedEntities() as $tag) {
-        if (strtolower($tag->getName()) === strtolower($subsysname)) {
-          return $wdb_source_entity;
+    $storage = $this->entityTypeManager()->getStorage('wdb_source');
+    $entities = $storage->loadByProperties(['source_identifier' => $source_identifier]);
+    $candidate = reset($entities);
+    if ($candidate instanceof WdbSource && !$candidate->get('subsystem_tags')->isEmpty()) {
+      $target_ids = array_map(static fn($item) => $item['target_id'], $candidate->get('subsystem_tags')->getValue());
+      if (!empty($target_ids)) {
+        $terms = $this->entityTypeManager()->getStorage('taxonomy_term')->loadMultiple($target_ids);
+        foreach ($terms as $term) {
+          if (strtolower($term->label()) === strtolower($subsysname)) {
+            return $candidate;
+          }
         }
       }
     }
@@ -353,7 +342,7 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
    *   The absolute manifest URI.
    */
   private function getManifestUri(WdbSource $wdb_source_entity, string $subsysname): string {
-    $request = \Drupal::request();
+    $request = $this->requestStack->getCurrentRequest();
     $source_identifier = $wdb_source_entity->get('source_identifier')->value;
     return $request->getSchemeAndHttpHost() . '/wdb/' . $subsysname . '/gallery/' . $source_identifier . '/manifest';
   }
@@ -370,9 +359,10 @@ class AnnotationEditController extends ControllerBase implements ContainerInject
    *   The absolute canvas URI.
    */
   private function getCanvasUri(WdbAnnotationPage $page_entity, string $manifest_id_uri_base): string {
+    $request = $this->requestStack->getCurrentRequest();
     if ($page_entity->hasField('canvas_identifier_fragment') && !$page_entity->get('canvas_identifier_fragment')->isEmpty()) {
       $fragment = $page_entity->get('canvas_identifier_fragment')->value;
-      return \Drupal::request()->getSchemeAndHttpHost() . $fragment;
+      return $request->getSchemeAndHttpHost() . $fragment;
     }
     $page_identifier = $page_entity->get('page_number')->value;
     return rtrim($manifest_id_uri_base, '/') . '/canvas/' . $page_identifier;

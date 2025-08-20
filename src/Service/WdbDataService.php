@@ -202,7 +202,6 @@ class WdbDataService {
       return ['error_message' => $this->t('Could not determine the subsystem for the requested annotation.')];
     }
     // --- END OF FIX ---
-
     // 1. Initialize the data structure to be returned.
     $subsystem_config = $this->getSubsystemConfig($subsysname);
     if (!$subsystem_config) {
@@ -243,6 +242,7 @@ class WdbDataService {
         return $output_data;
       }
       $wdb_sign_interpretations = $si_storage->loadMultiple($si_ids);
+      /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation[] $wdb_sign_interpretations */
 
       // 4. Calculate navigation data (previous/next word and sign).
       $current_si = reset($wdb_sign_interpretations);
@@ -257,6 +257,7 @@ class WdbDataService {
 
       // 5. Build detailed display data for each SignInterpretation.
       foreach ($wdb_sign_interpretations as $wdb_si_entity) {
+        /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation $wdb_si_entity */
         $output_data['retrieved_data']['sign_interpretations'][] = $this->buildSignInterpretationData($wdb_si_entity, $subsysname);
       }
 
@@ -342,12 +343,17 @@ class WdbDataService {
     }
 
     $word_map_storage = $this->entityTypeManager->getStorage('wdb_word_map');
-    $map_ids = $word_map_storage->getQuery()->condition('sign_interpretation_ref', $si_entity->id())->accessCheck(FALSE)->execute();
+    $map_ids = $word_map_storage->getQuery()
+      ->condition('sign_interpretation_ref', $si_entity->id())
+      ->accessCheck(FALSE)
+      ->execute();
     if (!empty($map_ids)) {
       $maps = $word_map_storage->loadMultiple($map_ids);
+      /** @var \Drupal\wdb_core\Entity\WdbWordMap[] $maps */
       foreach ($maps as $map) {
+        /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
         $wu_entity = $map->get('word_unit_ref')->entity;
-        if ($wu_entity) {
+        if ($wu_entity instanceof WdbWordUnit) {
           $si_data_item['associated_word_units'][] = $this->buildWordUnitData($wu_entity, $subsysname);
         }
       }
@@ -389,7 +395,6 @@ class WdbDataService {
       )->toString();
     }
     // --- END OF FIX ---
-
     $wdb_wmn_entity = $wu_entity->get('word_meaning_ref')->entity;
     if ($wdb_wmn_entity) {
       $wu_data_item['meaning_info'] = [
@@ -438,15 +443,20 @@ class WdbDataService {
 
     // 2. Get all constituent signs and their polygons for this word unit.
     $word_map_storage = $this->entityTypeManager->getStorage('wdb_word_map');
-    $map_ids = $word_map_storage->getQuery()->condition('word_unit_ref', $wu_entity->id())->sort('sign_sequence', 'ASC')->accessCheck(FALSE)->execute();
+    $map_ids = $word_map_storage->getQuery()
+      ->condition('word_unit_ref', $wu_entity->id())
+      ->sort('sign_sequence', 'ASC')
+      ->accessCheck(FALSE)
+      ->execute();
 
     $all_polygon_points_for_word = [];
     if (!empty($map_ids)) {
       $maps = $word_map_storage->loadMultiple($map_ids);
       foreach ($maps as $map) {
+        /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
         /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation $si */
         $si = $map->get('sign_interpretation_ref')->entity;
-        if ($si) {
+        if ($si instanceof WdbSignInterpretation) {
           $sf = $si->get('sign_function_ref')->entity;
           $sign = $sf ? $sf->get('sign_ref')->entity : NULL;
           /** @var \Drupal\wdb_core\Entity\WdbLabel $label */
@@ -493,9 +503,9 @@ class WdbDataService {
           // Aggregate data for the 'constituent_signs' array.
           $wu_data_item['constituent_signs'][] = [
             'sign_code' => $sign_code_value,
-            'reading' => $si->get('phone')->value,
-            'sequence' => $map->get('sign_sequence')->value,
-            'annotation_uri' => $label ? $label->get('annotation_uri')->value : NULL,
+            'reading' => $si->get('phone')->value ?? '',
+            'sequence' => $map->get('sign_sequence')->value ?? NULL,
+            'annotation_uri' => $label ? ($label->get('annotation_uri')->value ?? NULL) : NULL,
             'polygon_points' => $polygon_points_for_sign,
             'search_url' => Url::fromRoute(
               'wdb_core.search_form',
@@ -515,9 +525,11 @@ class WdbDataService {
     $iiif_base_url = $this->getIiifBaseUrlForSubsystem($subsysname);
     if (!empty($all_polygon_points_for_word) && !empty($iiif_base_url)) {
       $word_bbox = $this->calculateBoundingBoxArray($all_polygon_points_for_word);
-      $page_entity = $wu_entity->get('annotation_page_refs')->referencedEntities()[0] ?? NULL;
+      $page_refs = $wu_entity->get('annotation_page_refs');
+      /** @var \Drupal\wdb_core\Entity\WdbAnnotationPage[] $page_entities */
+      $page_entities = method_exists($page_refs, 'referencedEntities') ? $page_refs->referencedEntities() : [];
+      $page_entity = $page_entities[0] ?? NULL;
       if ($page_entity) {
-        $source_entity = $page_entity->get('source_ref')->entity;
         $subsys_config = $this->getSubsystemConfig($subsysname);
         if (!$subsys_config) {
           return $wu_data_item;

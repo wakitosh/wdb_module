@@ -5,6 +5,7 @@ namespace Drupal\wdb_core\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -66,19 +67,23 @@ class AutocompleteController extends ControllerBase implements ContainerInjectio
       // Build and execute the entity query.
       $query = $this->entityTypeManager->getStorage($target_entity_type)->getQuery();
       $query->condition($target_field, $q, 'CONTAINS');
-      $query->groupBy($target_field);
-      $query->range(0, 10);
+      // Removed unsupported groupBy; fetch more rows and deduplicate manually.
+      $query->range(0, 50);
       $ids = $query->accessCheck(FALSE)->execute();
 
       if (!empty($ids)) {
         $entities = $this->entityTypeManager->getStorage($target_entity_type)->loadMultiple($ids);
         $found_values = [];
-        // Format the results and ensure uniqueness.
         foreach ($entities as $entity) {
-          $value = $entity->get($target_field)->value;
-          if (!in_array($value, $found_values)) {
-            $matches[] = ['value' => $value, 'label' => $value];
-            $found_values[] = $value;
+          if ($entity instanceof ContentEntityInterface && $entity->hasField($target_field) && !$entity->get($target_field)->isEmpty()) {
+            $value = $entity->get($target_field)->value;
+            if (!in_array($value, $found_values, TRUE)) {
+              $matches[] = ['value' => $value, 'label' => $value];
+              $found_values[] = $value;
+              if (count($matches) >= 10) {
+                break;
+              }
+            }
           }
         }
       }

@@ -3,6 +3,11 @@ wdb_core.admin_menu:
   description: 'WDB Core module administration pages.'
   parent: system.admin
   route_name: wdb_core.admin_dashboard
+  options:
+    attributes:
+      class:
+        - toolbar-icon
+        - toolbar-icon-wdb-core-admin-menu
   weight: -20
 
 wdb_core.admin_dashboard:

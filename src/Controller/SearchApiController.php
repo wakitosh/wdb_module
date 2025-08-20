@@ -5,7 +5,8 @@ namespace Drupal\wdb_core\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
+use Drupal\taxonomy\TermStorageInterface;
 use Drupal\Core\Url;
 use Drupal\wdb_core\Entity\WdbWordUnit;
 use Drupal\wdb_core\Lib\HullJsPhp\HullPHP;
@@ -40,8 +41,6 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The config factory.
    * @param \Drupal\wdb_core\Lib\HullJsPhp\HullPHP $hull_calculator
    *   The HullPHP calculation service.
    * @param \Drupal\wdb_core\Service\WdbDataService $wdbDataService
@@ -49,12 +48,10 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
    */
   public function __construct(
     EntityTypeManagerInterface $entity_type_manager,
-    ConfigFactoryInterface $config_factory,
     HullPHP $hull_calculator,
     WdbDataService $wdbDataService,
   ) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->configFactory = $config_factory;
     $this->hullCalculator = $hull_calculator;
     $this->wdbDataService = $wdbDataService;
   }
@@ -65,7 +62,6 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('entity_type.manager'),
-      $container->get('config.factory'),
       $container->get('wdb_core.hull_calculator'),
       $container->get('wdb_core.data_service')
     );
@@ -149,9 +145,15 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     if ($lexical_category) {
       $term_ids_to_search = [$lexical_category];
       if ($request->query->get('include_children') === '1') {
-        $descendants = $this->entityTypeManager->getStorage('taxonomy_term')->loadTree('lexical_category', $lexical_category, NULL, FALSE);
-        foreach ($descendants as $descendant) {
-          $term_ids_to_search[] = $descendant->tid;
+        $term_storage = $this->entityTypeManager->getStorage('taxonomy_term');
+        if ($term_storage instanceof TermStorageInterface) {
+          /** @var array<int, object> $descendants */
+          $descendants = $term_storage->loadTree('lexical_category', $lexical_category, NULL, FALSE);
+          foreach ($descendants as $descendant) {
+            if (isset($descendant->tid)) {
+              $term_ids_to_search[] = $descendant->tid;
+            }
+          }
         }
       }
       $word_ids_by_cat = $this->entityTypeManager->getStorage('wdb_word')->getQuery()->condition('lexical_category_ref', $term_ids_to_search, 'IN')->accessCheck(FALSE)->execute();
@@ -206,17 +208,23 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
       $word_units = $this->entityTypeManager->getStorage('wdb_word_unit')->loadMultiple($wu_ids);
       foreach ($word_units as $wu) {
         /** @var \Drupal\wdb_core\Entity\WdbWordUnit $wu */
-
+        /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $source */
         $source = $wu->get('source_ref')->entity;
-        $page_entity = $wu->get('annotation_page_refs')->referencedEntities()[0] ?? NULL;
+        /** @var \Drupal\Core\Field\EntityReferenceFieldItemListInterface|null $annotation_pages */
+        $annotation_pages = $wu->get('annotation_page_refs');
+        /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $page_entity */
+        $page_entity = ($annotation_pages instanceof EntityReferenceFieldItemListInterface) ? ($annotation_pages->referencedEntities()[0] ?? NULL) : NULL;
         $first_sign_label_uri = $this->getFirstAnnotationUriForWordUnit($wu);
 
+        /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $subsys_tag */
         $subsys_tag = $source ? $source->get('subsystem_tags')->entity : NULL;
         $subsysname = $subsys_tag ? $subsys_tag->get('name')->value : NULL;
 
         if ($source && $page_entity && $first_sign_label_uri && $subsysname) {
 
+          /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $word_entity */
           $word_entity = $wu->get('word_meaning_ref')->entity->get('word_ref')->entity;
+          /** @var \Drupal\taxonomy\Entity\Term|null $lexical_category_term */
           $lexical_category_term = $word_entity ? $word_entity->get('lexical_category_ref')->entity : NULL;
 
           $results_array[] = [
@@ -244,8 +252,6 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     ]);
   }
 
-  // === Helper Methods ===
-
   /**
    * Gets data for the constituent signs of a word unit.
    *
@@ -263,10 +269,15 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     if (!empty($map_ids)) {
       $maps = $word_map_storage->loadMultiple($map_ids);
       foreach ($maps as $map) {
+        /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
+        /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $si */
         $si = $map->get('sign_interpretation_ref')->entity;
         if ($si) {
+          /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $sf */
           $sf = $si->get('sign_function_ref')->entity;
+          /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $sign */
           $sign = $sf ? $sf->get('sign_ref')->entity : NULL;
+          /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $label */
           $label = $si->get('label_ref')->entity;
           $signs_data[] = [
             'sign_code' => $sign ? $sign->label() : 'N/A',
@@ -298,8 +309,11 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     if (!empty($map_ids)) {
       $maps = $word_map_storage->loadMultiple($map_ids);
       foreach ($maps as $map) {
+        /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
+        /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $si */
         $si = $map->get('sign_interpretation_ref')->entity;
         if ($si) {
+          /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $label */
           $label = $si->get('label_ref')->entity;
           if ($label && !$label->get('polygon_points')->isEmpty()) {
             $points = array_map(fn($item) => $item['value'], $label->get('polygon_points')->getValue());
@@ -318,9 +332,13 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     }
 
     $word_bbox = $this->calculateBoundingBoxArray($all_polygon_points);
-    $page_entity = $word_unit->get('annotation_page_refs')->referencedEntities()[0] ?? NULL;
+    /** @var \Drupal\Core\Field\EntityReferenceFieldItemListInterface|null $annotation_pages */
+    $annotation_pages = $word_unit->get('annotation_page_refs');
+    /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $page_entity */
+    $page_entity = ($annotation_pages instanceof EntityReferenceFieldItemListInterface) ? ($annotation_pages->referencedEntities()[0] ?? NULL) : NULL;
     if ($page_entity) {
-      $image_identifier = $page_entity->getImageIdentifier();
+      // Custom method defined on the page entity class.
+      $image_identifier = method_exists($page_entity, 'getImageIdentifier') ? $page_entity->getImageIdentifier() : NULL;
 
       if (empty($image_identifier)) {
         return NULL;
@@ -363,9 +381,12 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     $map_ids = $map_storage->getQuery()->condition('word_unit_ref', $word_unit->id())->sort('sign_sequence', 'ASC')->range(0, 1)->accessCheck(FALSE)->execute();
     if ($map_ids) {
       $map = $map_storage->load(reset($map_ids));
+      /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
+      /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $si */
       $si = $map->get('sign_interpretation_ref')->entity;
+      /** @var \Drupal\Core\Entity\FieldableEntityInterface|null $label */
       $label = $si ? $si->get('label_ref')->entity : NULL;
-      return $label ? $label->get('annotation_uri')->value : NULL;
+      return ($label && !$label->get('annotation_uri')->isEmpty()) ? $label->get('annotation_uri')->value : NULL;
     }
     return NULL;
   }
@@ -399,7 +420,12 @@ class SearchApiController extends ControllerBase implements ContainerInjectionIn
     $max_x = max($all_x);
     $min_y = min($all_y);
     $max_y = max($all_y);
-    return ['x' => round($min_x), 'y' => round($min_y), 'w' => max(1, round($max_x - $min_x)), 'h' => max(1, round($max_y - $min_y))];
+    return [
+      'x' => round($min_x),
+      'y' => round($min_y),
+      'w' => max(1, round($max_x - $min_x)),
+      'h' => max(1, round($max_y - $min_y)),
+    ];
   }
 
 }
