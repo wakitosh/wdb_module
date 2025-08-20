@@ -38,7 +38,8 @@ class WdbLabelListBuilder extends EntityListBuilder {
     $row['id'] = $entity->id();
     $row['label_name'] = $entity->get('label_name')->value;
 
-    // Get the referenced WdbAnnotationPage entity from the 'annotation_page_ref' field.
+    // Get the referenced WdbAnnotationPage entity from the
+    // 'annotation_page_ref' field.
     $annotation_page_entity = $entity->get('annotation_page_ref')->entity;
 
     if ($annotation_page_entity instanceof WdbAnnotationPage) {
@@ -46,7 +47,8 @@ class WdbLabelListBuilder extends EntityListBuilder {
       $row['annotation_page_ref'] = $annotation_page_entity->label();
     }
     else {
-      // Handle cases where the referenced entity is not found or is of an unexpected type.
+      // Handle cases where the referenced entity is not found
+      // or is of an unexpected type.
       $target_id = $entity->get('annotation_page_ref')->target_id;
       $row['annotation_page_ref'] = $this->t('Error: Page (ID: @id) not found.', ['@id' => $target_id ?? 'N/A']);
     }
