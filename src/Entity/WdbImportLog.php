@@ -20,6 +20,10 @@ use Drupal\Core\Field\BaseFieldDefinition;
   handlers: [
     'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
     'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbImportLogListBuilder',
+    'form' => [
+      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+    ],
+    'access' => 'Drupal\\wdb_core\\Access\\WdbImportLogAccessControlHandler',
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
     ],
@@ -37,6 +41,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
     'canonical' => '/wdb/import_log/{wdb_import_log}',
     'collection' => '/admin/content/wdb/import_log',
     'rollback-form' => '/admin/content/wdb/import_log/{wdb_import_log}/rollback',
+    'delete-form' => '/admin/content/wdb/import_log/{wdb_import_log}/delete',
   ],
 )]
 class WdbImportLog extends ContentEntityBase implements ContentEntityInterface {

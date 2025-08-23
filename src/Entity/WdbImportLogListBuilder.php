@@ -114,7 +114,10 @@ class WdbImportLogListBuilder extends EntityListBuilder {
     $created_entities = !empty($created_entities_json) ? json_decode($created_entities_json, TRUE) : [];
 
     $has_created = !empty($created_entities);
-    if ($entity->access('delete') && $entity->hasLinkTemplate('rollback-form')) {
+    // Show rollback to users with proper permission, independent of
+    // delete access.
+    $can_rollback = \Drupal::currentUser()->hasPermission('administer wdb import logs');
+    if ($can_rollback && $entity->hasLinkTemplate('rollback-form')) {
       if ($has_created) {
         $operations['rollback'] = [
           'title' => $this->t('Rollback'),
@@ -136,6 +139,22 @@ class WdbImportLogListBuilder extends EntityListBuilder {
           ],
         ];
       }
+    }
+
+    // If delete is not allowed by access handler, show a disabled
+    // placeholder to explain.
+    if (!$entity->access('delete')) {
+      $operations['delete_disabled'] = [
+        'title' => $this->t('Delete'),
+        'weight' => 30,
+        'url' => $entity->toUrl(),
+        'attributes' => [
+          'class' => ['is-disabled', 'disabled'],
+          'aria-disabled' => 'true',
+          'tabindex' => '-1',
+          'onclick' => 'return false;',
+        ],
+      ];
     }
 
     return $operations;
