@@ -50,7 +50,7 @@ use Drupal\Core\Url;
     'delete-form' => '/admin/content/wdb_annotation_page/{wdb_annotation_page}/delete',
     'collection' => '/admin/content/wdb_annotation_page',
   ],
-  field_ui_base_route: 'entity.wdb_annotation_page.settings',
+  field_ui_base_route: 'entity.wdb_annotation_page.collection',
 )]
 class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterface {
 

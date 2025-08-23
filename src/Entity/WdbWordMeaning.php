@@ -55,6 +55,36 @@ class WdbWordMeaning extends ContentEntityBase implements ContentEntityInterface
   /**
    * {@inheritdoc}
    */
+  public function label() {
+    // Prefer the generated code if present.
+    $code = $this->get('word_meaning_code')->value;
+    if (is_string($code) && $code !== '') {
+      return $code;
+    }
+
+    // Build a sensible fallback label to avoid returning NULL.
+    $parts = [];
+    $word = $this->get('word_ref')->entity ?? NULL;
+    if ($word instanceof WdbWord) {
+      // Use the word's own label (already a string) as the first part.
+      $parts[] = $word->label();
+    }
+    $identifier = $this->get('meaning_identifier')->value;
+    if ($identifier !== NULL && $identifier !== '') {
+      $parts[] = '#' . $identifier;
+    }
+    if (!empty($parts)) {
+      return implode(' ', array_filter($parts, 'strlen'));
+    }
+
+    // Final fallback: include the entity ID if available.
+    $id = $this->id();
+    return $id ? ('WDB Word Meaning ' . $id) : 'WDB Word Meaning';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type) {
     $fields['id'] = BaseFieldDefinition::create('integer')
       ->setLabel(t('ID'))

@@ -66,7 +66,43 @@ class DashboardController extends ControllerBase {
       '#theme' => 'item_list',
       '#items' => [
         ['#markup' => Link::fromTextAndUrl($this->t('Module Settings'), Url::fromRoute('wdb_core.settings_form'))->toString()],
-        ['#markup' => Link::fromTextAndUrl($this->t('Source Type Settings'), Url::fromUri('internal:/admin/content/wdb_source/fields'))->toString()],
+        // Field Management (Manage fields) for each entity.
+        ['#markup' => Link::fromTextAndUrl($this->t('Source – Manage fields'), Url::fromUri('internal:/admin/content/wdb_source/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Annotation Page – Manage fields'), Url::fromUri('internal:/admin/content/wdb_annotation_page/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Label – Manage fields'), Url::fromUri('internal:/admin/content/wdb_label/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Sign – Manage fields'), Url::fromUri('internal:/admin/content/wdb_sign/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Sign Function – Manage fields'), Url::fromUri('internal:/admin/content/wdb_sign_function/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Sign Interpretation – Manage fields'), Url::fromUri('internal:/admin/content/wdb_sign_interpretation/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word Map – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word_map/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word Unit – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word_unit/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word Meaning – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word_meaning/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word/fields'))->toString()],
+      ],
+    ];
+    return $build;
+  }
+
+  /**
+   * Field Management landing page (acts as a stable parent for menu expansion).
+   */
+  public function fieldManagement(): array {
+    $build = [];
+    $build['header'] = [
+      '#markup' => '<h2>' . $this->t('Field Management') . '</h2>',
+    ];
+    $build['links'] = [
+      '#theme' => 'item_list',
+      '#items' => [
+        ['#markup' => Link::fromTextAndUrl($this->t('Source – Manage fields'), Url::fromUri('internal:/admin/content/wdb_source/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Annotation Page – Manage fields'), Url::fromUri('internal:/admin/content/wdb_annotation_page/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Label – Manage fields'), Url::fromUri('internal:/admin/content/wdb_label/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Sign – Manage fields'), Url::fromUri('internal:/admin/content/wdb_sign/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Sign Function – Manage fields'), Url::fromUri('internal:/admin/content/wdb_sign_function/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Sign Interpretation – Manage fields'), Url::fromUri('internal:/admin/content/wdb_sign_interpretation/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word Map – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word_map/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word Unit – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word_unit/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word Meaning – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word_meaning/fields'))->toString()],
+        ['#markup' => Link::fromTextAndUrl($this->t('Word – Manage fields'), Url::fromUri('internal:/admin/content/wdb_word/fields'))->toString()],
       ],
     ];
     return $build;

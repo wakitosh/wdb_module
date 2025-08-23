@@ -348,6 +348,15 @@ wdb_core.admin_dashboard:
   requirements:
     _permission: 'administer wdb content'
 
+# Field Management landing page (for menu parent expansion).
+wdb_core.field_management:
+  path: '/admin/wdb/fields'
+  defaults:
+    _controller: '\Drupal\wdb_core\Controller\DashboardController::fieldManagement'
+    _title: 'Field Management'
+  requirements:
+    _permission: 'administer wdb content'
+
 # ----------------------------------------------------------------
 # 7. Explicit entity collection routes for entities where auto routes failed
 # ----------------------------------------------------------------

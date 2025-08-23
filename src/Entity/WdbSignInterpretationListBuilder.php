@@ -21,6 +21,7 @@ class WdbSignInterpretationListBuilder extends EntityListBuilder {
   public function buildHeader() {
     // Defines the table header for the entity list.
     $header['id'] = $this->t('ID');
+    $header['sign_interpretation_code'] = $this->t('Code');
     $header['annotation_page_ref'] = $this->t('Annotation Page');
     $header['label_ref'] = $this->t('Label');
     $header['sign_function_ref'] = $this->t('Sign Function');
@@ -37,6 +38,7 @@ class WdbSignInterpretationListBuilder extends EntityListBuilder {
   public function buildRow(EntityInterface $entity) {
     /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation $entity */
     $row['id'] = $entity->id();
+    $row['sign_interpretation_code'] = $entity->get('sign_interpretation_code')->value;
 
     // Annotation page.
     $annotation_page_entity = $entity->get('annotation_page_ref')->entity;

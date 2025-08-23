@@ -89,3 +89,160 @@ access wdb search form:
 administer wdb configuration:
   title: 'Administer WDB Core configuration'
   description: 'Access the WDB Core settings page.'
+
+# ---- Field UI permissions (required for Field Management menu items) ----
+# These permissions are checked by Drupal core Field UI routes:
+# - entity.<entity_type_id>.field_ui_fields           => 'administer <entity_type_id> fields'
+# - entity.entity_form_display.<entity_type_id>.*     => 'administer <entity_type_id> form display'
+# - entity.entity_view_display.<entity_type_id>.*     => 'administer <entity_type_id> display'
+# Without defining/granting them, the menu links to Field UI pages are hidden.
+
+administer wdb_source fields:
+  title: 'Administer fields for WDB Source'
+  description: 'Manage fields on WDB Source entities.'
+  restrict access: true
+
+administer wdb_source form display:
+  title: 'Administer form display for WDB Source'
+  description: 'Manage form display for WDB Source entities.'
+  restrict access: true
+
+administer wdb_source display:
+  title: 'Administer view display for WDB Source'
+  description: 'Manage view display for WDB Source entities.'
+  restrict access: true
+
+administer wdb_annotation_page fields:
+  title: 'Administer fields for WDB Annotation Page'
+  description: 'Manage fields on WDB Annotation Page entities.'
+  restrict access: true
+
+administer wdb_annotation_page form display:
+  title: 'Administer form display for WDB Annotation Page'
+  description: 'Manage form display for WDB Annotation Page entities.'
+  restrict access: true
+
+administer wdb_annotation_page display:
+  title: 'Administer view display for WDB Annotation Page'
+  description: 'Manage view display for WDB Annotation Page entities.'
+  restrict access: true
+
+administer wdb_label fields:
+  title: 'Administer fields for WDB Label'
+  description: 'Manage fields on WDB Label entities.'
+  restrict access: true
+
+administer wdb_label form display:
+  title: 'Administer form display for WDB Label'
+  description: 'Manage form display for WDB Label entities.'
+  restrict access: true
+
+administer wdb_label display:
+  title: 'Administer view display for WDB Label'
+  description: 'Manage view display for WDB Label entities.'
+  restrict access: true
+
+administer wdb_sign fields:
+  title: 'Administer fields for WDB Sign'
+  description: 'Manage fields on WDB Sign entities.'
+  restrict access: true
+
+administer wdb_sign form display:
+  title: 'Administer form display for WDB Sign'
+  description: 'Manage form display for WDB Sign entities.'
+  restrict access: true
+
+administer wdb_sign display:
+  title: 'Administer view display for WDB Sign'
+  description: 'Manage view display for WDB Sign entities.'
+  restrict access: true
+
+administer wdb_sign_function fields:
+  title: 'Administer fields for WDB Sign Function'
+  description: 'Manage fields on WDB Sign Function entities.'
+  restrict access: true
+
+administer wdb_sign_function form display:
+  title: 'Administer form display for WDB Sign Function'
+  description: 'Manage form display for WDB Sign Function entities.'
+  restrict access: true
+
+administer wdb_sign_function display:
+  title: 'Administer view display for WDB Sign Function'
+  description: 'Manage view display for WDB Sign Function entities.'
+  restrict access: true
+
+administer wdb_sign_interpretation fields:
+  title: 'Administer fields for WDB Sign Interpretation'
+  description: 'Manage fields on WDB Sign Interpretation entities.'
+  restrict access: true
+
+administer wdb_sign_interpretation form display:
+  title: 'Administer form display for WDB Sign Interpretation'
+  description: 'Manage form display for WDB Sign Interpretation entities.'
+  restrict access: true
+
+administer wdb_sign_interpretation display:
+  title: 'Administer view display for WDB Sign Interpretation'
+  description: 'Manage view display for WDB Sign Interpretation entities.'
+  restrict access: true
+
+administer wdb_word_map fields:
+  title: 'Administer fields for WDB Word Map'
+  description: 'Manage fields on WDB Word Map entities.'
+  restrict access: true
+
+administer wdb_word_map form display:
+  title: 'Administer form display for WDB Word Map'
+  description: 'Manage form display for WDB Word Map entities.'
+  restrict access: true
+
+administer wdb_word_map display:
+  title: 'Administer view display for WDB Word Map'
+  description: 'Manage view display for WDB Word Map entities.'
+  restrict access: true
+
+administer wdb_word_unit fields:
+  title: 'Administer fields for WDB Word Unit'
+  description: 'Manage fields on WDB Word Unit entities.'
+  restrict access: true
+
+administer wdb_word_unit form display:
+  title: 'Administer form display for WDB Word Unit'
+  description: 'Manage form display for WDB Word Unit entities.'
+  restrict access: true
+
+administer wdb_word_unit display:
+  title: 'Administer view display for WDB Word Unit'
+  description: 'Manage view display for WDB Word Unit entities.'
+  restrict access: true
+
+administer wdb_word_meaning fields:
+  title: 'Administer fields for WDB Word Meaning'
+  description: 'Manage fields on WDB Word Meaning entities.'
+  restrict access: true
+
+administer wdb_word_meaning form display:
+  title: 'Administer form display for WDB Word Meaning'
+  description: 'Manage form display for WDB Word Meaning entities.'
+  restrict access: true
+
+administer wdb_word_meaning display:
+  title: 'Administer view display for WDB Word Meaning'
+  description: 'Manage view display for WDB Word Meaning entities.'
+  restrict access: true
+
+administer wdb_word fields:
+  title: 'Administer fields for WDB Word'
+  description: 'Manage fields on WDB Word entities.'
+  restrict access: true
+
+administer wdb_word form display:
+  title: 'Administer form display for WDB Word'
+  description: 'Manage form display for WDB Word entities.'
+  restrict access: true
+
+administer wdb_word display:
+  title: 'Administer view display for WDB Word'
+  description: 'Manage view display for WDB Word entities.'
+  restrict access: true

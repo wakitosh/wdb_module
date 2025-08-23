@@ -110,6 +110,22 @@ class WdbSignInterpretationEditForm extends ContentEntityForm {
       '#weight' => 90,
     ];
 
+    // Reorder fields as:
+    // Label, Line Number, Phonetic, Priority, Note, Edit reason.
+    $order = [
+      'label_ref' => 10,
+      'line_number' => 20,
+      'phone' => 30,
+      'priority' => 40,
+      'note' => 50,
+      'override_reason' => 60,
+    ];
+    foreach ($order as $name => $weight) {
+      if (isset($form[$name])) {
+        $form[$name]['#weight'] = $weight;
+      }
+    }
+
     return $form;
   }
 

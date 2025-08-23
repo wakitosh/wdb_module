@@ -128,9 +128,64 @@ wdb_core.settings_form_menu_link:
   route_name: wdb_core.settings_form
   weight: 0
 
-wdb_core.source_type_settings:
-  title: 'Source Type Settings'
-  description: 'Manage fields and settings for the WDB Source entity type.'
+# Field Management (flattened under Configuration)
+wdb_core.field_management_source:
+  title: 'Source – Manage fields'
   parent: wdb_core.config_links
-  url: 'internal:/admin/content/wdb_source/fields'
+  route_name: entity.wdb_source.field_ui_fields
   weight: 10
+
+wdb_core.field_management_annotation_page:
+  title: 'Annotation Page – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_annotation_page.field_ui_fields
+  weight: 20
+
+wdb_core.field_management_label:
+  title: 'Label – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_label.field_ui_fields
+  weight: 30
+
+wdb_core.field_management_sign:
+  title: 'Sign – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_sign.field_ui_fields
+  weight: 40
+
+wdb_core.field_management_sign_function:
+  title: 'Sign Function – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_sign_function.field_ui_fields
+  weight: 50
+
+wdb_core.field_management_sign_interpretation:
+  title: 'Sign Interpretation – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_sign_interpretation.field_ui_fields
+  weight: 60
+
+wdb_core.field_management_word_map:
+  title: 'Word Map – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_word_map.field_ui_fields
+  weight: 70
+
+wdb_core.field_management_word_unit:
+  title: 'Word Unit – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_word_unit.field_ui_fields
+  weight: 80
+
+wdb_core.field_management_word_meaning:
+  title: 'Word Meaning – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_word_meaning.field_ui_fields
+  weight: 90
+
+wdb_core.field_management_word:
+  title: 'Word – Manage fields'
+  parent: wdb_core.config_links
+  route_name: entity.wdb_word.field_ui_fields
+  weight: 100
+
