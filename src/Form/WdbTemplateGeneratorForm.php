@@ -6,7 +6,7 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Url;
+use Drupal\wdb_core\Entity\WdbSource;
 use Drupal\wdb_core\Service\WdbTemplateGeneratorService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -196,11 +196,14 @@ class WdbTemplateGeneratorForm extends FormBase implements ContainerInjectionInt
 
     if ($source_id) {
       $source = $this->entityTypeManager->getStorage('wdb_source')->load($source_id);
-      if ($source) {
+      if ($source instanceof WdbSource) {
         $tsv_content = $this->templateGeneratorService->generateTemplateFromSource($source);
         $filename = 'template_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $source->get('source_identifier')->value) . '.tsv';
 
         $form_state->setResponse($this->downloadTsvResponse($tsv_content, $filename));
+      }
+      else {
+        $this->messenger()->addError($this->t('Failed to load the selected source.'));
       }
     }
   }
