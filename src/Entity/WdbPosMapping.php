@@ -10,45 +10,44 @@ use Drupal\Core\Config\Entity\ConfigEntityBase;
  * This configuration entity stores mappings from a source Part-of-Speech (POS)
  * string (e.g., from an import file) to a target lexical category taxonomy
  * term within the system.
- *
- * @ConfigEntityType(
- *   id = "wdb_pos_mapping",
- *   label = @Translation("WDB POS Mapping"),
- *   handlers = {
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbPosMappingListBuilder",
- *     "form" = {
- *       "add" = "Drupal\wdb_core\Form\WdbPosMappingForm",
- *       "edit" = "Drupal\wdb_core\Form\WdbPosMappingForm",
- *       "delete" = "Drupal\Core\Entity\EntityDeleteForm"
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *   },
- *   config_prefix = "wdb_pos_mapping",
- *   admin_permission = "administer wdb pos mappings",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "label",
- *     "uuid" = "uuid",
- *     "weight" = "weight"
- *   },
- *   links = {
- *     "canonical" = "/admin/structure/wdb_pos_mapping/{wdb_pos_mapping}",
- *     "add-form" = "/admin/structure/wdb_pos_mapping/add",
- *     "edit-form" = "/admin/structure/wdb_pos_mapping/{wdb_pos_mapping}/edit",
- *     "delete-form" = "/admin/structure/wdb_pos_mapping/{wdb_pos_mapping}/delete",
- *     "collection" = "/admin/structure/wdb_pos_mapping"
- *   },
- *   config_export = {
- *     "id",
- *     "label",
- *     "source_pos_string",
- *     "target_lexical_category",
- *     "weight"
- *   }
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ConfigEntityType(
+  id: 'wdb_pos_mapping',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB POS Mapping'),
+  handlers: [
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbPosMappingListBuilder',
+    'form' => [
+      'add' => 'Drupal\\wdb_core\\Form\\WdbPosMappingForm',
+      'edit' => 'Drupal\\wdb_core\\Form\\WdbPosMappingForm',
+      'delete' => 'Drupal\\Core\\Entity\\EntityDeleteForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+  ],
+  config_prefix: 'wdb_pos_mapping',
+  admin_permission: 'administer wdb pos mappings',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'label',
+    'uuid' => 'uuid',
+    'weight' => 'weight',
+  ],
+  links: [
+    'canonical' => '/admin/structure/wdb_pos_mapping/{wdb_pos_mapping}',
+    'add-form' => '/admin/structure/wdb_pos_mapping/add',
+    'edit-form' => '/admin/structure/wdb_pos_mapping/{wdb_pos_mapping}/edit',
+    'delete-form' => '/admin/structure/wdb_pos_mapping/{wdb_pos_mapping}/delete',
+    'collection' => '/admin/structure/wdb_pos_mapping',
+  ],
+  config_export: [
+    'id',
+    'label',
+    'source_pos_string',
+    'target_lexical_category',
+    'weight',
+  ],
+)]
 class WdbPosMapping extends ConfigEntityBase {
 
   /**

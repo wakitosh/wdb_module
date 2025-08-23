@@ -44,7 +44,7 @@ class WdbSettingsForm extends ConfigFormBase {
 
     // --- Dynamically generate a settings tab for each subsystem ---
     $term_storage = $entity_type_manager->getStorage('taxonomy_term');
-    
+
     // --- FIX: Sort by term name (alphabetically) instead of weight. ---
     $tids = $term_storage->getQuery()
       ->condition('vid', 'subsystem')
@@ -52,7 +52,6 @@ class WdbSettingsForm extends ConfigFormBase {
       ->accessCheck(FALSE)
       ->execute();
     // --- END OF FIX ---
-      
     $subsystem_terms = $term_storage->loadMultiple($tids);
 
     $form['subsystems'] = ['#type' => 'container', '#tree' => TRUE];
@@ -293,7 +292,10 @@ class WdbSettingsForm extends ConfigFormBase {
     }
 
     $context['sandbox']['progress'] += count($page_ids_chunk);
-    $context['message'] = t('Updating page @progress of @total...', ['@progress' => $context['sandbox']['progress'], '@total' => $context['sandbox']['max']]);
+    $context['message'] = t('Updating page @progress of @total...', [
+      '@progress' => $context['sandbox']['progress'],
+      '@total' => $context['sandbox']['max'],
+    ]);
 
     if ($context['sandbox']['progress'] >= $context['sandbox']['max']) {
       $context['finished'] = 1;

@@ -17,39 +17,38 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
  * text (a "token"). It links together the word's meaning, its grammatical
  * properties, its location on annotation pages, and its sequence in the
  * document.
- *
- * @ContentEntityType(
- *   id = "wdb_word_unit",
- *   label = @Translation("WDB Word Unit"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbWordUnitListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbWordUnitEditForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
- *   },
- *   base_table = "wdb_word_unit",
- *   data_table = "wdb_word_unit_field_data",
- *   translatable = TRUE,
- *   admin_permission = "administer wdb_word_unit entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "realized_form",
- *     "uuid" = "uuid",
- *     "langcode" = "langcode",
- *   },
- *   links = {
- *     "canonical" = "/wdb/word_unit/{wdb_word_unit}",
- *     "edit-form" = "/admin/content/wdb_word_unit/{wdb_word_unit}/edit",
- *     "collection" = "/admin/content/wdb_word_unit",
- *   },
- *   field_ui_base_route = "entity.wdb_word_unit.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_word_unit',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Word Unit'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbWordUnitListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbWordUnitEditForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+    'translation' => 'Drupal\\content_translation\\ContentTranslationHandler',
+  ],
+  base_table: 'wdb_word_unit',
+  data_table: 'wdb_word_unit_field_data',
+  translatable: TRUE,
+  admin_permission: 'administer wdb_word_unit entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'realized_form',
+    'uuid' => 'uuid',
+    'langcode' => 'langcode',
+  ],
+  links: [
+    'canonical' => '/wdb/word_unit/{wdb_word_unit}',
+    'edit-form' => '/admin/content/wdb_word_unit/{wdb_word_unit}/edit',
+    'collection' => '/admin/content/wdb_word_unit',
+  ],
+  field_ui_base_route: 'entity.wdb_word_unit.collection',
+)]
 class WdbWordUnit extends ContentEntityBase implements ContentEntityInterface {
 
   /**
@@ -90,7 +89,8 @@ class WdbWordUnit extends ContentEntityBase implements ContentEntityInterface {
       ->setLabel(t('Page Occurrences'))
       ->setDescription(t('A list of pages where this word unit appears.'))
       ->setSetting('target_type', 'wdb_annotation_page')
-      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED);
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setTranslatable(TRUE);
 
     // Reference to the WdbWordMeaning entity.
     $fields['word_meaning_ref'] = BaseFieldDefinition::create('entity_reference')
@@ -133,17 +133,26 @@ class WdbWordUnit extends ContentEntityBase implements ContentEntityInterface {
   public function preSave(EntityStorageInterface $storage) {
     parent::preSave($storage);
 
-    if (!$this->isNew() && isset($this->original)) {
+    if (!$this->isNew() && ($this->getOriginal())) {
+      $original = $this->getOriginal();
       $changed = [];
 
-      $compareScalar = function ($field) {
+      $compareScalar = function ($field) use ($original) {
         $new = $this->get($field)->value ?? NULL;
-        $old = $this->original->get($field)->value ?? NULL;
+        $old = $original->get($field)->value ?? NULL;
+        // Normalize float comparison to avoid false positives due to string
+        // formatting differences (e.g., '1' vs '1.0').
+        if ($field === 'word_sequence') {
+          if ($new === NULL && $old === NULL) {
+            return FALSE;
+          }
+          return (float) $new !== (float) $old;
+        }
         return $new !== $old;
       };
-      $compareRef = function ($field) {
+      $compareRef = function ($field) use ($original) {
         $new = $this->get($field)->target_id ?? NULL;
-        $old = $this->original->get($field)->target_id ?? NULL;
+        $old = $original->get($field)->target_id ?? NULL;
         return (string) $new !== (string) $old;
       };
 
@@ -163,6 +172,48 @@ class WdbWordUnit extends ContentEntityBase implements ContentEntityInterface {
 
       if (!empty($changed)) {
         throw new EntityStorageException('Protected fields cannot be changed on WdbWordUnit: ' . implode(', ', $changed));
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function postLoad(EntityStorageInterface $storage, array &$entities) {
+    parent::postLoad($storage, $entities);
+
+    // Populate annotation_page_refs dynamically from WordMap relations so that
+    // consumers (including tests) can see page occurrences immediately after
+    // load, even if earlier appends were skipped or not yet persisted.
+    $etm = \Drupal::entityTypeManager();
+    $wm_storage = $etm->getStorage('wdb_word_map');
+
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+
+      $maps = $wm_storage->loadByProperties(['word_unit_ref' => $entity->id()]);
+      if (!$maps) {
+        continue;
+      }
+
+      $page_ids = [];
+      foreach ($maps as $map) {
+        /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
+        $si = $map->get('sign_interpretation_ref')->entity;
+        if ($si instanceof WdbSignInterpretation) {
+          $pid = (int) ($si->get('annotation_page_ref')->target_id ?? 0);
+          if ($pid) {
+            $page_ids[$pid] = TRUE;
+          }
+        }
+      }
+
+      if ($page_ids) {
+        $items = array_map(static fn($id) => ['target_id' => (int) $id], array_keys($page_ids));
+        // Set on the entity instance (no save) so callers see the values.
+        $entity->set('annotation_page_refs', $items);
       }
     }
   }

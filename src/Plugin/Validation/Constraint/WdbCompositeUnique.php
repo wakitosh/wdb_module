@@ -2,7 +2,8 @@
 
 namespace Drupal\wdb_core\Plugin\Validation\Constraint;
 
-use Symfony\Component\Validator\Constraint;
+use Symfony\Component\Validator\Constraint as SymfonyConstraint;
+use Drupal\Core\Validation\Attribute\Constraint as ConstraintAttribute;
 
 /**
  * Composite uniqueness constraint plugin.
@@ -15,14 +16,13 @@ use Symfony\Component\Validator\Constraint;
  *     'fields' => ['basic_form', 'lexical_category_ref'],
  *   ]);
  * @endcode
- *
- * @Constraint(
- *   id = "WdbCompositeUnique",
- *   label = @Translation("WDB composite uniqueness"),
- *   type = "entity"
- * )
  */
-class WdbCompositeUnique extends Constraint {
+#[ConstraintAttribute(
+  id: 'WdbCompositeUnique',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB composite uniqueness'),
+  type: 'entity'
+)]
+class WdbCompositeUnique extends SymfonyConstraint {
 
   /**
    * Message template.
@@ -42,7 +42,7 @@ class WdbCompositeUnique extends Constraint {
    * {@inheritdoc}
    */
   public function getTargets(): string|array {
-    return self::CLASS_CONSTRAINT;
+    return SymfonyConstraint::CLASS_CONSTRAINT;
   }
 
 }

@@ -5,6 +5,8 @@ namespace Drupal\wdb_core\Breadcrumb;
 use Drupal\Core\Breadcrumb\Breadcrumb;
 use Drupal\Core\Breadcrumb\BreadcrumbBuilderInterface;
 use Drupal\Core\Controller\TitleResolverInterface;
+use Drupal\Core\Cache\CacheableMetadata;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Routing\RouteMatchInterface;
@@ -31,22 +33,32 @@ class WdbBreadcrumbBuilder implements BreadcrumbBuilderInterface {
   protected TitleResolverInterface $titleResolver;
 
   /**
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected RequestStack $requestStack;
+
+  /**
    * Constructs a new WdbBreadcrumbBuilder object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    * @param \Drupal\Core\Controller\TitleResolverInterface $title_resolver
    *   The title resolver.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The request stack.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, TitleResolverInterface $title_resolver) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, TitleResolverInterface $title_resolver, RequestStack $request_stack) {
     $this->entityTypeManager = $entity_type_manager;
     $this->titleResolver = $title_resolver;
+    $this->requestStack = $request_stack;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function applies(RouteMatchInterface $route_match) {
+  public function applies(RouteMatchInterface $route_match, ?CacheableMetadata $cacheable_metadata = NULL) {
     // This breadcrumb builder should only apply to the main gallery page route.
     return $route_match->getRouteName() == 'wdb_core.gallery_page';
   }
@@ -71,13 +83,13 @@ class WdbBreadcrumbBuilder implements BreadcrumbBuilderInterface {
     }
 
     // Add the current page's title as the last, non-linked breadcrumb item.
-    $request = \Drupal::request();
+    $request = $this->requestStack->getCurrentRequest();
     $title = $this->titleResolver->getTitle($request, $route_match->getRouteObject());
     if ($title) {
       $breadcrumb->addLink(Link::createFromRoute($title, '<none>'));
     }
 
-    // This breadcrumb depends on the URL path, so we need to add a cache context.
+    // This breadcrumb depends on the URL path; add cache context.
     $breadcrumb->addCacheContexts(['url.path']);
 
     return $breadcrumb;

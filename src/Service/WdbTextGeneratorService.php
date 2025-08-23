@@ -30,9 +30,9 @@ class WdbTextGeneratorService {
   /**
    * Gets the full transliterated text for a given annotation page.
    *
-   * This method reconstructs the text of a page by fetching all associated
-   * word units, sorting them by sequence, and wrapping each word in an HTML
-   * span with data attributes for interactivity.
+   * This method reconstructs the text of a page by fetching all
+   * associated word units, sorting them by sequence, and wrapping each
+   * word in an HTML span with data attributes for interactivity.
    *
    * @param string $subsysname
    *   The machine name of the subsystem.
@@ -56,7 +56,8 @@ class WdbTextGeneratorService {
       return ['error' => 'Page not found.'];
     }
 
-    // 2. Get all WdbWordUnit entities referencing this page, sorted by sequence.
+    // 2. Get all WdbWordUnit entities referencing this page,
+    //    sorted by sequence.
     $word_unit_storage = $this->entityTypeManager->getStorage('wdb_word_unit');
     $wu_query = $word_unit_storage->getQuery()
       // Search on a multi-value entity reference field.
@@ -94,6 +95,7 @@ class WdbTextGeneratorService {
         if ($map_ids) {
           $maps = $word_map_storage->loadMultiple($map_ids);
           foreach ($maps as $map) {
+            /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
             $si = $map->get('sign_interpretation_ref')->entity;
             if ($si && $si->get('label_ref')->entity && !$si->get('label_ref')->entity->get('polygon_points')->isEmpty()) {
               $points = array_map(fn($item) => $item['value'], $si->get('label_ref')->entity->get('polygon_points')->getValue());

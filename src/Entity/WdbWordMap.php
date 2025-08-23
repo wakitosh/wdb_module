@@ -16,37 +16,36 @@ use Drupal\Core\Entity\EntityStorageInterface;
  * between a WDB Sign Interpretation (a character on a page) and a WDB Word
  * Unit (an instance of a word). It also stores the sequence of the sign
  * within the word.
- *
- * @ContentEntityType(
- *   id = "wdb_word_map",
- *   label = @Translation("WDB Word Map Link"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbWordMapListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbWordMapEditForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *   },
- *   base_table = "wdb_word_map",
- *   data_table = "wdb_word_map_field_data",
- *   translatable = FALSE,
- *   admin_permission = "administer wdb_word_map entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "id",
- *     "uuid" = "uuid",
- *   },
- *   links = {
- *     "canonical" = "/wdb/word_map/{wdb_word_map}",
- *     "edit-form" = "/admin/content/wdb_word_map/{wdb_word_map}/edit",
- *     "collection" = "/admin/content/wdb_word_map",
- *   },
- *   field_ui_base_route = "entity.wdb_word_map.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_word_map',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Word Map Link'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbWordMapListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbWordMapEditForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+  ],
+  base_table: 'wdb_word_map',
+  data_table: 'wdb_word_map_field_data',
+  translatable: FALSE,
+  admin_permission: 'administer wdb_word_map entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'id',
+    'uuid' => 'uuid',
+  ],
+  links: [
+    'canonical' => '/wdb/word_map/{wdb_word_map}',
+    'edit-form' => '/admin/content/wdb_word_map/{wdb_word_map}/edit',
+    'collection' => '/admin/content/wdb_word_map',
+  ],
+  field_ui_base_route: 'entity.wdb_word_map.collection',
+)]
 class WdbWordMap extends ContentEntityBase implements ContentEntityInterface {
 
   /**
@@ -86,19 +85,19 @@ class WdbWordMap extends ContentEntityBase implements ContentEntityInterface {
   public function preSave(EntityStorageInterface $storage) {
     parent::preSave($storage);
 
-    if (!$this->isNew() && isset($this->original)) {
+    $original = $this->getOriginal();
+    if (!$this->isNew() && $original) {
       $changed = [];
 
-      $compareRef = function ($field) {
-        $new = $this->get($field)->target_id ?? NULL;
-        $old = $this->original->get($field)->target_id ?? NULL;
-        return (string) $new !== (string) $old;
-      };
-
-      if ($compareRef('sign_interpretation_ref')) {
+      $newSign = $this->get('sign_interpretation_ref')->target_id ?? NULL;
+      $oldSign = $original->get('sign_interpretation_ref')->target_id ?? NULL;
+      if ((string) $newSign !== (string) $oldSign) {
         $changed[] = 'sign_interpretation_ref';
       }
-      if ($compareRef('word_unit_ref')) {
+
+      $newWord = $this->get('word_unit_ref')->target_id ?? NULL;
+      $oldWord = $original->get('word_unit_ref')->target_id ?? NULL;
+      if ((string) $newWord !== (string) $oldWord) {
         $changed[] = 'word_unit_ref';
       }
 

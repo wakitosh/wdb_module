@@ -15,44 +15,43 @@ use Drupal\Core\Url;
  * Represents a single page (canvas) in a source document, linking it to a
  * specific IIIF image and serving as a container for annotations on that
  * page.
- *
- * @ContentEntityType(
- *   id = "wdb_annotation_page",
- *   label = @Translation("WDB Annotation Page"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbAnnotationPageListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbAnnotationPageForm",
- *       "add" = "Drupal\wdb_core\Form\WdbAnnotationPageForm",
- *       "edit" = "Drupal\wdb_core\Form\WdbAnnotationPageForm",
- *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
- *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler"
- *   },
- *   base_table = "wdb_annotation_page",
- *   data_table = "wdb_annotation_page_field_data",
- *   translatable = TRUE,
- *   admin_permission = "administer wdb_annotation_page entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "page_name_computed",
- *     "uuid" = "uuid",
- *     "langcode" = "langcode"
- *   },
- *   links = {
- *     "canonical" = "/wdb/annotation_page/{wdb_annotation_page}",
- *     "add-form" = "/admin/content/wdb_annotation_page/add",
- *     "edit-form" = "/admin/content/wdb_annotation_page/{wdb_annotation_page}/edit",
- *     "delete-form" = "/admin/content/wdb_annotation_page/{wdb_annotation_page}/delete",
- *     "collection" = "/admin/content/wdb_annotation_page"
- *   },
- *   field_ui_base_route = "entity.wdb_annotation_page.settings"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_annotation_page',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Annotation Page'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbAnnotationPageListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbAnnotationPageForm',
+      'add' => 'Drupal\\wdb_core\\Form\\WdbAnnotationPageForm',
+      'edit' => 'Drupal\\wdb_core\\Form\\WdbAnnotationPageForm',
+      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+    'translation' => 'Drupal\\content_translation\\ContentTranslationHandler',
+  ],
+  base_table: 'wdb_annotation_page',
+  data_table: 'wdb_annotation_page_field_data',
+  translatable: TRUE,
+  admin_permission: 'administer wdb_annotation_page entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'page_name_computed',
+    'uuid' => 'uuid',
+    'langcode' => 'langcode',
+  ],
+  links: [
+    'canonical' => '/wdb/annotation_page/{wdb_annotation_page}',
+    'add-form' => '/admin/content/wdb_annotation_page/add',
+    'edit-form' => '/admin/content/wdb_annotation_page/{wdb_annotation_page}/edit',
+    'delete-form' => '/admin/content/wdb_annotation_page/{wdb_annotation_page}/delete',
+    'collection' => '/admin/content/wdb_annotation_page',
+  ],
+  field_ui_base_route: 'entity.wdb_annotation_page.settings',
+)]
 class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterface {
 
   /**

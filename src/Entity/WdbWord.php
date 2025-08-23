@@ -14,43 +14,42 @@ use Drupal\Core\Field\BaseFieldDefinition;
  * This entity represents a dictionary entry for a word, defined by its basic
  * form and lexical category. It serves as a parent for different meanings a
  * word can have.
- *
- * @ContentEntityType(
- *   id = "wdb_word",
- *   label = @Translation("WDB Word"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbWordListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbWordForm",
- *       "add" = "Drupal\wdb_core\Form\WdbWordForm",
- *       "edit" = "Drupal\wdb_core\Form\WdbWordForm",
- *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *   },
- *   base_table = "wdb_word",
- *   data_table = "wdb_word_field_data",
- *   translatable = TRUE,
- *   admin_permission = "administer wdb_word entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "basic_form",
- *     "uuid" = "uuid",
- *     "langcode" = "langcode",
- *   },
- *   links = {
- *     "canonical" = "/wdb/word/{wdb_word}",
- *     "add-form" = "/admin/content/wdb_word/add",
- *     "edit-form" = "/admin/content/wdb_word/{wdb_word}/edit",
- *     "delete-form" = "/admin/content/wdb_word/{wdb_word}/delete",
- *     "collection" = "/admin/content/wdb_word",
- *   },
- *   field_ui_base_route = "entity.wdb_word.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_word',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Word'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbWordListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbWordForm',
+      'add' => 'Drupal\\wdb_core\\Form\\WdbWordForm',
+      'edit' => 'Drupal\\wdb_core\\Form\\WdbWordForm',
+      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+  ],
+  base_table: 'wdb_word',
+  data_table: 'wdb_word_field_data',
+  translatable: TRUE,
+  admin_permission: 'administer wdb_word entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'basic_form',
+    'uuid' => 'uuid',
+    'langcode' => 'langcode',
+  ],
+  links: [
+    'canonical' => '/wdb/word/{wdb_word}',
+    'add-form' => '/admin/content/wdb_word/add',
+    'edit-form' => '/admin/content/wdb_word/{wdb_word}/edit',
+    'delete-form' => '/admin/content/wdb_word/{wdb_word}/delete',
+    'collection' => '/admin/content/wdb_word',
+  ],
+  field_ui_base_route: 'entity.wdb_word.collection',
+)]
 class WdbWord extends ContentEntityBase implements ContentEntityInterface {
 
   /**

@@ -18,12 +18,9 @@ use Drupal\wdb_core\Entity\WdbWordMap;
 
 /**
  * Service for importing linguistic data from a file.
- *
- * This service handles the business logic for processing rows from a data file
- * (e.g., TSV) and creating or updating the corresponding entities in the
- * database. It is typically used within a batch process.
  */
 class WdbDataImporterService {
+
   use StringTranslationTrait;
 
   /**
@@ -142,6 +139,32 @@ class WdbDataImporterService {
       $grammar_term_refs = $this->findGrammarTerms($grammar_category_names, $langcode, $context);
       $wdb_wu_entity = $this->findOrCreateWdbWordUnit($wdb_source_entity, $wdb_annotation_page_entity, $word_unit_from_tsv, $wdb_word_meaning_entity, $realized_form, $word_seq, $grammar_term_refs, $langcode, $context);
       $this->findOrCreateWdbWordMap($wdb_si_entity, $wdb_wu_entity, $sign_seq, $context);
+
+      // As a safeguard, recompute and persist the page refs for the WU based
+      // on existing WordMap relations. This ensures the multi-value field is
+      // populated even if earlier append logic was skipped in some edge case.
+      $wm_storage = $this->entityTypeManager->getStorage('wdb_word_map');
+      $maps = $wm_storage->loadByProperties(['word_unit_ref' => $wdb_wu_entity->id()]);
+      if ($maps) {
+        $page_ids = [];
+        foreach ($maps as $map) {
+          if ($map instanceof WdbWordMap) {
+            $si = $map->get('sign_interpretation_ref')->entity;
+            if ($si instanceof WdbSignInterpretation) {
+              $pid = (int) ($si->get('annotation_page_ref')->target_id ?? 0);
+              if ($pid) {
+                $page_ids[$pid] = TRUE;
+              }
+            }
+          }
+        }
+        if ($page_ids) {
+          $items = array_map(static fn ($id) => ['target_id' => (int) $id], array_keys($page_ids));
+          $base_wu = $wdb_wu_entity->getUntranslated();
+          $base_wu->set('annotation_page_refs', $items);
+          $base_wu->save();
+        }
+      }
 
       $context['results']['created']++;
       return TRUE;
@@ -601,7 +624,14 @@ class WdbDataImporterService {
       if (!empty($term_name)) {
         $term = $this->findOrCreateTerm($vid, $term_name, $langcode, $context);
         if ($term) {
-          $refs[str_replace('grammatical_', '', $vid) . '_ref'] = $term->id();
+          // Map vocabulary directly to its corresponding field name on
+          // WdbWordUnit. For example:
+          // - 'gender' => 'gender_ref'
+          // - 'number' => 'number_ref'
+          // - 'grammatical_case' => 'grammatical_case_ref'
+          // Previous behavior incorrectly stripped the 'grammatical_' prefix,
+          // resulting in a non-existent 'case_ref' field.
+          $refs[$vid . '_ref'] = $term->id();
         }
       }
     }
@@ -719,11 +749,19 @@ class WdbDataImporterService {
     if (!empty($entities)) {
       $entity = reset($entities);
       /**
-* @var \Drupal\wdb_core\Entity\WdbWordUnit $entity
-*/
-      $existing_page_refs = array_column($entity->get('annotation_page_refs')->getValue(), 'target_id');
-      if (!in_array($page->id(), $existing_page_refs)) {
-        $entity->get('annotation_page_refs')->appendItem($page->id());
+       * @var \Drupal\wdb_core\Entity\WdbWordUnit $entity
+       */
+      // Reload a fresh instance to avoid any stale field states.
+      $entity = $storage->load($entity->id());
+      $existing_items = $entity->get('annotation_page_refs')->getValue();
+      $existing_page_refs = array_map(
+        static function ($item) {
+          return (int) ($item['target_id'] ?? 0);
+        },
+        $existing_items
+      );
+      if (!in_array($page->id(), $existing_page_refs, TRUE)) {
+        $entity->get('annotation_page_refs')->appendItem(['target_id' => (int) $page->id()]);
         $entity->save();
       }
       return $entity;
@@ -732,7 +770,6 @@ class WdbDataImporterService {
     $values = [
       'original_word_unit_identifier' => $original_id,
       'source_ref' => $source->id(),
-      'annotation_page_refs' => [$page->id()],
       'word_meaning_ref' => $word_meaning->id(),
       'realized_form' => $realized_form,
       'word_sequence' => $word_seq,
@@ -740,8 +777,12 @@ class WdbDataImporterService {
     ];
     $entity = $storage->create(array_merge($values, $grammar_refs));
     /**
- * @var \Drupal\wdb_core\Entity\WdbWordUnit $entity
-*/
+     * @var \Drupal\wdb_core\Entity\WdbWordUnit $entity
+     */
+    $entity->save();
+    // Append initial page occurrence on a fresh instance.
+    $entity = $storage->load($entity->id());
+    $entity->get('annotation_page_refs')->appendItem(['target_id' => (int) $page->id()]);
     $entity->save();
 
     $context['results']['created_entities'][] = ['type' => 'wdb_word_unit', 'id' => $entity->id()];

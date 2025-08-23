@@ -117,11 +117,13 @@ class WdbPosMappingGeneratorService {
   /**
    * Generates mapping entities from the internally defined map.
    *
-   * This method iterates through the UNIDIC_TO_WDB_MAP constant, creating a
-   * new WdbPosMapping config entity for each entry if it does not already exist.
+   * This method iterates through the UNIDIC_TO_WDB_MAP constant,
+   * creating a new WdbPosMapping config entity for each entry if it
+   * does not already exist.
    *
    * @return array
-   *   An array containing the results of the operation (created, skipped, etc.).
+   *   An array containing the results of the operation
+   *   (created, skipped, etc.).
    */
   public function generateMappingsFromInternalMap(): array {
     $results = ['created' => 0, 'skipped' => 0, 'skipped_list' => []];
@@ -131,7 +133,8 @@ class WdbPosMappingGeneratorService {
     try {
       $lc_terms = $this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties(['vid' => 'lexical_category']);
       foreach ($lc_terms as $term) {
-        $wdb_terms_by_name[$term->getName()] = $term->id();
+        // Term::label() returns the human-readable name.
+        $wdb_terms_by_name[$term->label()] = $term->id();
       }
     }
     catch (\Exception $e) {

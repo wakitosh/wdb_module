@@ -31,6 +31,11 @@ class WdbTemplateGeneratorService {
    * @var array
    */
   protected array $posMappingCache = [];
+  /**
+   * Logger channel for this service.
+   *
+   * @var \Psr\Log\LoggerInterface
+   */
   protected LoggerInterface $logger;
 
   /**
@@ -38,6 +43,8 @@ class WdbTemplateGeneratorService {
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   *   The logger channel factory.
    */
   public function __construct(EntityTypeManagerInterface $entity_type_manager, LoggerChannelFactoryInterface $logger_factory) {
     $this->entityTypeManager = $entity_type_manager;
@@ -101,7 +108,9 @@ class WdbTemplateGeneratorService {
       if (!empty($si_ids)) {
         $interpretations = $si_storage->loadMultiple($si_ids);
         foreach ($interpretations as $si) {
-          $rows[] = $this->reconstructRowFromSignInterpretation($si);
+          if ($si instanceof WdbSignInterpretation) {
+            $rows[] = $this->reconstructRowFromSignInterpretation($si);
+          }
         }
       }
     }
@@ -244,7 +253,14 @@ class WdbTemplateGeneratorService {
 
     $map_storage = $this->entityTypeManager->getStorage('wdb_word_map');
     $maps = $map_storage->loadByProperties(['sign_interpretation_ref' => $si->id()]);
-    $wu = $maps ? reset($maps)->get('word_unit_ref')->entity : NULL;
+    $wu = NULL;
+    if (!empty($maps)) {
+      $first = reset($maps);
+      /** @var \Drupal\wdb_core\Entity\WdbWordMap $first */
+      if ($first) {
+        $wu = $first->get('word_unit_ref')->entity;
+      }
+    }
 
     $row['source'] = $source ? $source->get('source_identifier')->value : '';
     $row['page'] = $page ? $page->get('page_number')->value : '';
@@ -255,7 +271,9 @@ class WdbTemplateGeneratorService {
     $row['note'] = $si->get('note')->value;
 
     if ($wu) {
-      $original_id_parts = explode('_', $wu->get('original_word_unit_identifier')->value);
+      // Be tolerant of missing original identifier to avoid deprecations.
+      $original_identifier = (string) ($wu->get('original_word_unit_identifier')->value ?? '');
+      $original_id_parts = explode('_', $original_identifier);
       $row['word_unit'] = end($original_id_parts);
       $row['realized_form'] = $wu->get('realized_form')->value;
       $row['word_sequence'] = $wu->get('word_sequence')->value;
@@ -264,7 +282,7 @@ class WdbTemplateGeneratorService {
       if ($meaning) {
         $word = $meaning->get('word_ref')->entity;
         $row['basic_form'] = $word ? $word->get('basic_form')->value : '';
-        $row['lexical_category_name'] = $word && $word->get('lexical_category_ref')->entity ? $word->get('lexical_category_ref')->entity->getName() : '';
+        $row['lexical_category_name'] = $word && $word->get('lexical_category_ref')->entity ? $word->get('lexical_category_ref')->entity->label() : '';
         $row['meaning'] = $meaning->get('meaning_identifier')->value;
         $row['explanation'] = $meaning->get('explanation')->value;
       }
@@ -274,7 +292,7 @@ class WdbTemplateGeneratorService {
         'voice', 'aspect', 'mood', 'grammatical_case',
       ];
       foreach ($grammar_fields as $field) {
-        $row[$field . '_name'] = $wu->get($field . '_ref')->entity ? $wu->get($field . '_ref')->entity->getName() : '';
+        $row[$field . '_name'] = $wu->get($field . '_ref')->entity ? $wu->get($field . '_ref')->entity->label() : '';
       }
     }
 
@@ -307,11 +325,13 @@ class WdbTemplateGeneratorService {
   private function getMappedCategoryName(string $pos_string): string {
     foreach ($this->posMappingCache as $mapping) {
       $pattern = $mapping->source_pos_string;
-      if (fnmatch($pattern, $pos_string)) {
+      // Convert fnmatch-like wildcard pattern to a safe regex.
+      $regex = '/^' . str_replace('\*', '.*', preg_quote($pattern, '/')) . '$/u';
+      if (preg_match($regex, $pos_string) === 1) {
         $term_id = $mapping->target_lexical_category;
         if ($term_id) {
           $term = $this->entityTypeManager->getStorage('taxonomy_term')->load($term_id);
-          return $term ? $term->getName() : '';
+          return $term ? $term->label() : '';
         }
       }
     }

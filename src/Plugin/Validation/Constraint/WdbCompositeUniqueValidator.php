@@ -17,7 +17,7 @@ class WdbCompositeUniqueValidator extends ConstraintValidator {
   /**
    * {@inheritdoc}
    */
-  public function validate($value, Constraint $constraint) {
+  public function validate($value, Constraint $constraint): void {
     if (!$constraint instanceof WdbCompositeUnique) {
       throw new UnexpectedTypeException($constraint, WdbCompositeUnique::class);
     }

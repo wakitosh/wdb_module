@@ -14,37 +14,36 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
  * This entity represents a single polygon annotation on an image, typically
  * corresponding to a character or a ligature. It stores the geometric data
  * (polygon points) and a textual label.
- *
- * @ContentEntityType(
- *   id = "wdb_label",
- *   label = @Translation("WDB Label"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbLabelListBuilder",
- *     "form" = {
- *       "default" = "Drupal\Core\Entity\ContentEntityForm"
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
- *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler"
- *   },
- *   base_table = "wdb_label",
- *   data_table = "wdb_label_field_data",
- *   translatable = FALSE,
- *   admin_permission = "administer wdb_label entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "label_name",
- *     "uuid" = "uuid"
- *   },
- *   links = {
- *     "canonical" = "/wdb/label/{wdb_label}",
- *     "collection" = "/admin/content/wdb_label"
- *   },
- *   field_ui_base_route = "entity.wdb_label.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_label',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Label'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbLabelListBuilder',
+    'form' => [
+      'default' => 'Drupal\\Core\\Entity\\ContentEntityForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+    'translation' => 'Drupal\\content_translation\\ContentTranslationHandler',
+  ],
+  base_table: 'wdb_label',
+  data_table: 'wdb_label_field_data',
+  translatable: FALSE,
+  admin_permission: 'administer wdb_label entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'label_name',
+    'uuid' => 'uuid',
+  ],
+  links: [
+    'canonical' => '/wdb/label/{wdb_label}',
+    'collection' => '/admin/content/wdb_label',
+  ],
+  field_ui_base_route: 'entity.wdb_label.collection',
+)]
 class WdbLabel extends ContentEntityBase implements ContentEntityInterface {
 
   /**

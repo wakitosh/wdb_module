@@ -47,7 +47,8 @@ class WdbAnnotationPageListBuilder extends EntityListBuilder {
       $row['source_ref'] = $source_entity->label();
     }
     else {
-      // Handle cases where the referenced entity is not found or is of an unexpected type.
+      // Handle cases where the referenced entity is not found
+      // or is of an unexpected type.
       $target_id = $entity->get('source_ref')->target_id;
       $row['source_ref'] = $this->t('Error: Source (ID: @id) not found or invalid.', ['@id' => $target_id ?? 'N/A']);
     }

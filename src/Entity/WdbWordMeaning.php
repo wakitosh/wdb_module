@@ -14,43 +14,42 @@ use Drupal\Core\Field\BaseFieldDefinition;
  * This entity represents a specific meaning associated with a WDB Word entity.
  * A single word can have multiple meanings, each defined by its own
  * Word Meaning entity.
- *
- * @ContentEntityType(
- *   id = "wdb_word_meaning",
- *   label = @Translation("WDB Word Meaning"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbWordMeaningListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbWordMeaningForm",
- *       "add" = "Drupal\wdb_core\Form\WdbWordMeaningForm",
- *       "edit" = "Drupal\wdb_core\Form\WdbWordMeaningForm",
- *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *   },
- *   base_table = "wdb_word_meaning",
- *   data_table = "wdb_word_meaning_field_data",
- *   translatable = TRUE,
- *   admin_permission = "administer wdb_word_meaning entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "word_meaning_code",
- *     "uuid" = "uuid",
- *     "langcode" = "langcode",
- *   },
- *   links = {
- *     "canonical" = "/wdb/word_meaning/{wdb_word_meaning}",
- *     "add-form" = "/admin/content/wdb_word_meaning/add",
- *     "edit-form" = "/admin/content/wdb_word_meaning/{wdb_word_meaning}/edit",
- *     "delete-form" = "/admin/content/wdb_word_meaning/{wdb_word_meaning}/delete",
- *     "collection" = "/admin/content/wdb_word_meaning",
- *   },
- *   field_ui_base_route = "entity.wdb_word_meaning.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_word_meaning',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Word Meaning'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbWordMeaningListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbWordMeaningForm',
+      'add' => 'Drupal\\wdb_core\\Form\\WdbWordMeaningForm',
+      'edit' => 'Drupal\\wdb_core\\Form\\WdbWordMeaningForm',
+      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+  ],
+  base_table: 'wdb_word_meaning',
+  data_table: 'wdb_word_meaning_field_data',
+  translatable: TRUE,
+  admin_permission: 'administer wdb_word_meaning entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'word_meaning_code',
+    'uuid' => 'uuid',
+    'langcode' => 'langcode',
+  ],
+  links: [
+    'canonical' => '/wdb/word_meaning/{wdb_word_meaning}',
+    'add-form' => '/admin/content/wdb_word_meaning/add',
+    'edit-form' => '/admin/content/wdb_word_meaning/{wdb_word_meaning}/edit',
+    'delete-form' => '/admin/content/wdb_word_meaning/{wdb_word_meaning}/delete',
+    'collection' => '/admin/content/wdb_word_meaning',
+  ],
+  field_ui_base_route: 'entity.wdb_word_meaning.collection',
+)]
 class WdbWordMeaning extends ContentEntityBase implements ContentEntityInterface {
 
   /**

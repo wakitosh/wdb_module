@@ -12,43 +12,42 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *
  * This entity represents a fundamental sign or grapheme in the writing system,
  * serving as a dictionary entry for a character.
- *
- * @ContentEntityType(
- *   id = "wdb_sign",
- *   label = @Translation("WDB Sign"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbSignListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbSignForm",
- *       "add" = "Drupal\wdb_core\Form\WdbSignForm",
- *       "edit" = "Drupal\wdb_core\Form\WdbSignForm",
- *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm"
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
- *     }
- *   },
- *   base_table = "wdb_sign",
- *   data_table = "wdb_sign_field_data",
- *   translatable = TRUE,
- *   admin_permission = "administer wdb_sign entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "sign_code",
- *     "uuid" = "uuid",
- *     "langcode" = "langcode"
- *   },
- *   links = {
- *     "canonical" = "/wdb/sign/{wdb_sign}",
- *     "add-form" = "/admin/content/wdb_sign/add",
- *     "edit-form" = "/admin/content/wdb_sign/{wdb_sign}/edit",
- *     "delete-form" = "/admin/content/wdb_sign/{wdb_sign}/delete",
- *     "collection" = "/admin/content/wdb_sign"
- *   },
- *   field_ui_base_route = "entity.wdb_sign.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_sign',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Sign'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbSignListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbSignForm',
+      'add' => 'Drupal\\wdb_core\\Form\\WdbSignForm',
+      'edit' => 'Drupal\\wdb_core\\Form\\WdbSignForm',
+      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+  ],
+  base_table: 'wdb_sign',
+  data_table: 'wdb_sign_field_data',
+  translatable: TRUE,
+  admin_permission: 'administer wdb_sign entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'sign_code',
+    'uuid' => 'uuid',
+    'langcode' => 'langcode',
+  ],
+  links: [
+    'canonical' => '/wdb/sign/{wdb_sign}',
+    'add-form' => '/admin/content/wdb_sign/add',
+    'edit-form' => '/admin/content/wdb_sign/{wdb_sign}/edit',
+    'delete-form' => '/admin/content/wdb_sign/{wdb_sign}/delete',
+    'collection' => '/admin/content/wdb_sign',
+  ],
+  field_ui_base_route: 'entity.wdb_sign.collection',
+)]
 class WdbSign extends ContentEntityBase implements ContentEntityInterface {
 
   /**

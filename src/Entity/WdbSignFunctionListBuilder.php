@@ -46,14 +46,16 @@ class WdbSignFunctionListBuilder extends EntityListBuilder {
       $row['sign_ref'] = $sign_entity->label();
     }
     else {
-      // Handle cases where the referenced entity is not found or is of an unexpected type.
+      // Handle cases where the referenced entity is not found
+      // or is of an unexpected type.
       $target_id = $entity->get('sign_ref')->target_id;
       $row['sign_ref'] = $this->t('Error: Sign (ID: @id) not found or invalid.', ['@id' => $target_id ?? 'N/A']);
     }
 
     $row['function_name'] = $entity->get('function_name')->value;
 
-    // Explicitly get the 'value' of the text_long field to avoid rendering issues.
+    // Explicitly get the 'value' of the text_long field
+    // to avoid rendering issues.
     $description_field = $entity->get('description');
     $row['description'] = $description_field ? $description_field->value : '';
 

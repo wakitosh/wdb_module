@@ -5,6 +5,7 @@ namespace Drupal\wdb_core\Service;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
@@ -13,6 +14,7 @@ use Drupal\wdb_core\Entity\WdbLabel;
 use Drupal\wdb_core\Entity\WdbSource;
 use Drupal\wdb_core\Entity\WdbSignInterpretation;
 use Drupal\wdb_core\Entity\WdbWordUnit;
+use Drupal\wdb_core\Entity\WdbWordMap;
 use Drupal\wdb_core\Lib\HullJsPhp\HullPHP;
 
 /**
@@ -73,7 +75,9 @@ class WdbDataService {
   }
 
   /**
-   * Retrieves all WdbAnnotationPage entities for a given source, sorted by page number.
+   * Retrieves all WdbAnnotationPage entities for a given source.
+   *
+   * Results are sorted by page number.
    *
    * @param \Drupal\wdb_core\Entity\WdbSource $source_entity
    *   The source entity.
@@ -144,7 +148,8 @@ class WdbDataService {
     }
     $word_units = $wu_storage->loadMultiple($wu_ids);
 
-    // 3. For each WdbWordUnit, get its constituent WdbSignInterpretations, sorted by sign_sequence.
+    // 3. For each WdbWordUnit, get its constituent
+    //    WdbSignInterpretations, sorted by sign_sequence.
     $word_map_storage = $this->entityTypeManager->getStorage('wdb_word_map');
     foreach ($word_units as $wu_id => $wu_entity) {
       $map_ids = $word_map_storage->getQuery()
@@ -156,7 +161,9 @@ class WdbDataService {
       $sign_interpretations = [];
       if (!empty($map_ids)) {
         $maps = $word_map_storage->loadMultiple($map_ids);
+        /** @var \Drupal\wdb_core\Entity\WdbWordMap[] $maps */
         foreach ($maps as $map) {
+          /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
           $sign_interpretations[] = $map->get('sign_interpretation_ref')->entity;
         }
       }
@@ -173,15 +180,21 @@ class WdbDataService {
   /**
    * Retrieves detailed, structured data for display in the annotation panel.
    *
-   * @param \Drupal\wdb_core\Entity\WdbLabel $wdb_label_entity
-   *   The label entity that was clicked.
+   * @param \Drupal\Core\Entity\EntityInterface $label_entity
+   *   The label entity that was clicked. Preferably an instance of WdbLabel.
    * @param string $subsysname
    *   The machine name of the subsystem.
    *
    * @return array
    *   A structured data array for the annotation panel.
    */
-  public function getAnnotationDetails(WdbLabel $wdb_label_entity, string $subsysname): array {
+  public function getAnnotationDetails(EntityInterface $label_entity, string $subsysname): array {
+    // Accept broader type for resilience; ensure it's a WdbLabel at runtime.
+    if (!$label_entity instanceof WdbLabel) {
+      $this->logger->error('Invalid entity passed to getAnnotationDetails: expected WdbLabel, got @class', ['@class' => get_class($label_entity)]);
+      return ['error_message' => $this->t('Invalid label entity.')];
+    }
+    $wdb_label_entity = $label_entity;
     // --- FIX: Robusly determine the subsystem name. ---
     // If the passed subsysname is empty, try to derive it from the entity
     // to protect against issues in the calling controller.
@@ -272,7 +285,7 @@ class WdbDataService {
   }
 
   /**
-   * Builds a structured array of all data related to a single SignInterpretation.
+   * Builds data for a single SignInterpretation.
    *
    * @param \Drupal\wdb_core\Entity\WdbSignInterpretation $si_entity
    *   The Sign Interpretation entity.
@@ -289,7 +302,6 @@ class WdbDataService {
       'thumbnail_data' => NULL,
       'associated_word_units' => [],
     ];
-
     $label = $si_entity->get('label_ref')->entity;
 
     $sf = $si_entity->get('sign_function_ref')->entity;
@@ -310,14 +322,12 @@ class WdbDataService {
         )->toString(),
       ];
     }
-
     $label = $si_entity->get('label_ref')->entity;
     $iiif_base_url = $this->getIiifBaseUrlForSubsystem($subsysname);
     if ($label && !$label->get('polygon_points')->isEmpty() && !empty($iiif_base_url)) {
       $points = array_map(fn($item) => $item['value'], $label->get('polygon_points')->getValue());
       $bbox = $this->calculateBoundingBoxArray($points);
       $page_entity = $label->get('annotation_page_ref')->entity;
-      $source_entity = $page_entity->get('source_ref')->entity;
       $subsys_config = $this->getSubsystemConfig($subsysname);
       if (!$subsys_config) {
         return $si_data_item;
@@ -474,7 +484,6 @@ class WdbDataService {
             // Generate thumbnail data for each individual sign.
             $sign_bbox = $this->calculateBoundingBoxArray($polygon_points_for_sign);
             $page_entity = $label->get('annotation_page_ref')->entity;
-            $source_entity = $page_entity->get('source_ref')->entity;
             $subsys_config = $this->getSubsystemConfig($subsysname);
             if (!$subsys_config) {
               return $wu_data_item;
@@ -522,7 +531,8 @@ class WdbDataService {
       }
     }
 
-    // 3. Calculate the bounding box for the entire word and generate thumbnail data.
+    // 3. Calculate the bounding box for the entire word and
+    //    generate thumbnail data.
     $iiif_base_url = $this->getIiifBaseUrlForSubsystem($subsysname);
     if (!empty($all_polygon_points_for_word) && !empty($iiif_base_url)) {
       $word_bbox = $this->calculateBoundingBoxArray($all_polygon_points_for_word);
@@ -642,8 +652,10 @@ class WdbDataService {
       return [];
     }
     $maps = $map_storage->loadMultiple($map_ids);
+    /** @var \Drupal\wdb_core\Entity\WdbWordMap[] $maps */
     $sign_interpretations = [];
     foreach ($maps as $map) {
+      /** @var \Drupal\wdb_core\Entity\WdbWordMap $map */
       $si = $map->get('sign_interpretation_ref')->entity;
       if ($si) {
         $sign_interpretations[$si->id()] = $si;
@@ -755,8 +767,9 @@ class WdbDataService {
   private function getWordUnitForSignInterpretation(WdbSignInterpretation $si_entity): ?WdbWordUnit {
     $map_storage = $this->entityTypeManager->getStorage('wdb_word_map');
     $maps = $map_storage->loadByProperties(['sign_interpretation_ref' => $si_entity->id()]);
+    /** @var \Drupal\wdb_core\Entity\WdbWordMap|false $map */
     $map = reset($maps);
-    return $map ? $map->get('word_unit_ref')->entity : NULL;
+    return ($map && $map instanceof WdbWordMap) ? $map->get('word_unit_ref')->entity : NULL;
   }
 
   /**

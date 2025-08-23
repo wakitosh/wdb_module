@@ -91,7 +91,16 @@ class WdbSourceListBuilder extends EntityListBuilder {
 
     /** @var \Drupal\wdb_core\Entity\WdbSource $entity */
     if ($entity->access('view')) {
-      $first_subsystem = $entity->get('subsystem_tags')->entity;
+      // Since subsystem_tags is a multi-value field,
+      // safely retrieve the first reference entity.
+      $first_subsystem = NULL;
+      $subsys_field = $entity->get('subsystem_tags');
+      if ($subsys_field && !$subsys_field->isEmpty()) {
+        $subs = $subsys_field->referencedEntities();
+        if (!empty($subs)) {
+          $first_subsystem = reset($subs);
+        }
+      }
       if ($first_subsystem) {
         // Find the minimum page number associated with this source.
         $page_storage = $this->entityTypeManager->getStorage('wdb_annotation_page');
@@ -107,11 +116,11 @@ class WdbSourceListBuilder extends EntityListBuilder {
 
         if (!empty($page_ids)) {
           $first_page_entity = $page_storage->load(reset($page_ids));
+          /** @var \Drupal\wdb_core\Entity\WdbAnnotationPage $first_page_entity */
           if ($first_page_entity) {
             $first_page_number = $first_page_entity->get('page_number')->value;
           }
         }
-
         $operations['view_in_gallery'] = [
           'title' => $this->t('View in gallery'),
           'weight' => -10,

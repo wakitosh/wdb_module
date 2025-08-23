@@ -14,44 +14,43 @@ use Drupal\Core\Field\BaseFieldDefinition;
  * This entity represents a specific function or role that a WDB Sign can have.
  * For example, a single sign might have multiple functions, such as a phonetic
  * value and an ideographic meaning, each represented by a Sign Function entity.
- *
- * @ContentEntityType(
- *   id = "wdb_sign_function",
- *   label = @Translation("WDB Sign Function"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbSignFunctionListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbSignFunctionForm",
- *       "add" = "Drupal\wdb_core\Form\WdbSignFunctionForm",
- *       "edit" = "Drupal\wdb_core\Form\WdbSignFunctionForm",
- *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
- *   },
- *   base_table = "wdb_sign_function",
- *   data_table = "wdb_sign_function_field_data",
- *   translatable = TRUE,
- *   admin_permission = "administer wdb_sign_function entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "sign_function_code",
- *     "uuid" = "uuid",
- *     "langcode" = "langcode",
- *   },
- *   links = {
- *     "canonical" = "/wdb/sign_function/{wdb_sign_function}",
- *     "add-form" = "/admin/content/wdb_sign_function/add",
- *     "edit-form" = "/admin/content/wdb_sign_function/{wdb_sign_function}/edit",
- *     "delete-form" = "/admin/content/wdb_sign_function/{wdb_sign_function}/delete",
- *     "collection" = "/admin/content/wdb_sign_function",
- *   },
- *   field_ui_base_route = "entity.wdb_sign_function.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_sign_function',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Sign Function'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbSignFunctionListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbSignFunctionForm',
+      'add' => 'Drupal\\wdb_core\\Form\\WdbSignFunctionForm',
+      'edit' => 'Drupal\\wdb_core\\Form\\WdbSignFunctionForm',
+      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+    'translation' => 'Drupal\\content_translation\\ContentTranslationHandler',
+  ],
+  base_table: 'wdb_sign_function',
+  data_table: 'wdb_sign_function_field_data',
+  translatable: TRUE,
+  admin_permission: 'administer wdb_sign_function entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'sign_function_code',
+    'uuid' => 'uuid',
+    'langcode' => 'langcode',
+  ],
+  links: [
+    'canonical' => '/wdb/sign_function/{wdb_sign_function}',
+    'add-form' => '/admin/content/wdb_sign_function/add',
+    'edit-form' => '/admin/content/wdb_sign_function/{wdb_sign_function}/edit',
+    'delete-form' => '/admin/content/wdb_sign_function/{wdb_sign_function}/delete',
+    'collection' => '/admin/content/wdb_sign_function',
+  ],
+  field_ui_base_route: 'entity.wdb_sign_function.collection',
+)]
 class WdbSignFunction extends ContentEntityBase implements ContentEntityInterface {
 
   /**

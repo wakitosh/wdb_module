@@ -13,41 +13,40 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
  *
  * This entity represents a source document, such as a manuscript or a book,
  * which serves as a container for annotation pages.
- *
- * @ContentEntityType(
- *   id = "wdb_source",
- *   label = @Translation("WDB Source"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbSourceListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbSourceForm",
- *       "add" = "Drupal\wdb_core\Form\WdbSourceForm",
- *       "edit" = "Drupal\wdb_core\Form\WdbSourceForm",
- *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *   },
- *   base_table = "wdb_source",
- *   translatable = FALSE,
- *   admin_permission = "administer wdb_source entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "displayname",
- *     "uuid" = "uuid",
- *   },
- *   links = {
- *     "canonical" = "/wdb/source/{wdb_source}",
- *     "add-form" = "/admin/content/wdb_source/add",
- *     "edit-form" = "/admin/content/wdb_source/{wdb_source}/edit",
- *     "delete-form" = "/admin/content/wdb_source/{wdb_source}/delete",
- *     "collection" = "/admin/content/wdb_source",
- *   },
- *   field_ui_base_route = "entity.wdb_source.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_source',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Source'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbSourceListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbSourceForm',
+      'add' => 'Drupal\\wdb_core\\Form\\WdbSourceForm',
+      'edit' => 'Drupal\\wdb_core\\Form\\WdbSourceForm',
+      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+  ],
+  base_table: 'wdb_source',
+  translatable: FALSE,
+  admin_permission: 'administer wdb_source entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'displayname',
+    'uuid' => 'uuid',
+  ],
+  links: [
+    'canonical' => '/wdb/source/{wdb_source}',
+    'add-form' => '/admin/content/wdb_source/add',
+    'edit-form' => '/admin/content/wdb_source/{wdb_source}/edit',
+    'delete-form' => '/admin/content/wdb_source/{wdb_source}/delete',
+    'collection' => '/admin/content/wdb_source',
+  ],
+  field_ui_base_route: 'entity.wdb_source.collection',
+)]
 class WdbSource extends ContentEntityBase implements ContentEntityInterface {
 
   /**

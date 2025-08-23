@@ -13,33 +13,32 @@ use Drupal\Core\Field\BaseFieldDefinition;
  * This entity stores a log of each data import job, including its status,
  * summary, and a list of created entities, enabling traceability and
  * potential rollback functionality.
- *
- * @ContentEntityType(
- *   id = "wdb_import_log",
- *   label = @Translation("WDB Import Log"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbImportLogListBuilder",
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *   },
- *   base_table = "wdb_import_log",
- *   data_table = "wdb_import_log_field_data",
- *   translatable = FALSE,
- *   admin_permission = "administer wdb import logs",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "label",
- *     "uuid" = "uuid",
- *   },
- *   links = {
- *     "canonical" = "/wdb/import_log/{wdb_import_log}",
- *     "collection" = "/admin/content/wdb/import_log",
- *     "rollback-form" = "/admin/content/wdb/import_log/{wdb_import_log}/rollback",
- *   },
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_import_log',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Import Log'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbImportLogListBuilder',
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+  ],
+  base_table: 'wdb_import_log',
+  data_table: 'wdb_import_log_field_data',
+  translatable: FALSE,
+  admin_permission: 'administer wdb import logs',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'label',
+    'uuid' => 'uuid',
+  ],
+  links: [
+    'canonical' => '/wdb/import_log/{wdb_import_log}',
+    'collection' => '/admin/content/wdb/import_log',
+    'rollback-form' => '/admin/content/wdb/import_log/{wdb_import_log}/rollback',
+  ],
+)]
 class WdbImportLog extends ContentEntityBase implements ContentEntityInterface {
 
   /**

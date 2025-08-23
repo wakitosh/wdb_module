@@ -1,1 +1,24 @@
 # config/schema/wdb_core.schema.yml
+
+wdb_core.wdb_pos_mapping.*:
+  type: config_entity
+  label: 'WDB POS Mapping'
+  mapping:
+    id:
+      type: string
+      label: 'ID'
+    uuid:
+      type: string
+      label: 'UUID'
+    label:
+      type: label
+      label: 'Label'
+    source_pos_string:
+      type: string
+      label: 'Source POS String'
+    target_lexical_category:
+      type: integer
+      label: 'Target Lexical Category (term ID)'
+    weight:
+      type: integer
+      label: 'Weight'

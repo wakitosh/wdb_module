@@ -16,39 +16,38 @@ use Drupal\Core\Field\BaseFieldDefinition;
  * on a specific page (WdbAnnotationPage) as having a particular function
  * (WdbSignFunction). It is the core link between the visual annotation and
  * its linguistic meaning.
- *
- * @ContentEntityType(
- *   id = "wdb_sign_interpretation",
- *   label = @Translation("WDB Sign Interpretation"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\wdb_core\Entity\WdbSignInterpretationListBuilder",
- *     "form" = {
- *       "default" = "Drupal\wdb_core\Form\WdbSignInterpretationEditForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
- *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
- *   },
- *   base_table = "wdb_sign_interpretation",
- *   data_table = "wdb_sign_interpretation_field_data",
- *   translatable = TRUE,
- *   admin_permission = "administer wdb_sign_interpretation entities",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "sign_interpretation_code",
- *     "uuid" = "uuid",
- *     "langcode" = "langcode"
- *   },
- *   links = {
- *     "canonical" = "/wdb/sign_interpretation/{wdb_sign_interpretation}",
- *     "edit-form" = "/admin/content/wdb_sign_interpretation/{wdb_sign_interpretation}/edit",
- *     "collection" = "/admin/content/wdb_sign_interpretation"
- *   },
- *   field_ui_base_route = "entity.wdb_sign_interpretation.collection"
- * )
  */
+#[\Drupal\Core\Entity\Attribute\ContentEntityType(
+  id: 'wdb_sign_interpretation',
+  label: new \Drupal\Core\StringTranslation\TranslatableMarkup('WDB Sign Interpretation'),
+  handlers: [
+    'view_builder' => 'Drupal\\Core\\Entity\\EntityViewBuilder',
+    'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbSignInterpretationListBuilder',
+    'form' => [
+      'default' => 'Drupal\\wdb_core\\Form\\WdbSignInterpretationEditForm',
+    ],
+    'route_provider' => [
+      'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
+    ],
+    'translation' => 'Drupal\\content_translation\\ContentTranslationHandler',
+  ],
+  base_table: 'wdb_sign_interpretation',
+  data_table: 'wdb_sign_interpretation_field_data',
+  translatable: TRUE,
+  admin_permission: 'administer wdb_sign_interpretation entities',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'sign_interpretation_code',
+    'uuid' => 'uuid',
+    'langcode' => 'langcode',
+  ],
+  links: [
+    'canonical' => '/wdb/sign_interpretation/{wdb_sign_interpretation}',
+    'edit-form' => '/admin/content/wdb_sign_interpretation/{wdb_sign_interpretation}/edit',
+    'collection' => '/admin/content/wdb_sign_interpretation',
+  ],
+  field_ui_base_route: 'entity.wdb_sign_interpretation.collection',
+)]
 class WdbSignInterpretation extends ContentEntityBase implements ContentEntityInterface {
 
   /**
@@ -120,20 +119,21 @@ class WdbSignInterpretation extends ContentEntityBase implements ContentEntityIn
     parent::preSave($storage);
 
     // Disallow changing protected fields after creation.
-    if (!$this->isNew() && isset($this->original)) {
+    if (!$this->isNew() && ($this->getOriginal())) {
+      $original = $this->getOriginal();
       $changed = [];
 
       // Compare scalar fields.
-      $compareScalar = function ($field) {
+      $compareScalar = function ($field) use ($original) {
         $new = $this->get($field)->value ?? NULL;
-        $old = $this->original->get($field)->value ?? NULL;
+        $old = $original->get($field)->value ?? NULL;
         return $new !== $old;
       };
 
       // Compare entity reference target_id.
-      $compareRef = function ($field) {
+      $compareRef = function ($field) use ($original) {
         $new = $this->get($field)->target_id ?? NULL;
-        $old = $this->original->get($field)->target_id ?? NULL;
+        $old = $original->get($field)->target_id ?? NULL;
         return (string) $new !== (string) $old;
       };
 
