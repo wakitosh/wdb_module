@@ -177,7 +177,7 @@ class WdbDataImportForm extends FormBase implements ContainerInjectionInterface 
    *   The batch API context array.
    *
    * @throws \Exception
-   * If the import file cannot be opened.
+   *   If the import file cannot be opened.
    */
   public static function processImportFile(string $file_uri, string $langcode, array &$context) {
     /** @var \Drupal\wdb_core\Service\WdbDataImporterService $importer */
