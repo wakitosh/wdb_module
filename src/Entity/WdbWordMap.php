@@ -6,6 +6,8 @@ use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Entity\EntityStorageException;
+use Drupal\Core\Entity\EntityStorageInterface;
 
 /**
  * Defines the WDB Word Map entity.
@@ -22,7 +24,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
  *     "list_builder" = "Drupal\wdb_core\Entity\WdbWordMapListBuilder",
  *     "form" = {
- *       "default" = "Drupal\Core\Entity\ContentEntityForm",
+ *       "default" = "Drupal\wdb_core\Form\WdbWordMapEditForm",
  *     },
  *     "route_provider" = {
  *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
@@ -39,6 +41,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *   },
  *   links = {
  *     "canonical" = "/wdb/word_map/{wdb_word_map}",
+ *     "edit-form" = "/admin/content/wdb_word_map/{wdb_word_map}/edit",
  *     "collection" = "/admin/content/wdb_word_map",
  *   },
  *   field_ui_base_route = "entity.wdb_word_map.collection"
@@ -75,6 +78,34 @@ class WdbWordMap extends ContentEntityBase implements ContentEntityInterface {
       ->setDisplayConfigurable('form', TRUE)->setDisplayConfigurable('view', TRUE);
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function preSave(EntityStorageInterface $storage) {
+    parent::preSave($storage);
+
+    if (!$this->isNew() && isset($this->original)) {
+      $changed = [];
+
+      $compareRef = function ($field) {
+        $new = $this->get($field)->target_id ?? NULL;
+        $old = $this->original->get($field)->target_id ?? NULL;
+        return (string) $new !== (string) $old;
+      };
+
+      if ($compareRef('sign_interpretation_ref')) {
+        $changed[] = 'sign_interpretation_ref';
+      }
+      if ($compareRef('word_unit_ref')) {
+        $changed[] = 'word_unit_ref';
+      }
+
+      if (!empty($changed)) {
+        throw new EntityStorageException('Protected fields cannot be changed on WdbWordMap: ' . implode(', ', $changed));
+      }
+    }
   }
 
 }

@@ -347,3 +347,23 @@ wdb_core.admin_dashboard:
     _title: 'WDB Dashboard'
   requirements:
     _permission: 'administer wdb content'
+
+# ----------------------------------------------------------------
+# 7. Explicit entity collection routes for entities where auto routes failed
+# ----------------------------------------------------------------
+
+entity.wdb_word_map.collection:
+  path: '/admin/content/wdb_word_map'
+  defaults:
+    _entity_list: 'wdb_word_map'
+    _title: 'WDB Word Map'
+  requirements:
+    _permission: 'administer wdb_word_map entities'
+
+entity.wdb_word_unit.collection:
+  path: '/admin/content/wdb_word_unit'
+  defaults:
+    _entity_list: 'wdb_word_unit'
+    _title: 'WDB Word Unit'
+  requirements:
+    _permission: 'administer wdb_word_unit entities'

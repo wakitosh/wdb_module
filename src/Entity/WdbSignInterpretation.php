@@ -4,6 +4,8 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 
@@ -22,12 +24,12 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
  *     "list_builder" = "Drupal\wdb_core\Entity\WdbSignInterpretationListBuilder",
  *     "form" = {
- *       "default" = "Drupal\Core\Entity\ContentEntityForm"
+ *       "default" = "Drupal\wdb_core\Form\WdbSignInterpretationEditForm",
  *     },
  *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"
+ *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
  *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler"
+ *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
  *   },
  *   base_table = "wdb_sign_interpretation",
  *   data_table = "wdb_sign_interpretation_field_data",
@@ -41,6 +43,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *   },
  *   links = {
  *     "canonical" = "/wdb/sign_interpretation/{wdb_sign_interpretation}",
+ *     "edit-form" = "/admin/content/wdb_sign_interpretation/{wdb_sign_interpretation}/edit",
  *     "collection" = "/admin/content/wdb_sign_interpretation"
  *   },
  *   field_ui_base_route = "entity.wdb_sign_interpretation.collection"
@@ -108,6 +111,50 @@ class WdbSignInterpretation extends ContentEntityBase implements ContentEntityIn
       ->setLabel(t('Note'))->setTranslatable(TRUE);
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function preSave(EntityStorageInterface $storage) {
+    parent::preSave($storage);
+
+    // Disallow changing protected fields after creation.
+    if (!$this->isNew() && isset($this->original)) {
+      $changed = [];
+
+      // Compare scalar fields.
+      $compareScalar = function ($field) {
+        $new = $this->get($field)->value ?? NULL;
+        $old = $this->original->get($field)->value ?? NULL;
+        return $new !== $old;
+      };
+
+      // Compare entity reference target_id.
+      $compareRef = function ($field) {
+        $new = $this->get($field)->target_id ?? NULL;
+        $old = $this->original->get($field)->target_id ?? NULL;
+        return (string) $new !== (string) $old;
+      };
+
+      if ($compareScalar('sign_interpretation_code')) {
+        $changed[] = 'sign_interpretation_code';
+      }
+      if ($compareScalar('langcode')) {
+        $changed[] = 'langcode';
+      }
+      if ($compareRef('annotation_page_ref')) {
+        $changed[] = 'annotation_page_ref';
+      }
+      // Allow label_ref to be adjusted post-creation to fix mismatches.
+      if ($compareRef('sign_function_ref')) {
+        $changed[] = 'sign_function_ref';
+      }
+
+      if (!empty($changed)) {
+        throw new EntityStorageException('Protected fields cannot be changed on WdbSignInterpretation: ' . implode(', ', $changed));
+      }
+    }
   }
 
 }
