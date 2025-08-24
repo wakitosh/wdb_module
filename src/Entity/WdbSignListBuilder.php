@@ -4,6 +4,8 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
+use Drupal\wdb_core\Entity\Traits\ConfigurableListDisplayTrait;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Defines a class to build a listing of WDB Sign entities.
@@ -14,16 +16,13 @@ use Drupal\Core\Entity\EntityListBuilder;
  * @see \Drupal\wdb_core\Entity\WdbSign
  */
 class WdbSignListBuilder extends EntityListBuilder {
+  use ConfigurableListDisplayTrait;
 
   /**
    * {@inheritdoc}
    */
   public function buildHeader() {
-    // Defines the table header for the entity list.
-    $header['id'] = $this->t('ID');
-    $header['sign_code'] = $this->t('Sign Code');
-    $header['langcode'] = $this->t('Language');
-    return $header + parent::buildHeader();
+    return $this->buildConfigurableHeader(['id', 'sign_code', 'langcode']) + parent::buildHeader();
   }
 
   /**
@@ -31,11 +30,25 @@ class WdbSignListBuilder extends EntityListBuilder {
    */
   public function buildRow(EntityInterface $entity) {
     /** @var \Drupal\wdb_core\Entity\WdbSign $entity */
-    // Defines the data for each row of the table.
-    $row['id'] = $entity->id();
-    $row['sign_code'] = $entity->get('sign_code')->value;
-    $row['langcode'] = $entity->language()->getName();
-    return $row + parent::buildRow($entity);
+    return $this->buildConfigurableRow($entity, ['id', 'sign_code', 'langcode']) + parent::buildRow($entity);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function createInstance(ContainerInterface $container, $entity_type) {
+    /** @var static $instance */
+    $instance = parent::createInstance($container, $entity_type);
+    $instance->configFactory = $container->get('config.factory');
+    $instance->entityFieldManager = $container->get('entity_field.manager');
+    return $instance;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getListEntityTypeId(): string {
+    return 'wdb_sign';
   }
 
   /**

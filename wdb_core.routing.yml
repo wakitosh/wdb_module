@@ -348,14 +348,98 @@ wdb_core.admin_dashboard:
   requirements:
     _permission: 'administer wdb content'
 
-# Field Management landing page (for menu parent expansion).
-wdb_core.field_management:
-  path: '/admin/wdb/fields'
+
+# List display settings for WDB Source entity list.
+wdb_core.wdb_source_list_display:
+  path: '/admin/wdb/source/list-display'
   defaults:
-    _controller: '\Drupal\wdb_core\Controller\DashboardController::fieldManagement'
-    _title: 'Field Management'
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_source'
+    _title: 'Source list display settings'
   requirements:
-    _permission: 'administer wdb content'
+    _permission: 'administer wdb_source entities'
+
+# List display settings for other entity lists.
+wdb_core.wdb_annotation_page_list_display:
+  path: '/admin/wdb/annotation-page/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_annotation_page'
+    _title: 'Annotation Page list display settings'
+  requirements:
+    _permission: 'administer wdb_annotation_page entities'
+
+wdb_core.wdb_label_list_display:
+  path: '/admin/wdb/label/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_label'
+    _title: 'Label list display settings'
+  requirements:
+    _permission: 'administer wdb_label entities'
+
+wdb_core.wdb_sign_list_display:
+  path: '/admin/wdb/sign/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_sign'
+    _title: 'Sign list display settings'
+  requirements:
+    _permission: 'administer wdb_sign entities'
+
+wdb_core.wdb_sign_function_list_display:
+  path: '/admin/wdb/sign-function/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_sign_function'
+    _title: 'Sign Function list display settings'
+  requirements:
+    _permission: 'administer wdb_sign_function entities'
+
+wdb_core.wdb_sign_interpretation_list_display:
+  path: '/admin/wdb/sign-interpretation/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_sign_interpretation'
+    _title: 'Sign Interpretation list display settings'
+  requirements:
+    _permission: 'administer wdb_sign_interpretation entities'
+
+wdb_core.wdb_word_list_display:
+  path: '/admin/wdb/word/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_word'
+    _title: 'Word list display settings'
+  requirements:
+    _permission: 'administer wdb_word entities'
+
+wdb_core.wdb_word_meaning_list_display:
+  path: '/admin/wdb/word-meaning/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_word_meaning'
+    _title: 'Word Meaning list display settings'
+  requirements:
+    _permission: 'administer wdb_word_meaning entities'
+
+wdb_core.wdb_word_unit_list_display:
+  path: '/admin/wdb/word-unit/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_word_unit'
+    _title: 'Word Unit list display settings'
+  requirements:
+    _permission: 'administer wdb_word_unit entities'
+
+wdb_core.wdb_word_map_list_display:
+  path: '/admin/wdb/word-map/list-display'
+  defaults:
+    _form: '\Drupal\wdb_core\Form\WdbEntityListDisplaySettingsForm'
+    entity_type_id: 'wdb_word_map'
+    _title: 'Word Map list display settings'
+  requirements:
+    _permission: 'administer wdb_word_map entities'
 
 # ----------------------------------------------------------------
 # 7. Explicit entity collection routes for entities where auto routes failed

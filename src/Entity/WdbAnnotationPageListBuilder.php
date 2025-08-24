@@ -4,6 +4,8 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\wdb_core\Entity\Traits\ConfigurableListDisplayTrait;
 
 /**
  * Defines a class to build a listing of WDB Annotation Page entities.
@@ -14,20 +16,21 @@ use Drupal\Core\Entity\EntityListBuilder;
  * @see \Drupal\wdb_core\Entity\WdbAnnotationPage
  */
 class WdbAnnotationPageListBuilder extends EntityListBuilder {
+  use ConfigurableListDisplayTrait;
 
   /**
    * {@inheritdoc}
    */
   public function buildHeader() {
-    // Defines the table header for the entity list.
-    $header['id'] = $this->t('ID');
-    $header['annotation_code'] = $this->t('Annotation Code');
-    $header['source_ref'] = $this->t('Source Document');
-    $header['page_number'] = $this->t('Page Number');
-    $header['page_name'] = $this->t('Page Name');
-    $header['page_name_computed'] = $this->t('Computed Page Label');
-    $header['image_identifier'] = $this->t('IIIF Image Identifier');
-    return $header + parent::buildHeader();
+    return $this->buildConfigurableHeader([
+      'id',
+      'annotation_code',
+      'source_ref',
+      'page_number',
+      'page_name',
+      'page_name_computed',
+      'image_identifier',
+    ]) + parent::buildHeader();
   }
 
   /**
@@ -35,30 +38,33 @@ class WdbAnnotationPageListBuilder extends EntityListBuilder {
    */
   public function buildRow(EntityInterface $entity) {
     /** @var \Drupal\wdb_core\Entity\WdbAnnotationPage $entity */
-    // Defines the data for each row of the table.
-    $row['id'] = $entity->id();
-    $row['annotation_code'] = $entity->get('annotation_code')->value;
+    return $this->buildConfigurableRow($entity, [
+      'id',
+      'annotation_code',
+      'source_ref',
+      'page_number',
+      'page_name',
+      'page_name_computed',
+      'image_identifier',
+    ]) + parent::buildRow($entity);
+  }
 
-    // Get the referenced WdbSource entity from the 'source_ref' field.
-    $source_entity = $entity->get('source_ref')->entity;
+  /**
+   * {@inheritdoc}
+   */
+  public static function createInstance(ContainerInterface $container, $entity_type) {
+    /** @var static $instance */
+    $instance = parent::createInstance($container, $entity_type);
+    $instance->configFactory = $container->get('config.factory');
+    $instance->entityFieldManager = $container->get('entity_field.manager');
+    return $instance;
+  }
 
-    if ($source_entity instanceof WdbSource) {
-      // Display the label of the referenced entity.
-      $row['source_ref'] = $source_entity->label();
-    }
-    else {
-      // Handle cases where the referenced entity is not found
-      // or is of an unexpected type.
-      $target_id = $entity->get('source_ref')->target_id;
-      $row['source_ref'] = $this->t('Error: Source (ID: @id) not found or invalid.', ['@id' => $target_id ?? 'N/A']);
-    }
-
-    $row['page_number'] = $entity->get('page_number')->value;
-    $row['page_name'] = $entity->get('page_name')->value;
-    $row['page_name_computed'] = $entity->get('page_name_computed')->value;
-    $row['image_identifier'] = $entity->get('image_identifier')->value;
-
-    return $row + parent::buildRow($entity);
+  /**
+   * {@inheritdoc}
+   */
+  protected function getListEntityTypeId(): string {
+    return 'wdb_annotation_page';
   }
 
   /**

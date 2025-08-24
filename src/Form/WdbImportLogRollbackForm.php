@@ -86,9 +86,11 @@ class WdbImportLogRollbackForm extends ConfirmFormBase {
     }
 
     $batch = [
-      'title' => $this->t('Rolling back import job: @label', ['@label' => $this->importLog->label()]),
+      'title' => $this->t('Rolling back import job: @label', [
+        '@label' => $this->importLog->label(),
+      ]),
       'operations' => $operations,
-      'finished' => '\Drupal\wdb_core\Form\WdbImportLogRollbackForm::batchFinishedCallback',
+      'finished' => '\Drupal\\wdb_core\\Form\\WdbImportLogRollbackForm::batchFinishedCallback',
       'wdb_import_log_id' => $this->importLog->id(),
       'init_message' => $this->t('Starting rollback process.'),
       'progress_message' => $this->t('Processed @current out of @total entities for deletion.'),
@@ -182,6 +184,7 @@ class WdbImportLogRollbackForm extends ConfirmFormBase {
         $log = $log_storage->load($log_id);
 
         if ($log) {
+          /** @var \Drupal\wdb_core\Entity\WdbImportLog $log */
           // Mark the log as rolled back.
           $log->set('status', FALSE);
           $log->set('summary', t('ROLLED BACK on @date. (@count entities deleted)', [
@@ -198,7 +201,13 @@ class WdbImportLogRollbackForm extends ConfirmFormBase {
         }
       }
       catch (\Exception $e) {
-        $logger->error('Exception thrown while updating log entity @log_id: @message', ['@log_id' => $log_id, '@message' => $e->getMessage()]);
+        $logger->error(
+          'Exception thrown while updating log entity @log_id: @message',
+          [
+            '@log_id' => $log_id,
+            '@message' => $e->getMessage(),
+          ]
+        );
         $messenger->addError(t('Failed to update the import log.'));
       }
 

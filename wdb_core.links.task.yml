@@ -1,0 +1,124 @@
+# Local tasks (tabs) for WDB Source listing and related management pages.
+
+wdb_core.wdb_source.collection_tab:
+  route_name: entity.wdb_source.collection
+  title: 'List'
+  base_route: entity.wdb_source.collection
+  weight: 0
+
+
+wdb_core.wdb_source.manage_list_display_tab:
+  route_name: wdb_core.wdb_source_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_source.collection
+  weight: 40
+
+# Other entities: add Manage list display tab on their collection pages.
+
+wdb_core.wdb_annotation_page.collection_tab:
+  route_name: entity.wdb_annotation_page.collection
+  title: 'List'
+  base_route: entity.wdb_annotation_page.collection
+  weight: 0
+
+wdb_core.wdb_annotation_page.manage_list_display_tab:
+  route_name: wdb_core.wdb_annotation_page_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_annotation_page.collection
+  weight: 40
+
+wdb_core.wdb_label.collection_tab:
+  route_name: entity.wdb_label.collection
+  title: 'List'
+  base_route: entity.wdb_label.collection
+  weight: 0
+
+wdb_core.wdb_label.manage_list_display_tab:
+  route_name: wdb_core.wdb_label_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_label.collection
+  weight: 40
+
+wdb_core.wdb_sign.collection_tab:
+  route_name: entity.wdb_sign.collection
+  title: 'List'
+  base_route: entity.wdb_sign.collection
+  weight: 0
+
+wdb_core.wdb_sign.manage_list_display_tab:
+  route_name: wdb_core.wdb_sign_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_sign.collection
+  weight: 40
+
+wdb_core.wdb_sign_function.collection_tab:
+  route_name: entity.wdb_sign_function.collection
+  title: 'List'
+  base_route: entity.wdb_sign_function.collection
+  weight: 0
+
+wdb_core.wdb_sign_function.manage_list_display_tab:
+  route_name: wdb_core.wdb_sign_function_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_sign_function.collection
+  weight: 40
+
+wdb_core.wdb_sign_interpretation.collection_tab:
+  route_name: entity.wdb_sign_interpretation.collection
+  title: 'List'
+  base_route: entity.wdb_sign_interpretation.collection
+  weight: 0
+
+wdb_core.wdb_sign_interpretation.manage_list_display_tab:
+  route_name: wdb_core.wdb_sign_interpretation_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_sign_interpretation.collection
+  weight: 40
+
+wdb_core.wdb_word.collection_tab:
+  route_name: entity.wdb_word.collection
+  title: 'List'
+  base_route: entity.wdb_word.collection
+  weight: 0
+
+wdb_core.wdb_word.manage_list_display_tab:
+  route_name: wdb_core.wdb_word_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_word.collection
+  weight: 40
+
+wdb_core.wdb_word_meaning.collection_tab:
+  route_name: entity.wdb_word_meaning.collection
+  title: 'List'
+  base_route: entity.wdb_word_meaning.collection
+  weight: 0
+
+wdb_core.wdb_word_meaning.manage_list_display_tab:
+  route_name: wdb_core.wdb_word_meaning_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_word_meaning.collection
+  weight: 40
+
+wdb_core.wdb_word_unit.collection_tab:
+  route_name: entity.wdb_word_unit.collection
+  title: 'List'
+  base_route: entity.wdb_word_unit.collection
+  weight: 0
+
+wdb_core.wdb_word_unit.manage_list_display_tab:
+  route_name: wdb_core.wdb_word_unit_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_word_unit.collection
+  weight: 40
+
+wdb_core.wdb_word_map.collection_tab:
+  route_name: entity.wdb_word_map.collection
+  title: 'List'
+  base_route: entity.wdb_word_map.collection
+  weight: 0
+
+wdb_core.wdb_word_map.manage_list_display_tab:
+  route_name: wdb_core.wdb_word_map_list_display
+  title: 'Manage list display'
+  base_route: entity.wdb_word_map.collection
+  weight: 40

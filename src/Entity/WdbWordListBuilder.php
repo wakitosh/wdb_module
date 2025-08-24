@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
+use Drupal\wdb_core\Entity\Traits\ConfigurableListDisplayTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -15,6 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * @see \Drupal\wdb_core\Entity\WdbWord
  */
 class WdbWordListBuilder extends EntityListBuilder {
+  use ConfigurableListDisplayTrait;
 
   /**
    * Entity repository for contextual translations.
@@ -30,20 +32,23 @@ class WdbWordListBuilder extends EntityListBuilder {
     /** @var static $instance */
     $instance = parent::createInstance($container, $entity_type);
     $instance->entityRepository = $container->get('entity.repository');
+    $instance->configFactory = $container->get('config.factory');
+    $instance->entityFieldManager = $container->get('entity_field.manager');
     return $instance;
   }
 
   /**
    * {@inheritdoc}
    */
+  protected function getListEntityTypeId(): string {
+    return 'wdb_word';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function buildHeader() {
-    // Defines the table header for the entity list.
-    $header['id'] = $this->t('ID');
-    $header['word_code'] = $this->t('Word Code');
-    $header['basic_form'] = $this->t('Basic Form');
-    $header['lexical_category_ref'] = $this->t('Lexical Category');
-    $header['langcode'] = $this->t('Language');
-    return $header + parent::buildHeader();
+    return $this->buildConfigurableHeader(['id', 'word_code', 'basic_form', 'lexical_category_ref', 'langcode']) + parent::buildHeader();
   }
 
   /**
@@ -51,24 +56,7 @@ class WdbWordListBuilder extends EntityListBuilder {
    */
   public function buildRow(EntityInterface $entity) {
     /** @var \Drupal\wdb_core\Entity\WdbWord $entity */
-    // Defines the data for each row of the table.
-    $row['id'] = $entity->id();
-    $row['word_code'] = $entity->get('word_code')->value;
-    $row['basic_form'] = $entity->get('basic_form')->value;
-
-    // Retrieves and formats the names of the referenced lexical category terms.
-    $lexical_category_terms = [];
-    if ($entity->hasField('lexical_category_ref') && !$entity->get('lexical_category_ref')->isEmpty()) {
-      $term = $entity->get('lexical_category_ref')->entity;
-      if ($term) {
-        $translated = $this->entityRepository->getTranslationFromContext($term);
-        $lexical_category_terms[] = $translated->label();
-      }
-    }
-    $row['lexical_category_ref'] = !empty($lexical_category_terms) ? implode(', ', $lexical_category_terms) : $this->t('- None -');
-
-    $row['langcode'] = $entity->language()->getName();
-    return $row + parent::buildRow($entity);
+    return $this->buildConfigurableRow($entity, ['id', 'word_code', 'basic_form', 'lexical_category_ref', 'langcode']) + parent::buildRow($entity);
   }
 
   /**

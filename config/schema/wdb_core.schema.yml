@@ -22,3 +22,14 @@ wdb_core.wdb_pos_mapping.*:
     weight:
       type: integer
       label: 'Weight'
+
+# List display settings for entity lists (generic pattern).
+wdb_core.list_display.*:
+  type: config_object
+  label: 'WDB entity list display settings'
+  mapping:
+    fields:
+      type: sequence
+      label: 'Selected fields'
+      sequence:
+        type: string
