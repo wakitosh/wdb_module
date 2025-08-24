@@ -392,7 +392,7 @@ require 'json'
 # Drupalサイトの認証APIエンドポイントの完全なURL
 DRUPAL_AUTH_ENDPOINT = "https://your.host.name/wdb/api/cantaloupe_auth"
 
-def pre_authorizeauthorize(options = {})
+def pre_authorize(options = {})
   # info.json へのリクエストは、無条件で許可する
   return true if context['request_uri'].end_with?('info.json')
 
