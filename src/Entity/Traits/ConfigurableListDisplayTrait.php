@@ -62,11 +62,19 @@ trait ConfigurableListDisplayTrait {
   /**
    * Render a field value generically.
    */
-  protected function renderFieldValue(EntityInterface $entity, string $field_name): string {
+  protected function renderFieldValue(EntityInterface $entity, string $field_name): array|string {
     if (!$entity instanceof ContentEntityInterface) {
       return '';
     }
     if ($field_name === 'id') {
+      // Link ID to the canonical page when available.
+      if ($entity->hasLinkTemplate('canonical')) {
+        return [
+          '#type' => 'link',
+          '#title' => (string) $entity->id(),
+          '#url' => $entity->toUrl(),
+        ];
+      }
       return (string) $entity->id();
     }
     if ($field_name === 'langcode') {
@@ -134,7 +142,15 @@ trait ConfigurableListDisplayTrait {
   protected function buildConfigurableRow(EntityInterface $entity, array $defaults = ['id']): array {
     $row = [];
     foreach ($this->getSelectedFields($defaults) as $field_name) {
-      $row[$field_name] = $this->renderFieldValue($entity, $field_name);
+      $value = $this->renderFieldValue($entity, $field_name);
+      // If the value is a render array, wrap it in the 'data' key so that
+      // the table cell renders it instead of treating it as attributes.
+      if (is_array($value)) {
+        $row[$field_name] = ['data' => $value];
+      }
+      else {
+        $row[$field_name] = $value;
+      }
     }
     return $row;
   }
