@@ -53,15 +53,15 @@ class IdColumnLinksKernelTest extends KernelTestBase {
     $list_builder = $this->container->get('entity_type.manager')->getListBuilder('wdb_sign');
     $row = $list_builder->buildRow($sign);
 
-  $this->assertArrayHasKey('id', $row, 'Row contains id column.');
-  $id_cell = $row['id'];
-  $this->assertIsArray($id_cell, 'ID cell is a table cell array.');
-  $this->assertArrayHasKey('data', $id_cell, 'ID cell contains renderable data.');
-  $link = $id_cell['data'];
-  $this->assertSame('link', $link['#type'], 'ID cell is rendered as a link.');
-  $this->assertSame((string) $sign->id(), $link['#title'], 'Link title equals the numeric ID.');
-  $this->assertTrue(method_exists($link['#url'], 'getRouteName'), 'URL object is present.');
-  $this->assertSame('entity.wdb_sign.canonical', $link['#url']->getRouteName(), 'Link points to canonical route.');
+    $this->assertArrayHasKey('id', $row, 'Row contains id column.');
+    $id_cell = $row['id'];
+    $this->assertIsArray($id_cell, 'ID cell is a table cell array.');
+    $this->assertArrayHasKey('data', $id_cell, 'ID cell contains renderable data.');
+    $link = $id_cell['data'];
+    $this->assertSame('link', $link['#type'], 'ID cell is rendered as a link.');
+    $this->assertSame((string) $sign->id(), $link['#title'], 'Link title equals the numeric ID.');
+    $this->assertTrue(method_exists($link['#url'], 'getRouteName'), 'URL object is present.');
+    $this->assertSame('entity.wdb_sign.canonical', $link['#url']->getRouteName(), 'Link points to canonical route.');
   }
 
 }
