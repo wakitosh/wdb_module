@@ -51,8 +51,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
 
   /**
    * {@inheritdoc}
-   *
-   * @return void
    */
   protected function setUp(): void {
     parent::setUp();
@@ -92,8 +90,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * Tests the processImportRow() method.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testProcessImportRow() {
     // 1. Prepare prerequisite entities.
@@ -162,8 +158,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * Verify idempotency: re-importing the same row does not duplicate entities.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testReimportIsIdempotent() : void {
     $source = $this->createWdbSource('test_source_idem');
@@ -221,8 +215,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * Missing required data should fail fast and record an error.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testMissingRequiredDataFails(): void {
     $ctx = ['results' => ['created' => 0, 'failed' => 0, 'errors' => [], 'warnings' => [], 'created_entities' => []]];
@@ -241,8 +233,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * Label not found should add a warning and still import without label link.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testMissingLabelAddsWarningAndImports(): void {
     $source = $this->createWdbSource('test_source_nolabel');
@@ -284,8 +274,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * If page does not exist, it should be created automatically.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testCreatesPageIfMissing(): void {
     $source = $this->createWdbSource('test_source_newpage');
@@ -323,8 +311,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * Grammar terms should be created and WordUnit should reference them.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testCreatesGrammarTermsAndSetsRefs(): void {
     $source = $this->createWdbSource('test_source_grammar');
@@ -381,8 +367,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * Importing the same WordUnit on another page should append page refs.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testAppendsPageRefsOnExistingWordUnit(): void {
     $source = $this->createWdbSource('test_source_pages');
@@ -427,8 +411,6 @@ class WdbDataImporterServiceTest extends KernelTestBase {
    * Blank sign function name should reuse the same WdbSignFunction entity.
    *
    * @covers ::processImportRow
-   *
-   * @return void
    */
   public function testBlankSignFunctionReused(): void {
     $source = $this->createWdbSource('test_source_blankfn');
