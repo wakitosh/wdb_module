@@ -44,10 +44,11 @@
 /* Content areas within the side panel. */
 #wdb-annotation-panel-content,
 #wdb-full-text-content {
-  padding: 10px;
+  padding: 4px 10px 10px 10px;
   flex-grow: 1; /* Use all remaining space. */
   overflow-y: auto; /* Also scroll if content is long. */
   font-size:0.9rem;
+  line-height: 1.5rem;
 }
 
 /* Upper panel (Annotation Details). */

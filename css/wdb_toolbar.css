@@ -343,7 +343,6 @@
 
 .item-header {
   display: flex;
-  justify-content: center;
   align-items: center;
   margin-bottom: 8px;
 }
@@ -353,7 +352,7 @@
   align-items: center;
   gap: 8px;
   background-color: #f0f0f0;
-  padding: 2px 5px;
+  padding: 2px 0;
   border-radius: 15px;
 }
 
@@ -381,7 +380,7 @@ a.nav-button-icon:hover {
 }
 
 a.nav-button-icon[disabled] {
-  opacity: 0.4;
+  opacity: 0.2;
   cursor: not-allowed;
   background-color: #f5f5f5;
   pointer-events: none;
