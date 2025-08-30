@@ -102,7 +102,7 @@ class WdbSettingsForm extends ConfigFormBase {
         '#type' => 'textfield',
         '#title' => $this->t('IIIF Server Prefix'),
         '#default_value' => $config->get('iiif_server_prefix'),
-        '#description' => $this->t('Do not include slashes at the beginning or end.'),
+        '#description' => $this->t('Do not include slashes at the beginning or end. No URL encoding is required.'),
       ];
       $form['subsystems'][$term_id]['iiif_settings']['iiif_fileExt'] = [
         '#type' => 'textfield',
