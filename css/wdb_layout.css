@@ -127,3 +127,152 @@
 #wdb-resizer-horizontal:hover {
   background-color: #ddd;
 }
+
+/* ------------------------------ */
+/* Responsive layout extensions   */
+/* ------------------------------ */
+
+/* Split mode: default (desktop). Nothing extra needed beyond base rules. */
+
+/* Stacked mode: viewer over panel (mobile portrait). */
+#wdb-main-container.layout--stacked {
+  flex-direction: column;
+}
+
+#wdb-main-container.layout--stacked #wdb-resizer {
+  display: none; /* Hide vertical resizer in stacked mode. */
+}
+
+#wdb-main-container.layout--stacked #openseadragon-viewer {
+  flex: 1 1 60%;
+  min-height: 200px;
+}
+
+#wdb-main-container.layout--stacked #wdb-annotation-info-panel {
+  flex: 1 1 40%;
+  min-height: 180px;
+  /* Fixed 50:50 columns under toolbar */
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 50:50 */
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "toolbar toolbar"
+    "details fulltext";
+  column-gap: 0;   /* no gap between columns (we draw a border) */
+  row-gap: 8px;    /* keep vertical spacing */
+}
+
+/* Assign grid areas */
+#wdb-main-container.layout--stacked #wdb-panel-toolbar { grid-area: toolbar; }
+#wdb-main-container.layout--stacked #wdb-annotation-details-area { grid-area: details; }
+#wdb-main-container.layout--stacked #wdb-full-text-area { grid-area: fulltext; }
+
+/* Make sure children behave as blocks within grid (avoid flex-basis interference) */
+#wdb-main-container.layout--stacked #wdb-annotation-details-area,
+#wdb-main-container.layout--stacked #wdb-full-text-area {
+  min-height: initial;
+}
+
+/* Vertical divider between Annotation and Full Text in stacked mode */
+#wdb-main-container.layout--stacked #wdb-full-text-area {
+  border-left: 1px solid #ccc;
+}
+
+/* Hide resizer in stacked (no drag) */
+#wdb-main-container.layout--stacked #wdb-resizer-horizontal { display: none; }
+
+/* Drawer resize handle removed (drag disabled) */
+
+
+/* Drawer mode: panel overlays from bottom; viewer fills main area. */
+#wdb-main-container.layout--drawer {
+  position: relative;
+  display: flex;
+  flex-direction: column; /* Stack toolbar host and viewer */
+}
+
+/* Sticky toolbar host that will contain #wdb-panel-toolbar in drawer mode */
+#wdb-toolbar-host {
+  position: sticky;
+  top: 0;
+  z-index: 900; /* below drawer panel (1000) but above viewer */
+}
+
+#wdb-main-container.layout--drawer #wdb-resizer,
+#wdb-main-container.layout--drawer #wdb-resizer-horizontal {
+  display: none; /* Hide both resizers in drawer mode. */
+}
+
+/* Hide OpenSeadragon controls and navigator in drawer mode (mobile) */
+#wdb-main-container.layout--drawer .openseadragon-container .openseadragon-controls,
+#wdb-main-container.layout--drawer .openseadragon-container .openseadragon-navigator {
+  display: none !important;
+}
+
+#wdb-main-container.layout--drawer #wdb-annotation-info-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: height .25s ease, opacity .25s ease, transform .25s ease;
+  transform: translateY(6px);
+  z-index: 1000;
+  background: #fff;
+  border-top: 1px solid #ccc;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.25);
+  /* Inner fixed layout for details/fulltext: 50:50 */
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 50:50 */
+  grid-template-rows: 1fr;
+  grid-template-areas: "details fulltext";
+}
+
+#wdb-main-container.layout--drawer.drawer-open #wdb-annotation-info-panel {
+  height: 60vh;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  overflow: auto;
+}
+
+/* Map areas in drawer */
+#wdb-main-container.layout--drawer #wdb-annotation-details-area { grid-area: details; }
+#wdb-main-container.layout--drawer #wdb-full-text-area { grid-area: fulltext; }
+#wdb-main-container.layout--drawer #wdb-resizer-horizontal { display: none; }
+
+/* Vertical divider between Annotation and Full Text in drawer mode */
+#wdb-main-container.layout--drawer #wdb-full-text-area {
+  border-left: 1px solid #ccc;
+}
+
+/* Floating action button to toggle panel (mobile) */
+.wdb-panel-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1100;
+  background: #0b1220;
+  color: #fff;
+  border: 1px solid #334155;
+  border-radius: 24px;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+.wdb-panel-fab:focus {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+/* Sensible defaults by viewport width (can be overridden by JS) */
+@media (max-width: 720px) {
+  #wdb-main-container:not(.layout--drawer):not(.layout--stacked) {
+    /* If no mode is set yet on small screens, use stacked as default. */
+    flex-direction: column;
+  }
+}

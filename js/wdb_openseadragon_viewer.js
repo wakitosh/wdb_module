@@ -65,6 +65,152 @@
           }
         }
 
+        // ------------------------------
+        // Layout switching (Split / Stacked / Drawer)
+        // ------------------------------
+  const mainContainer = document.getElementById('wdb-main-container');
+        const infoPanel = document.getElementById('wdb-annotation-info-panel');
+        const STORAGE_KEY = 'wdb.viewer.layout';
+        const loadState = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e){ return {}; } };
+        const state = loadState();
+
+        // Apply saved sizes for the current mode (only split mode remains resizable).
+        function applySavedSizesForMode(mode) {
+          const info = document.getElementById('wdb-annotation-info-panel');
+          if (!info) return;
+          if (mode === 'split' && typeof state.splitRightWidth === 'number') {
+            info.style.flexBasis = `${state.splitRightWidth}px`;
+          }
+        }
+        /**
+         * Sets layout mode on the main container.
+         * @param {'split'|'stacked'|'drawer'} mode
+         */
+        const setLayoutMode = (mode) => {
+          if (!mainContainer) return;
+          mainContainer.classList.remove('layout--split', 'layout--stacked', 'layout--drawer', 'drawer-open');
+          if (mode === 'split') mainContainer.classList.add('layout--split');
+          if (mode === 'stacked') mainContainer.classList.add('layout--stacked');
+          if (mode === 'drawer') mainContainer.classList.add('layout--drawer');
+          mainContainer.dataset.mode = mode;
+          // apply saved splitter sizes for this mode
+          applySavedSizesForMode(mode);
+          // sync UI whenever mode changes
+          syncUiForLayout();
+        };
+        const toggleDrawerOpen = () => {
+          if (!mainContainer) return;
+          if (!mainContainer.classList.contains('layout--drawer')) return;
+          mainContainer.classList.toggle('drawer-open');
+        };
+
+        // Initial mode: prefer drawer for very small screens, stacked otherwise; split for desktop.
+  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  // Always choose mode by current width; do not persist the mode.
+  if (vw <= 540) setLayoutMode('drawer');
+  else if (vw <= 900) setLayoutMode('stacked');
+  else setLayoutMode('split');
+        // Re-evaluate on resize with a small debounce.
+        let _resizeTid;
+        window.addEventListener('resize', function () {
+          clearTimeout(_resizeTid);
+          _resizeTid = setTimeout(() => {
+            const w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+            const current = mainContainer?.dataset?.mode;
+            if (w > 900 && current !== 'split') setLayoutMode('split');
+            else if (w <= 900 && w > 540 && current !== 'stacked') setLayoutMode('stacked');
+            else if (w <= 540 && current !== 'drawer') setLayoutMode('drawer');
+            else {
+              // Mode unchanged, still refresh dependent UI in case responsive CSS changed.
+              if (typeof syncUiForLayout === 'function') syncUiForLayout();
+              if (current) applySavedSizesForMode(current);
+            }
+          }, 150);
+        }, { passive: true });
+
+  // Sync UI (FAB visibility, toolbar placement, edit button) based on layout mode.
+  function syncUiForLayout() {
+          const mode = mainContainer?.dataset?.mode;
+          // FAB should exist only in drawer mode.
+          let fab = document.querySelector('.wdb-panel-fab');
+          if (mode === 'drawer') {
+            if (!fab) {
+              fab = document.createElement('button');
+              fab.type = 'button';
+              fab.className = 'wdb-panel-fab';
+              fab.setAttribute('aria-controls', 'wdb-annotation-info-panel');
+              fab.setAttribute('aria-expanded', 'false');
+              fab.textContent = Drupal.t('Panel');
+              fab.addEventListener('click', () => {
+                const beforeOpen = mainContainer.classList.contains('drawer-open');
+                toggleDrawerOpen();
+                const afterOpen = mainContainer.classList.contains('drawer-open');
+                fab.setAttribute('aria-expanded', afterOpen ? 'true' : 'false');
+              });
+              document.body.appendChild(fab);
+            }
+          } else if (fab) {
+            fab.remove();
+          }
+
+          // Hide "Edit Annotations" button in stacked/drawer modes (view page only).
+          try {
+            const toolbar = document.getElementById('wdb-panel-toolbar');
+            if (toolbar && osdSettings && osdSettings.toolbarUrls && osdSettings.toolbarUrls.edit) {
+              const editUrl = osdSettings.toolbarUrls.edit;
+              const candidates = toolbar.querySelectorAll('a.wdb-toolbar-button.order-mode');
+              candidates.forEach((btn) => {
+                if (btn.getAttribute('href') === editUrl) {
+                  const hide = (mode === 'stacked' || mode === 'drawer');
+                  btn.style.display = hide ? 'none' : '';
+                  btn.setAttribute('aria-hidden', hide ? 'true' : 'false');
+                }
+              });
+            }
+          } catch (e) { /* noop */ }
+
+          // Move the toolbar above the viewer in drawer mode; restore in others.
+          try {
+            const toolbar = document.getElementById('wdb-panel-toolbar');
+            const panel = document.getElementById('wdb-annotation-info-panel');
+            if (!toolbar || !panel || !mainContainer) return;
+
+            const placeholderId = 'wdb-toolbar-placeholder';
+            const hostId = 'wdb-toolbar-host';
+            if (mode === 'drawer') {
+              // Ensure a host container exists at the top of the main container.
+              let host = document.getElementById(hostId);
+              if (!host) {
+                host = document.createElement('div');
+                host.id = hostId;
+                // Insert host as the first child of main container.
+                mainContainer.insertBefore(host, mainContainer.firstChild);
+              }
+              // Create a placeholder where the toolbar originally lived (once).
+              if (!document.getElementById(placeholderId)) {
+                const placeholder = document.createElement('div');
+                placeholder.id = placeholderId;
+                panel.insertBefore(placeholder, panel.firstChild);
+              }
+              // Move toolbar into host if not already there.
+              if (toolbar.parentElement !== host) {
+                host.appendChild(toolbar);
+              }
+            } else {
+              // Restore toolbar back into the panel if a placeholder exists.
+              const placeholder = document.getElementById(placeholderId);
+              if (placeholder && toolbar.parentElement && toolbar.parentElement.id !== panel.id) {
+                placeholder.replaceWith(toolbar);
+              }
+              // Remove host if present (cleanup).
+              const host = document.getElementById(hostId);
+              if (host && host.childElementCount === 0) {
+                host.remove();
+              }
+            }
+          } catch (e) { /* noop */ }
+        }
+
         // Define the styling function for annotations.
         const stylingFunction = (annotation, state) => {
           // Style for selected annotations or the temporary word hull.
@@ -283,7 +429,8 @@
         }, { passive: true });
 
         // === Click Listeners within the Panel (Event Delegation) ===
-        const mainContainer = document.getElementById('wdb-main-container');
+  // Reuse mainContainer for delegated events below.
+  // (already defined above)
         if (mainContainer && !mainContainer.wdbListenerAttached) {
           mainContainer.wdbListenerAttached = true;
 
@@ -407,6 +554,21 @@
             }
           });
         }
+
+        // Keyboard accessibility for drawer mode.
+        document.addEventListener('keydown', (e) => {
+          if (!mainContainer) return;
+          if (mainContainer.dataset.mode !== 'drawer') return;
+          if (e.key === ' ' || e.key === 'Enter') {
+            // Avoid toggling while typing in inputs.
+            const ae = document.activeElement;
+            const isEditable = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+            if (!isEditable) {
+              e.preventDefault();
+              toggleDrawerOpen();
+            }
+          }
+        });
       });
     },
   };
