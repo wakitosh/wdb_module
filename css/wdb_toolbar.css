@@ -4,7 +4,7 @@
   background-color: #f1f1f1;
   border-bottom: 1px solid #ddd;
   display: flex;
-  justify-content: flex-end; /* Right align while preserving left-to-right order sequence */
+  justify-content: flex-start; /* Left align; gap will push other items */
   gap: 4px; /* Narrower spacing */
   position: relative; /* For dropdown positioning */
   flex-wrap: nowrap; /* No wrap; items hidden in edit mode if fewer */
@@ -254,6 +254,55 @@
 /* Edit mode only (occupy export/manifest slots) */
 #wdb-panel-toolbar .order-draw { order: 50; }
 #wdb-panel-toolbar .order-select { order: 60; }
+/* Always first */
+#wdb-panel-toolbar .order-dir { order: 0; margin-right: 4px; }
+
+/* Direction badge */
+.wdb-dir-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 4px; /* harmless, just in case */
+  background: transparent; /* not a button */
+  color: #666; /* subdued */
+  cursor: default; /* not clickable */
+  pointer-events: auto; /* allow tooltip (title) to show on hover */
+  opacity: 0.9; /* slight de-emphasis */
+  box-sizing: border-box;
+}
+.wdb-dir-badge svg {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: currentColor; /* supplied icons are solid paths */
+}
+@media (max-width: 480px) {
+  .wdb-dir-badge {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+  }
+  .wdb-dir-badge svg {
+  width: 20px;
+  height: 20px;
+    margin-top: 2px;
+  }
+}
+
+/* Flexible gap to push right-side buttons */
+.wdb-toolbar-gap {
+  flex: 1 1 0; /* can shrink fully to avoid overflow */
+  min-width: 0; /* no minimum width to prevent overflow */
+}
 
 /* --- Annotation Tooltip --- */
 .wdb-tooltip {
