@@ -81,6 +81,11 @@
   order: 3;
 }
 
+#wdb-annotation-info-panel .annotation-detail-constituent-signs h3{
+  margin: 0;
+  padding: 0;
+}
+
 /* Lower panel (Full Text). */
 #wdb-full-text-area {
   flex: 1 1 30%; /* Set initial height to 30%. */
@@ -93,12 +98,13 @@
 /* Styles for panel titles and content. */
 #wdb-annotation-info-panel h3 {
   margin: 4px;
-  padding: 0;
+  padding: 0 6px;
   border-bottom: 1px solid #ccc;
   flex-shrink: 0; /* Title area should not shrink. */
   font-weight:bold;
   font-size: 0.9rem;
 }
+
 
 /* Handle for horizontal resizing (between viewer and panel). */
 #wdb-resizer {

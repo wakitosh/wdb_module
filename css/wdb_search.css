@@ -76,3 +76,23 @@
   background-color: #e6f0ff !important;
   border-color: #999;
 }
+
+/* Responsive: stack thumbnail and text on small screens */
+@media (max-width: 600px) {
+  .wdb-search-results li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-result-thumbnail {
+    width: 100%;
+    height: auto;
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+
+  .search-result-thumbnail img {
+    width: 100%;
+    height: auto;
+  }
+}
