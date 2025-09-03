@@ -4,6 +4,8 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
@@ -24,7 +26,7 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
       'default' => 'Drupal\\wdb_core\\Form\\WdbSourceForm',
       'add' => 'Drupal\\wdb_core\\Form\\WdbSourceForm',
       'edit' => 'Drupal\\wdb_core\\Form\\WdbSourceForm',
-      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+      'delete' => 'Drupal\\wdb_core\\Form\\WdbProtectedDeleteForm',
     ],
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
@@ -131,7 +133,8 @@ class WdbSource extends ContentEntityBase implements ContentEntityInterface {
       ->setDisplayConfigurable('view', TRUE);
 
     // Reference to the subsystem(s) this source belongs to.
-    // This assumes a taxonomy vocabulary with the machine name 'subsystem' exists.
+    // This assumes a taxonomy vocabulary with the machine name
+    // 'subsystem' exists.
     $fields['subsystem_tags'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Subsystems'))
       ->setDescription(t('The subsystems this source document belongs to.'))
@@ -156,6 +159,45 @@ class WdbSource extends ContentEntityBase implements ContentEntityInterface {
       ->setRequired(TRUE);
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities) {
+    parent::preDelete($storage, $entities);
+
+    $etm = \Drupal::entityTypeManager();
+
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+
+      $sid = (int) $entity->id();
+
+      // Block deletion if any Annotation Pages reference this Source.
+      $page_ids = $etm->getStorage('wdb_annotation_page')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('source_ref', $sid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($page_ids)) {
+        throw new EntityStorageException('Cannot delete WdbSource ' . $sid . ': referenced by WdbAnnotationPage.');
+      }
+
+      // Block deletion if any Word Units reference this Source.
+      $wu_ids = $etm->getStorage('wdb_word_unit')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('source_ref', $sid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($wu_ids)) {
+        throw new EntityStorageException('Cannot delete WdbSource ' . $sid . ': referenced by WdbWordUnit.');
+      }
+    }
   }
 
 }

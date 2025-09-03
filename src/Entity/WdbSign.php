@@ -4,6 +4,8 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 
@@ -23,7 +25,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
       'default' => 'Drupal\\wdb_core\\Form\\WdbSignForm',
       'add' => 'Drupal\\wdb_core\\Form\\WdbSignForm',
       'edit' => 'Drupal\\wdb_core\\Form\\WdbSignForm',
-      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+      'delete' => 'Drupal\\wdb_core\\Form\\WdbProtectedDeleteForm',
     ],
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
@@ -90,6 +92,34 @@ class WdbSign extends ContentEntityBase implements ContentEntityInterface {
       ]);
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities) {
+    parent::preDelete($storage, $entities);
+
+    $etm = \Drupal::entityTypeManager();
+
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+
+      $sid = (int) $entity->id();
+
+      // Block deletion if any Sign Functions reference this Sign.
+      $sf_ids = $etm->getStorage('wdb_sign_function')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('sign_ref', $sid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($sf_ids)) {
+        throw new EntityStorageException('Cannot delete WdbSign ' . $sid . ': referenced by WdbSignFunction.');
+      }
+    }
   }
 
 }

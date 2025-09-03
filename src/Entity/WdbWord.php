@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -25,7 +26,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
       'default' => 'Drupal\\wdb_core\\Form\\WdbWordForm',
       'add' => 'Drupal\\wdb_core\\Form\\WdbWordForm',
       'edit' => 'Drupal\\wdb_core\\Form\\WdbWordForm',
-      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+      'delete' => 'Drupal\\wdb_core\\Form\\WdbProtectedDeleteForm',
     ],
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
@@ -132,6 +133,34 @@ class WdbWord extends ContentEntityBase implements ContentEntityInterface {
       ->setDisplayConfigurable('view', TRUE);
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities) {
+    parent::preDelete($storage, $entities);
+
+    $etm = \Drupal::entityTypeManager();
+
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+
+      $wid = (int) $entity->id();
+
+      // Block deletion if any WordMeaning references this Word.
+      $wm_ids = $etm->getStorage('wdb_word_meaning')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('word_ref', $wid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($wm_ids)) {
+        throw new EntityStorageException('Cannot delete WdbWord ' . $wid . ': referenced by WdbWordMeaning.');
+      }
+    }
   }
 
 }

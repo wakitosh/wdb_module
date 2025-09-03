@@ -4,6 +4,8 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
@@ -23,6 +25,7 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
     'list_builder' => 'Drupal\\wdb_core\\Entity\\WdbLabelListBuilder',
     'form' => [
       'default' => 'Drupal\\Core\\Entity\\ContentEntityForm',
+      'delete' => 'Drupal\\wdb_core\\Form\\WdbProtectedDeleteForm',
     ],
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
@@ -41,6 +44,7 @@ use Drupal\Core\Field\FieldStorageDefinitionInterface;
   links: [
     'canonical' => '/wdb/label/{wdb_label}',
     'collection' => '/admin/content/wdb_label',
+    'delete-form' => '/admin/content/wdb_label/{wdb_label}/delete',
   ],
   field_ui_base_route: 'entity.wdb_label.collection',
 )]
@@ -100,6 +104,34 @@ class WdbLabel extends ContentEntityBase implements ContentEntityInterface {
       ->setDisplayConfigurable('view', TRUE);
 
     return $fields;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities) {
+    parent::preDelete($storage, $entities);
+
+    $etm = \Drupal::entityTypeManager();
+
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+
+      $lid = (int) $entity->id();
+
+      // Block deletion if any SignInterpretation references this Label.
+      $si_ids = $etm->getStorage('wdb_sign_interpretation')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('label_ref', $lid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($si_ids)) {
+        throw new EntityStorageException('Cannot delete WdbLabel ' . $lid . ': referenced by WdbSignInterpretation.');
+      }
+    }
   }
 
 }

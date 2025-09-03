@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -25,7 +26,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
       'default' => 'Drupal\\wdb_core\\Form\\WdbSignFunctionForm',
       'add' => 'Drupal\\wdb_core\\Form\\WdbSignFunctionForm',
       'edit' => 'Drupal\\wdb_core\\Form\\WdbSignFunctionForm',
-      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+      'delete' => 'Drupal\\wdb_core\\Form\\WdbProtectedDeleteForm',
     ],
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
@@ -159,6 +160,37 @@ class WdbSignFunction extends ContentEntityBase implements ContentEntityInterfac
       $sign_lang = $sign_entity->language()->getId();
       if ($sign_lang && $this->language()->getId() !== $sign_lang) {
         $this->set('langcode', $sign_lang);
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities) {
+    parent::preDelete($storage, $entities);
+
+    $etm = \Drupal::entityTypeManager();
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+
+      $fid = (int) $entity->id();
+
+      // Block deletion if any SignInterpretation references
+      // this SignFunction.
+      $si_ids = $etm->getStorage('wdb_sign_interpretation')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('sign_function_ref', $fid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($si_ids)) {
+        throw new EntityStorageException(
+          'Cannot delete WdbSignFunction ' . $fid .
+          ': referenced by WdbSignInterpretation.'
+        );
       }
     }
   }

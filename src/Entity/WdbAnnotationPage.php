@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -26,7 +27,7 @@ use Drupal\Core\Url;
       'default' => 'Drupal\\wdb_core\\Form\\WdbAnnotationPageForm',
       'add' => 'Drupal\\wdb_core\\Form\\WdbAnnotationPageForm',
       'edit' => 'Drupal\\wdb_core\\Form\\WdbAnnotationPageForm',
-      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+      'delete' => 'Drupal\\wdb_core\\Form\\WdbProtectedDeleteForm',
     ],
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
@@ -269,6 +270,56 @@ class WdbAnnotationPage extends ContentEntityBase implements ContentEntityInterf
 
     // Final fallback.
     return '';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities) {
+    parent::preDelete($storage, $entities);
+
+    $etm = \Drupal::entityTypeManager();
+
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+
+      $pid = (int) $entity->id();
+
+      // Block deletion if any Labels reference this page.
+      $label_ids = $etm->getStorage('wdb_label')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('annotation_page_ref', $pid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($label_ids)) {
+        throw new EntityStorageException('Cannot delete WdbAnnotationPage ' . $pid . ': referenced by WdbLabel.');
+      }
+
+      // Block deletion if any SignInterpretations reference this page.
+      $si_ids = $etm->getStorage('wdb_sign_interpretation')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('annotation_page_ref', $pid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($si_ids)) {
+        throw new EntityStorageException('Cannot delete WdbAnnotationPage ' . $pid . ': referenced by WdbSignInterpretation.');
+      }
+
+      // Block deletion if any WordUnits reference this page (multi-value).
+      $wu_ids = $etm->getStorage('wdb_word_unit')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('annotation_page_refs.target_id', $pid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($wu_ids)) {
+        throw new EntityStorageException('Cannot delete WdbAnnotationPage ' . $pid . ': referenced by WdbWordUnit.');
+      }
+    }
   }
 
 }

@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -25,7 +26,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
       'default' => 'Drupal\\wdb_core\\Form\\WdbWordMeaningForm',
       'add' => 'Drupal\\wdb_core\\Form\\WdbWordMeaningForm',
       'edit' => 'Drupal\\wdb_core\\Form\\WdbWordMeaningForm',
-      'delete' => 'Drupal\\Core\\Entity\\ContentEntityDeleteForm',
+      'delete' => 'Drupal\\wdb_core\\Form\\WdbProtectedDeleteForm',
     ],
     'route_provider' => [
       'html' => 'Drupal\\Core\\Entity\\Routing\\AdminHtmlRouteProvider',
@@ -170,6 +171,33 @@ class WdbWordMeaning extends ContentEntityBase implements ContentEntityInterface
       $parent_lang = $word_entity->language()->getId();
       if ($parent_lang && $this->language()->getId() !== $parent_lang) {
         $this->set('langcode', $parent_lang);
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function preDelete(EntityStorageInterface $storage, array $entities) {
+    parent::preDelete($storage, $entities);
+
+    $etm = \Drupal::entityTypeManager();
+
+    foreach ($entities as $entity) {
+      if (!$entity instanceof self) {
+        continue;
+      }
+      $mid = (int) $entity->id();
+
+      // Block deletion if any WordUnit references this WordMeaning.
+      $wu_ids = $etm->getStorage('wdb_word_unit')
+        ->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('word_meaning_ref', $mid)
+        ->range(0, 1)
+        ->execute();
+      if (!empty($wu_ids)) {
+        throw new EntityStorageException('Cannot delete WdbWordMeaning ' . $mid . ': referenced by WdbWordUnit.');
       }
     }
   }
