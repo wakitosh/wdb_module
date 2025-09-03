@@ -476,7 +476,33 @@
           // --- API Integration ---
           viewer.addHandler('open', () => {
             if (osdSettings.annotationListUrl) {
-              anno.loadAnnotations(osdSettings.annotationListUrl);
+              const maybeSelectFromUrl = () => {
+                try {
+                  const params = new URLSearchParams(window.location.search);
+                  const highlightId = params.get('highlight_annotation');
+                  if (!highlightId) return;
+                  const exists = anno.getAnnotationById(highlightId);
+                  if (exists) {
+                    try { anno.setSelected(highlightId); } catch (e) {}
+                    try {
+                      const { bounds } = exists.target.selector.geometry || {};
+                      if (bounds) {
+                        const cx = bounds.minX + (bounds.maxX - bounds.minX) / 2;
+                        const cy = bounds.minY + (bounds.maxY - bounds.minY) / 2;
+                        const center = viewer.viewport.imageToViewportCoordinates(new OpenSeadragon.Point(cx, cy));
+                        viewer.viewport.panTo(center, false);
+                      }
+                    } catch (e) {}
+                  }
+                } catch (e) {}
+              };
+
+              const load = anno.loadAnnotations(osdSettings.annotationListUrl);
+              if (load && typeof load.then === 'function') {
+                load.then(() => maybeSelectFromUrl());
+              } else {
+                maybeSelectFromUrl();
+              }
             }
           });
 

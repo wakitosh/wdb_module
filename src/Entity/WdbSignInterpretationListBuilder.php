@@ -4,6 +4,7 @@ namespace Drupal\wdb_core\Entity;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
+use Drupal\Core\Url;
 use Drupal\wdb_core\Entity\Traits\ConfigurableListDisplayTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -76,7 +77,39 @@ class WdbSignInterpretationListBuilder extends EntityListBuilder {
    */
   protected function getDefaultOperations(EntityInterface $entity) {
     $operations = parent::getDefaultOperations($entity);
-    // You can add custom operations for each entity here if needed.
+    // Add an operation to open the polygon editor with the linked label
+    // pre-selected when a label reference exists.
+    /** @var \Drupal\wdb_core\Entity\WdbSignInterpretation $entity */
+    $label = $entity->get('label_ref')->entity;
+    $page = $entity->get('annotation_page_ref')->entity;
+    if ($label && $page) {
+      $source = $page->get('source_ref')->entity;
+      if ($source) {
+        $subsysTerm = $source->get('subsystem_tags')->entity;
+        $subsys = $subsysTerm ? strtolower($subsysTerm->getName()) : NULL;
+        if ($subsys) {
+          $highlight = $label->get('annotation_uri')->value ?: Url::fromRoute(
+            'entity.wdb_label.canonical',
+            ['wdb_label' => $label->id()],
+            ['absolute' => TRUE]
+          )->toString();
+          $url = Url::fromRoute('wdb_core.annotation_edit_page', [
+            'subsysname' => $subsys,
+            'source' => $source->get('source_identifier')->value,
+            'page' => (int) $page->get('page_number')->value,
+          ], [
+            'query' => [
+              'highlight_annotation' => $highlight,
+            ],
+          ]);
+          $operations['edit_label'] = [
+            'title' => $this->t('Edit label'),
+            'weight' => 0,
+            'url' => $url,
+          ];
+        }
+      }
+    }
     return $operations;
   }
 
