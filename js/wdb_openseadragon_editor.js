@@ -6,6 +6,22 @@
 (function ($, Drupal, OpenSeadragon, AnnotoriousOSD, drupalSettings, once) {
   'use strict';
 
+  // Shared tooltip reference for the editor page.
+  let tooltip = null;
+  // Track whether the pointer is currently inside the viewer area to avoid sticky UI.
+  let isPointerInsideViewer = false;
+
+  // Create the tooltip element once.
+  function initTooltip() {
+    if (!document.querySelector('.wdb-tooltip')) {
+      tooltip = document.createElement('div');
+      tooltip.className = 'wdb-tooltip';
+      document.body.appendChild(tooltip);
+    } else {
+      tooltip = document.querySelector('.wdb-tooltip');
+    }
+  }
+
   /**
    * Drupal behavior to initialize the OpenSeadragon editor.
    */
@@ -13,6 +29,9 @@
     attach: function (context, settings) {
       once('openseadragon-editor-init', '#openseadragon-viewer', context).forEach(function (viewerElement) {
         if (settings.wdb_core && settings.wdb_core.openseadragon) {
+
+          // Ensure tooltip DOM exists for this page.
+          initTooltip();
 
           const osdSettings = settings.wdb_core.openseadragon;
           const viewer = OpenSeadragon({
@@ -48,6 +67,42 @@
           });
           anno.setDrawingTool('polygon');
           viewerElement.annotorious = anno;
+
+          // --- Pointer in/out & tooltip helpers ---------------------------------
+          const hideTooltip = () => {
+            if (tooltip) tooltip.classList.remove('is-visible');
+            viewerElement.style.cursor = 'default';
+          };
+          viewerElement.addEventListener('pointerenter', () => { isPointerInsideViewer = true; }, { passive: true });
+          viewerElement.addEventListener('pointerleave', () => { isPointerInsideViewer = false; hideTooltip(); }, { passive: true });
+          window.addEventListener('blur', () => { isPointerInsideViewer = false; hideTooltip(); });
+          document.addEventListener('mouseleave', () => { isPointerInsideViewer = false; hideTooltip(); });
+
+          // Show tooltip with label on hover over existing annotations.
+          anno.on && anno.on('mouseEnterAnnotation', (annotation) => {
+            // Optional: If actively drawing, you might want to skip showing tooltips.
+            // const drawing = (typeof anno.isDrawingEnabled === 'function') && anno.isDrawingEnabled();
+            // if (drawing) return;
+            viewerElement.style.cursor = 'pointer';
+            const commentBody = annotation.bodies && annotation.bodies.find(b => b.purpose === 'commenting');
+            const labelText = commentBody ? commentBody.value : '';
+            if (labelText && tooltip) {
+              tooltip.textContent = labelText;
+              tooltip.classList.add('is-visible');
+              const geometry = annotation.target?.selector?.geometry;
+              if (geometry && geometry.bounds) {
+                const { maxX, maxY } = geometry.bounds;
+                const viewerPoint = viewer.viewport.imageToViewerElementCoordinates(new OpenSeadragon.Point(maxX, maxY));
+                const viewerRect = viewer.element.getBoundingClientRect();
+                tooltip.style.top = `${window.scrollY + viewerRect.top + viewerPoint.y + 10}px`;
+                tooltip.style.left = `${window.scrollX + viewerRect.left + viewerPoint.x + 10}px`;
+              }
+            }
+          });
+          anno.on && anno.on('mouseLeaveAnnotation', () => {
+            viewerElement.style.cursor = 'default';
+            if (tooltip) tooltip.classList.remove('is-visible');
+          });
 
           // Track last primary pointer type to decide drawingMode (mouse: click, touch: drag).
           let lastPointerType = 'mouse';
@@ -483,7 +538,7 @@
                   if (!highlightId) return;
                   const exists = anno.getAnnotationById(highlightId);
                   if (exists) {
-                    try { anno.setSelected(highlightId); } catch (e) {}
+                    try { anno.setSelected(highlightId); } catch (e) { }
                     try {
                       const { bounds } = exists.target.selector.geometry || {};
                       if (bounds) {
@@ -492,9 +547,9 @@
                         const center = viewer.viewport.imageToViewportCoordinates(new OpenSeadragon.Point(cx, cy));
                         viewer.viewport.panTo(center, false);
                       }
-                    } catch (e) {}
+                    } catch (e) { }
                   }
-                } catch (e) {}
+                } catch (e) { }
               };
 
               const load = anno.loadAnnotations(osdSettings.annotationListUrl);
@@ -524,8 +579,8 @@
             }
 
             const isNew = !previous.bodies.find(b => b.purpose === 'commenting');
-//            const endpoint = isNew ? '/create' : '/update';
-//            const apiUrl = osdSettings.annotationEndpoint.url + endpoint;
+            //            const endpoint = isNew ? '/create' : '/update';
+            //            const apiUrl = osdSettings.annotationEndpoint.url + endpoint;
             const apiUrl = isNew ? osdSettings.annotationEndpoint.create : osdSettings.annotationEndpoint.update;
 
             fetch(apiUrl, {

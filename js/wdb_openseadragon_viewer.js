@@ -9,6 +9,8 @@
   // Variables shared within this script's scope.
   let tempWordAnnotationId = null;
   let tooltip = null;
+  // Track whether the pointer is currently inside the viewer area.
+  let isPointerInsideViewer = false;
 
   /**
    * Helper function to add the tooltip DOM element to the page just once.
@@ -68,10 +70,10 @@
         // ------------------------------
         // Layout switching (Split / Stacked / Drawer)
         // ------------------------------
-  const mainContainer = document.getElementById('wdb-main-container');
+        const mainContainer = document.getElementById('wdb-main-container');
         const infoPanel = document.getElementById('wdb-annotation-info-panel');
         const STORAGE_KEY = 'wdb.viewer.layout';
-        const loadState = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e){ return {}; } };
+        const loadState = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; } };
         const state = loadState();
 
         // Apply saved sizes for the current mode (only split mode remains resizable).
@@ -105,11 +107,11 @@
         };
 
         // Initial mode: prefer drawer for very small screens, stacked otherwise; split for desktop.
-  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-  // Always choose mode by current width; do not persist the mode.
-  if (vw <= 540) setLayoutMode('drawer');
-  else if (vw <= 900) setLayoutMode('stacked');
-  else setLayoutMode('split');
+        const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        // Always choose mode by current width; do not persist the mode.
+        if (vw <= 540) setLayoutMode('drawer');
+        else if (vw <= 900) setLayoutMode('stacked');
+        else setLayoutMode('split');
         // Re-evaluate on resize with a small debounce.
         let _resizeTid;
         window.addEventListener('resize', function () {
@@ -128,8 +130,8 @@
           }, 150);
         }, { passive: true });
 
-  // Sync UI (FAB visibility, toolbar placement, edit button) based on layout mode.
-  function syncUiForLayout() {
+        // Sync UI (FAB visibility, toolbar placement, edit button) based on layout mode.
+        function syncUiForLayout() {
           const mode = mainContainer?.dataset?.mode;
           // FAB should exist only in drawer mode.
           let fab = document.querySelector('.wdb-panel-fab');
@@ -218,7 +220,8 @@
             return { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#ffffff', strokeWidth: 2 };
           }
           // Style for hovered annotations.
-          if (state?.hovered) {
+          // Only render hover highlight while the pointer is inside the viewer.
+          if (state?.hovered && isPointerInsideViewer) {
             return { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#ffffff', strokeWidth: 2 };
           }
           // Default: invisible.
@@ -232,6 +235,43 @@
 
         // Store the anno instance on the DOM element for later access.
         viewerElement.annotorious = anno;
+
+        // If the pointer is already over the viewer at load time, mark as inside
+        // so that initial hover highlights/tooltips work without requiring a re-entry.
+        try {
+          if (viewerElement && typeof viewerElement.matches === 'function') {
+            isPointerInsideViewer = viewerElement.matches(':hover');
+          }
+        } catch (e) { /* noop */ }
+
+        // --- Pointer in/out management to avoid sticky hover/tooltip ---------
+        const hideTooltipAndClearHover = () => {
+          if (tooltip) tooltip.classList.remove('is-visible');
+          viewerElement.style.cursor = 'default';
+          // Force re-evaluation of styles so hovered visuals disappear.
+          // setStyle with the same function is a cheap way to trigger rerender.
+          try { anno.setStyle(stylingFunction); } catch (e) { /* noop */ }
+        };
+
+        // Keep track when pointer enters/leaves the viewer area.
+        viewerElement.addEventListener('pointerenter', () => {
+          isPointerInsideViewer = true;
+        });
+        viewerElement.addEventListener('pointerleave', () => {
+          isPointerInsideViewer = false;
+          hideTooltipAndClearHover();
+        });
+
+        // Fallbacks: when the window loses focus or the mouse leaves the document
+        // (e.g., fast exit beyond the canvas), clear tooltip/hover visuals as well.
+        window.addEventListener('blur', () => {
+          isPointerInsideViewer = false;
+          hideTooltipAndClearHover();
+        });
+        document.addEventListener('mouseleave', () => {
+          isPointerInsideViewer = false;
+          hideTooltipAndClearHover();
+        });
 
         // --- Selection handling helpers ---
         let lastPanelAnnotationId = null;          // Last annotation whose details were loaded
@@ -367,13 +407,13 @@
         // Unified: fires for mouse, touch, pen. Some Annotorious versions pass an array of selected annotations.
         anno.on('selectAnnotation', (payload) => {
           if (programmaticSelection) return;
-            let annotation = payload;
-            if (Array.isArray(payload)) {
-              annotation = payload[0];
-            }
-            if (annotation?.id && annotation.id !== lastPanelAnnotationId) {
-              updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, true);
-            }
+          let annotation = payload;
+          if (Array.isArray(payload)) {
+            annotation = payload[0];
+          }
+          if (annotation?.id && annotation.id !== lastPanelAnnotationId) {
+            updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, true);
+          }
         });
 
         // Show tooltip on mouse enter.
@@ -383,7 +423,7 @@
           const labelText = commentBody ? commentBody.value : '';
           if (labelText && tooltip) {
             tooltip.textContent = labelText;
-            tooltip.style.display = 'block';
+            tooltip.classList.add('is-visible');
             const geometry = annotation.target.selector.geometry;
             if (geometry && geometry.bounds) {
               const { maxX, maxY } = geometry.bounds;
@@ -399,7 +439,7 @@
         anno.on('mouseLeaveAnnotation', (annotation) => {
           viewerElement.style.cursor = 'default';
           if (tooltip) {
-            tooltip.style.display = 'none';
+            tooltip.classList.remove('is-visible');
           }
         });
 
@@ -429,8 +469,8 @@
         }, { passive: true });
 
         // === Click Listeners within the Panel (Event Delegation) ===
-  // Reuse mainContainer for delegated events below.
-  // (already defined above)
+        // Reuse mainContainer for delegated events below.
+        // (already defined above)
         if (mainContainer && !mainContainer.wdbListenerAttached) {
           mainContainer.wdbListenerAttached = true;
 

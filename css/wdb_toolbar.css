@@ -4,10 +4,14 @@
   background-color: #f1f1f1;
   border-bottom: 1px solid #ddd;
   display: flex;
-  justify-content: flex-start; /* Left align; gap will push other items */
-  gap: 4px; /* Narrower spacing */
-  position: relative; /* For dropdown positioning */
-  flex-wrap: nowrap; /* No wrap; items hidden in edit mode if fewer */
+  justify-content: flex-start;
+  /* Left align; gap will push other items */
+  gap: 4px;
+  /* Narrower spacing */
+  position: relative;
+  /* For dropdown positioning */
+  flex-wrap: nowrap;
+  /* No wrap; items hidden in edit mode if fewer */
 }
 
 /* --- Toolbar Buttons (Shared Style) --- */
@@ -22,13 +26,16 @@
   padding: 0;
   width: 32px;
   height: 32px;
-  flex: 0 0 32px; /* Prevent horizontal shrink */
+  flex: 0 0 32px;
+  /* Prevent horizontal shrink */
   transition: background-color 0.2s, border-color 0.2s;
   color: #333;
   text-decoration: none;
-  position: relative; /* For dropdown positioning */
+  position: relative;
+  /* For dropdown positioning */
   box-sizing: border-box;
 }
+
 .wdb-toolbar-button:hover {
   background-color: #e9e9e9;
   border-color: #999;
@@ -42,6 +49,7 @@
   color: #aaa;
   cursor: not-allowed;
 }
+
 .wdb-toolbar-button.is-disabled:hover,
 #wdb-panel-toolbar .wdb-toolbar-button.is-disabled:hover {
   background-color: #f5f5f5;
@@ -50,25 +58,30 @@
 
 
 #wdb-annotorious-toolbar {
-  padding-left:4px;
+  padding-left: 4px;
 }
 
 /* --- Export Dropdown Menu --- */
 .wdb-toolbar-dropdown {
   position: absolute;
-  top: 100%; /* Position below the button */
+  top: 100%;
+  /* Position below the button */
   right: 0;
   background-color: white;
   border: 1px solid #ccc;
   border-radius: 4px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
   z-index: 10;
   min-width: 180px;
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
 }
+
 .wdb-toolbar-dropdown.is-visible {
-  display: block; /* Shown with JS */
+  display: block;
+  /* Shown with JS */
 }
+
 .wdb-dropdown-item {
   display: block;
   padding: 8px 12px;
@@ -77,6 +90,7 @@
   font-size: 0.9rem;
   white-space: nowrap;
 }
+
 .wdb-dropdown-item:hover {
   background-color: #f5f5f5;
 }
@@ -90,27 +104,33 @@
   width: 100%;
   height: 100%;
   z-index: 1000;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-  display: none; /* Hidden by default */
+  background-color: rgba(0, 0, 0, 0.5);
+  /* Semi-transparent background */
+  display: none;
+  /* Hidden by default */
   align-items: flex-start;
   justify-content: center;
 }
+
 .wdb-pager-modal.is-visible {
   display: flex;
 }
+
 .wdb-pager-modal-content {
   position: relative;
   background-color: #f0f0f0;
   padding: 20px;
-  padding-top: 50px; /* Space for the close button */
+  padding-top: 50px;
+  /* Space for the close button */
   border-radius: 5px;
   max-width: 95%;
   width: 90%;
   height: auto;
   max-height: 40%;
   display: flex;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
+
 .wdb-pager-modal-close {
   position: absolute;
   top: 5px;
@@ -124,6 +144,7 @@
   cursor: pointer;
   opacity: 0.7;
 }
+
 .wdb-pager-modal-close:hover {
   opacity: 1;
 }
@@ -141,20 +162,36 @@
   scrollbar-color: #888 #e0e0e0;
   width: 100%;
 }
+
 .wdb-thumbnail-list.rtl {
-  flex-direction: row-reverse; /* For right-to-left languages */
+  flex-direction: row-reverse;
+  /* For right-to-left languages */
 }
+
 /* Scrollbar styles for Webkit browsers (Chrome, Safari) */
-.wdb-thumbnail-list::-webkit-scrollbar { height: 8px; }
-.wdb-thumbnail-list::-webkit-scrollbar-track { background: #e0e0e0; }
-.wdb-thumbnail-list::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-.wdb-thumbnail-list::-webkit-scrollbar-thumb:hover { background: #555; }
+.wdb-thumbnail-list::-webkit-scrollbar {
+  height: 8px;
+}
+
+.wdb-thumbnail-list::-webkit-scrollbar-track {
+  background: #e0e0e0;
+}
+
+.wdb-thumbnail-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.wdb-thumbnail-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
 
 /* Individual Thumbnail Items */
 .wdb-thumbnail-list li {
   margin: 0 5px;
   flex-shrink: 0;
 }
+
 .wdb-thumbnail-list a {
   display: block;
   border: 3px solid transparent;
@@ -166,28 +203,39 @@
   transition: border-color 0.2s;
   background: #fff;
 }
+
 .wdb-thumbnail-list a:hover {
-  border-color: #007bff; /* Hover highlight */
+  border-color: #007bff;
+  /* Hover highlight */
 }
+
 .wdb-thumbnail-list li.is-current a {
-  border-color: #dc3545; /* Current page highlight */
+  border-color: #dc3545;
+  /* Current page highlight */
   box-shadow: 0 0 5px rgba(220, 53, 69, 0.7);
 }
+
 .wdb-thumbnail-list img {
   display: block;
-  height: 100px; /* Thumbnail height */
+  height: 100px;
+  /* Thumbnail height */
   width: auto;
   margin-bottom: 4px;
 }
+
 .wdb-thumbnail-list span {
   font-size: 0.8rem;
   display: block;
 }
+
 /* ★★★ アクティブ状態のツールのスタイルを追加 ★★★ */
 .wdb-toolbar-button.is-active {
-  background-color: #cfe2ff; /* 明るい青 */
-  border-color: #0d6efd; /* 青い枠線 */
+  background-color: #cfe2ff;
+  /* 明るい青 */
+  border-color: #0d6efd;
+  /* 青い枠線 */
 }
+
 .wdb-toolbar-button.is-active svg {
   color: #0d6efd;
 }
@@ -202,7 +250,8 @@
   padding: 0;
   width: 32px;
   height: 32px;
-  flex: 0 0 32px; /* Fix width in flex context */
+  flex: 0 0 32px;
+  /* Fix width in flex context */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -211,10 +260,12 @@
   text-decoration: none;
   position: relative;
 }
+
 #wdb-panel-toolbar .wdb-toolbar-button:hover {
   background-color: #e9e9e9;
   border-color: #999;
 }
+
 #wdb-panel-toolbar .wdb-toolbar-button svg {
   width: 18px;
   height: 18px;
@@ -230,12 +281,14 @@
   #wdb-panel-toolbar {
     gap: 3px;
   }
+
   .wdb-toolbar-button,
   #wdb-panel-toolbar .wdb-toolbar-button {
     width: 28px;
     height: 28px;
     flex: 0 0 28px;
   }
+
   #wdb-panel-toolbar .wdb-toolbar-button svg,
   .wdb-toolbar-button svg {
     width: 16px;
@@ -244,18 +297,45 @@
 }
 
 /* Ordering classes (left-to-right smaller -> larger). */
-#wdb-panel-toolbar .order-mode { order: 10; }
-#wdb-panel-toolbar .order-prev { order: 20; }
-#wdb-panel-toolbar .order-next { order: 30; }
-#wdb-panel-toolbar .order-pager { order: 40; }
+#wdb-panel-toolbar .order-mode {
+  order: 10;
+}
+
+#wdb-panel-toolbar .order-prev {
+  order: 20;
+}
+
+#wdb-panel-toolbar .order-next {
+  order: 30;
+}
+
+#wdb-panel-toolbar .order-pager {
+  order: 40;
+}
+
 /* View mode only */
-#wdb-panel-toolbar .order-export { order: 50; }
-#wdb-panel-toolbar .order-manifest { order: 60; }
+#wdb-panel-toolbar .order-export {
+  order: 50;
+}
+
+#wdb-panel-toolbar .order-manifest {
+  order: 60;
+}
+
 /* Edit mode only (occupy export/manifest slots) */
-#wdb-panel-toolbar .order-draw { order: 50; }
-#wdb-panel-toolbar .order-select { order: 60; }
+#wdb-panel-toolbar .order-draw {
+  order: 50;
+}
+
+#wdb-panel-toolbar .order-select {
+  order: 60;
+}
+
 /* Always first */
-#wdb-panel-toolbar .order-dir { order: 0; margin-right: 4px; }
+#wdb-panel-toolbar .order-dir {
+  order: 0;
+  margin-right: 4px;
+}
 
 /* Direction badge */
 .wdb-dir-badge {
@@ -267,14 +347,21 @@
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 4px; /* harmless, just in case */
-  background: transparent; /* not a button */
-  color: #666; /* subdued */
-  cursor: default; /* not clickable */
-  pointer-events: auto; /* allow tooltip (title) to show on hover */
-  opacity: 0.9; /* slight de-emphasis */
+  border-radius: 4px;
+  /* harmless, just in case */
+  background: transparent;
+  /* not a button */
+  color: #666;
+  /* subdued */
+  cursor: default;
+  /* not clickable */
+  pointer-events: auto;
+  /* allow tooltip (title) to show on hover */
+  opacity: 0.9;
+  /* slight de-emphasis */
   box-sizing: border-box;
 }
+
 .wdb-dir-badge svg {
   width: 20px;
   height: 20px;
@@ -283,43 +370,62 @@
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  fill: currentColor; /* supplied icons are solid paths */
+  fill: currentColor;
+  /* supplied icons are solid paths */
 }
+
 @media (max-width: 480px) {
   .wdb-dir-badge {
     width: 28px;
     height: 28px;
     font-size: 10px;
   }
+
   .wdb-dir-badge svg {
-  width: 20px;
-  height: 20px;
+    width: 20px;
+    height: 20px;
     margin-top: 2px;
   }
 }
 
 /* Flexible gap to push right-side buttons */
 .wdb-toolbar-gap {
-  flex: 1 1 0; /* can shrink fully to avoid overflow */
-  min-width: 0; /* no minimum width to prevent overflow */
+  flex: 1 1 0;
+  /* can shrink fully to avoid overflow */
+  min-width: 0;
+  /* no minimum width to prevent overflow */
 }
 
 /* --- Annotation Tooltip --- */
 .wdb-tooltip {
   position: absolute;
-  display: none;
+  /* 直接の display 切替はせず、opacity/visibility で制御してトランジション可能にする */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
   padding: 5px 10px;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.85);
   color: #fff;
   border-radius: 4px;
   font-size: 0.9em;
   max-width: 300px;
-  z-index: 10001; /* 他のUI要素より手前に表示 */
-  pointer-events: none; /* ツールチップ自身がクリックイベントを邪魔しないように */
+  z-index: 10001;
+  /* 他のUI要素より手前に表示 */
+  pointer-events: none;
+  /* ツールチップ自身がクリックイベントを邪魔しないように */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.wdb-tooltip.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 0s;
+}
+
 /* アノテーションパネル サムネイル */
 #wdb-annotation-panel-content .sign-thumbnail,
 #wdb-annotation-panel-content .word-thumbnail {
@@ -332,10 +438,11 @@
   align-items: center;
   justify-content: center;
 }
+
 #wdb-annotation-panel-content polygon {
-  fill:rgba(255, 255, 255, 0.2);
-  stroke:#fff;
-  stroke-width:2;
+  fill: rgba(255, 255, 255, 0.2);
+  stroke: #fff;
+  stroke-width: 2;
 }
 
 .sign-thumbnail.is-clickable,
@@ -344,6 +451,7 @@
   cursor: pointer;
   transition: background-color 0.2s;
 }
+
 .sign-thumbnail.is-clickable:hover,
 .sign-item.is-clickable:hover,
 .word-thumbnail.is-clickable:hover {
@@ -358,16 +466,19 @@
   background: #f9f9f9;
   border-bottom: 1px solid #eee;
 }
+
 .nav-group {
   display: flex;
   align-items: center;
 }
+
 .nav-label {
   font-weight: bold;
   margin-right: 8px;
   font-size: 0.9em;
   color: #555;
 }
+
 .nav-button-icon {
   padding: 4px 8px;
   border: 1px solid #ccc;
@@ -379,10 +490,12 @@
   font-size: 0.85em;
   white-space: nowrap;
 }
+
 .nav-button-icon:hover {
   background-color: #f0f0f0;
   border-color: #999;
 }
+
 .nav-button-icon[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
@@ -415,7 +528,8 @@ a.nav-button-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;   /* ボタンのサイズを定義 */
+  width: 28px;
+  /* ボタンのサイズを定義 */
   height: 28px;
   border-radius: 50%;
   background-color: #e9e9e9;
@@ -457,7 +571,8 @@ a.nav-button-icon svg {
 }
 
 #wdb-full-text-content .word-unit.is-highlighted {
-  background-color: #ffe082; /* 例: 明るい黄色 */
+  background-color: #ffe082;
+  /* 例: 明るい黄色 */
   box-shadow: 0 0 5px #ffc107;
   border-radius: 3px;
 }

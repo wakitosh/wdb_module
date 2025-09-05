@@ -3,6 +3,7 @@ type: module
 description: 'Provides Views integration for WDB Core entities.'
 package: WDB
 core_version_requirement: ^10 || ^11
+version: 1.4.0
 dependencies:
   - wdb_core:wdb_core
   - drupal:views
