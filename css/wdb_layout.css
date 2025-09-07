@@ -6,16 +6,20 @@
 /* Main container for the viewer and the side panel. */
 #wdb-main-container {
   display: flex;
-  flex-direction: row; /* Arrange elements horizontally. */
-  min-height: 400px; /* It's good to specify a minimum height. */
+  flex-direction: row;
+  /* Arrange elements horizontally. */
+  min-height: 400px;
+  /* It's good to specify a minimum height. */
   width: 100%;
   border: 1px solid #ccc;
 }
 
 /* The OpenSeadragon viewer itself. */
 #openseadragon-viewer {
-  flex: 1 1 auto; /* Use all remaining available space. */
-  min-width: 200px; /* Minimum width. */
+  flex: 1 1 auto;
+  /* Use all remaining available space. */
+  min-width: 200px;
+  /* Minimum width. */
   background-color: #000;
 }
 
@@ -25,39 +29,47 @@
   margin: 0;
   border-bottom: 1px solid #ccc;
   background-color: #f8f8f8;
-  flex-shrink: 0; /* The title should not shrink. */
+  flex-shrink: 0;
+  /* The title should not shrink. */
 }
 
 /* The right-side panel, which is a vertical flex container. */
 #wdb-annotation-info-panel {
   display: flex;
-  flex-direction: column; /* Arrange child elements vertically. */
+  flex-direction: column;
+  /* Arrange child elements vertically. */
   padding: 0;
   min-width: 150px;
   flex-basis: 270px;
   flex-shrink: 0;
   height: 100%;
-  overflow-y: auto; /* Show scrollbar if content overflows. */
-  font-size:0.8rem;
+  overflow-y: auto;
+  /* Show scrollbar if content overflows. */
+  font-size: 0.8rem;
 }
 
 /* Content areas within the side panel. */
 #wdb-annotation-panel-content,
 #wdb-full-text-content {
   padding: 4px 10px 10px 10px;
-  flex-grow: 1; /* Use all remaining space. */
-  overflow-y: auto; /* Also scroll if content is long. */
-  font-size:0.9rem;
+  flex-grow: 1;
+  /* Use all remaining space. */
+  overflow-y: auto;
+  /* Also scroll if content is long. */
+  font-size: 0.9rem;
   line-height: 1.5rem;
 }
 
 /* Upper panel (Annotation Details). */
 #wdb-annotation-details-area {
-  flex: 1 1 70%; /* Set initial height to 70%. */
+  flex: 1 1 70%;
+  /* Set initial height to 70%. */
   display: flex;
   flex-direction: column;
-  min-height: 100px; /* Minimum height. */
-  overflow: hidden; /* To enable scrolling on child elements. */
+  min-height: 100px;
+  /* Minimum height. */
+  overflow: hidden;
+  /* To enable scrolling on child elements. */
 }
 
 /* Control the display order in the annotation panel. */
@@ -81,18 +93,21 @@
   order: 3;
 }
 
-#wdb-annotation-info-panel .annotation-detail-constituent-signs h3{
+#wdb-annotation-info-panel .annotation-detail-constituent-signs h3 {
   margin: 0;
   padding: 0;
 }
 
 /* Lower panel (Full Text). */
 #wdb-full-text-area {
-  flex: 1 1 30%; /* Set initial height to 30%. */
+  flex: 1 1 30%;
+  /* Set initial height to 30%. */
   display: flex;
   flex-direction: column;
-  min-height: 100px; /* Minimum height. */
-  overflow: hidden; /* To enable scrolling on child elements. */
+  min-height: 100px;
+  /* Minimum height. */
+  overflow: hidden;
+  /* To enable scrolling on child elements. */
 }
 
 /* Styles for panel titles and content. */
@@ -100,36 +115,44 @@
   margin: 4px;
   padding: 0 6px;
   border-bottom: 1px solid #ccc;
-  flex-shrink: 0; /* Title area should not shrink. */
-  font-weight:bold;
+  flex-shrink: 0;
+  /* Title area should not shrink. */
+  font-weight: bold;
   font-size: 0.9rem;
 }
 
 
 /* Handle for horizontal resizing (between viewer and panel). */
 #wdb-resizer {
-  flex-basis: 6px; /* Handle width. */
-  flex-shrink: 0; /* Prevent the handle from shrinking. */
+  flex-basis: 6px;
+  /* Handle width. */
+  flex-shrink: 0;
+  /* Prevent the handle from shrinking. */
   background-color: #eee;
-  cursor: col-resize; /* Set mouse cursor to horizontal resize. */
+  cursor: col-resize;
+  /* Set mouse cursor to horizontal resize. */
   height: 100%;
   border-left: 1px solid #ccc;
   border-right: 1px solid #ccc;
 }
+
 #wdb-resizer:hover {
   background-color: #ddd;
 }
 
 /* Handle for vertical resizing (between annotation details and full text). */
 #wdb-resizer-horizontal {
-  flex-basis: 6px; /* Handle height. */
+  flex-basis: 6px;
+  /* Handle height. */
   flex-shrink: 0;
   background-color: #eee;
-  cursor: row-resize; /* Set mouse cursor to vertical resize. */
+  cursor: row-resize;
+  /* Set mouse cursor to vertical resize. */
   width: 100%;
   border-top: 1px solid #ccc;
   border-bottom: 1px solid #ccc;
 }
+
 #wdb-resizer-horizontal:hover {
   background-color: #ddd;
 }
@@ -146,7 +169,8 @@
 }
 
 #wdb-main-container.layout--stacked #wdb-resizer {
-  display: none; /* Hide vertical resizer in stacked mode. */
+  display: none;
+  /* Hide vertical resizer in stacked mode. */
 }
 
 #wdb-main-container.layout--stacked #openseadragon-viewer {
@@ -159,24 +183,38 @@
   min-height: 180px;
   /* Fixed 50:50 columns under toolbar */
   display: grid;
-  grid-template-columns: 1fr 1fr; /* 50:50 */
+  grid-template-columns: 1fr 1fr;
+  /* 50:50 */
   grid-template-rows: auto 1fr;
   grid-template-areas:
     "toolbar toolbar"
     "details fulltext";
-  column-gap: 0;   /* no gap between columns (we draw a border) */
-  row-gap: 8px;    /* keep vertical spacing */
+  column-gap: 0;
+  /* no gap between columns (we draw a border) */
+  row-gap: 8px;
+  /* keep vertical spacing */
+  /* Let inner columns scroll individually to avoid double scrollbars */
+  overflow: hidden;
 }
 
 /* Assign grid areas */
-#wdb-main-container.layout--stacked #wdb-panel-toolbar { grid-area: toolbar; }
-#wdb-main-container.layout--stacked #wdb-annotation-details-area { grid-area: details; }
-#wdb-main-container.layout--stacked #wdb-full-text-area { grid-area: fulltext; }
+#wdb-main-container.layout--stacked #wdb-panel-toolbar {
+  grid-area: toolbar;
+}
+
+#wdb-main-container.layout--stacked #wdb-annotation-details-area {
+  grid-area: details;
+}
+
+#wdb-main-container.layout--stacked #wdb-full-text-area {
+  grid-area: fulltext;
+}
 
 /* Make sure children behave as blocks within grid (avoid flex-basis interference) */
 #wdb-main-container.layout--stacked #wdb-annotation-details-area,
 #wdb-main-container.layout--stacked #wdb-full-text-area {
-  min-height: initial;
+  /* Allow shrink inside grid row so inner content can scroll */
+  min-height: 0;
 }
 
 /* Vertical divider between Annotation and Full Text in stacked mode */
@@ -185,7 +223,9 @@
 }
 
 /* Hide resizer in stacked (no drag) */
-#wdb-main-container.layout--stacked #wdb-resizer-horizontal { display: none; }
+#wdb-main-container.layout--stacked #wdb-resizer-horizontal {
+  display: none;
+}
 
 /* Drawer resize handle removed (drag disabled) */
 
@@ -194,19 +234,22 @@
 #wdb-main-container.layout--drawer {
   position: relative;
   display: flex;
-  flex-direction: column; /* Stack toolbar host and viewer */
+  flex-direction: column;
+  /* Stack toolbar host and viewer */
 }
 
 /* Sticky toolbar host that will contain #wdb-panel-toolbar in drawer mode */
 #wdb-toolbar-host {
   position: sticky;
   top: 0;
-  z-index: 900; /* below drawer panel (1000) but above viewer */
+  z-index: 900;
+  /* below drawer panel (1000) but above viewer */
 }
 
 #wdb-main-container.layout--drawer #wdb-resizer,
 #wdb-main-container.layout--drawer #wdb-resizer-horizontal {
-  display: none; /* Hide both resizers in drawer mode. */
+  display: none;
+  /* Hide both resizers in drawer mode. */
 }
 
 /* Hide OpenSeadragon controls and navigator in drawer mode (mobile) */
@@ -228,12 +271,17 @@
   z-index: 1000;
   background: #fff;
   border-top: 1px solid #ccc;
-  box-shadow: 0 -8px 24px rgba(0,0,0,0.25);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
   /* Inner fixed layout for details/fulltext: 50:50 */
   display: grid;
-  grid-template-columns: 1fr 1fr; /* 50:50 */
+  grid-template-columns: 1fr 1fr;
+  /* 50:50 */
   grid-template-rows: 1fr;
   grid-template-areas: "details fulltext";
+  align-items: stretch;
+  /* ensure children fill row height */
+  overflow: hidden;
+  /* avoid outer scroll; let inner panes scroll */
 }
 
 #wdb-main-container.layout--drawer.drawer-open #wdb-annotation-info-panel {
@@ -241,17 +289,62 @@
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
-  overflow: auto;
+  overflow: hidden;
+  /* outer stays fixed; inner panes scroll */
 }
 
 /* Map areas in drawer */
-#wdb-main-container.layout--drawer #wdb-annotation-details-area { grid-area: details; }
-#wdb-main-container.layout--drawer #wdb-full-text-area { grid-area: fulltext; }
-#wdb-main-container.layout--drawer #wdb-resizer-horizontal { display: none; }
+#wdb-main-container.layout--drawer #wdb-annotation-details-area {
+  grid-area: details;
+}
+
+#wdb-main-container.layout--drawer #wdb-full-text-area {
+  grid-area: fulltext;
+}
+
+#wdb-main-container.layout--drawer #wdb-resizer-horizontal {
+  display: none;
+}
 
 /* Vertical divider between Annotation and Full Text in drawer mode */
 #wdb-main-container.layout--drawer #wdb-full-text-area {
   border-left: 1px solid #ccc;
+}
+
+/* Ensure inner panes can shrink and scroll in drawer as well */
+#wdb-main-container.layout--drawer #wdb-annotation-details-area,
+#wdb-main-container.layout--drawer #wdb-full-text-area {
+  min-height: 0;
+  height: 100%;
+  /* fill the 60vh row */
+}
+
+/* In drawer, make inner scroll areas able to shrink */
+#wdb-main-container.layout--drawer #wdb-annotation-panel-content,
+#wdb-main-container.layout--drawer #wdb-full-text-content {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Drawer: show title and keep it sticky at the top */
+#wdb-main-container.layout--drawer #wdb-annotation-panel-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8f8f8;
+  /* match panel header style */
+}
+
+/* In stacked, ensure equal fill and inner shrink */
+#wdb-main-container.layout--stacked #wdb-annotation-details-area,
+#wdb-main-container.layout--stacked #wdb-full-text-area {
+  height: 100%;
+}
+
+#wdb-main-container.layout--stacked #wdb-annotation-panel-content,
+#wdb-main-container.layout--stacked #wdb-full-text-content {
+  min-height: 0;
 }
 
 /* Floating action button to toggle panel (mobile) */
@@ -267,7 +360,7 @@
   padding: 10px 14px;
   font: inherit;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .wdb-panel-fab:focus {
