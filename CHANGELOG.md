@@ -2,6 +2,17 @@
 
 All notable changes to WDB Core will be documented in this file.
 
+## [1.4.4] - 2025-09-08
+
+### Fixed
+- Resizers: Stabilized left/right and top/bottom splitters to prevent snap-back during drag and after release.
+- Resizers: Eliminated post-release pixel twitch and enforced explicit widths with per-frame pinning.
+- Resizers: Clamped right panel min-width to 270px to avoid layout breakage when dragging to the right.
+- Layout: Coordinated vertical resizer with horizontal split using a short-lived cross-axis lock to stop temporary wobble.
+
+### Changed
+- Restore logic now prefers saved ratios with min-width aware clamping for consistent behavior across resizes.
+
 ## [1.4.0] - 2025-09-06
 
 ### Added
@@ -17,3 +28,4 @@ All notable changes to WDB Core will be documented in this file.
 - Viewer: Tooltip and selection no longer remain stuck when quickly exiting the viewer bounds.
 
 [1.4.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.0
+[1.4.4]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.4
