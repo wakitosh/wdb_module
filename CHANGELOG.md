@@ -2,6 +2,22 @@
 
 All notable changes to WDB Core will be documented in this file.
 
+## [1.5.0] - 2025-09-09
+
+### Added
+- Responsive two-column layout in the right panel when width >= 540px:
+	- Left column shows "Word"
+	- Right column stacks "Sign" (top) and "Constituent Signs" (bottom)
+	- Columns split 50:50 with a continuous center divider
+- Toolbar: Add 2px right padding for consistent spacing.
+
+### Changed
+- Default layout without saved state: right panel fixed at 270px, viewer fills remaining width.
+- Removed Split.js integration and reverted to the legacy resizer implementation.
+
+### Fixed
+- Eliminated subtle right panel overflow and transient push-out during fast drags with layout/CSS refinements.
+
 ## [1.4.4] - 2025-09-08
 
 ### Fixed
@@ -29,3 +45,4 @@ All notable changes to WDB Core will be documented in this file.
 
 [1.4.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.0
 [1.4.4]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.4
+[1.5.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.0

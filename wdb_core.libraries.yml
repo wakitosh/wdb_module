@@ -48,6 +48,9 @@ wdb_page_layout:
     - core/once
     - core/drupal.debounce
 
+
+# Split.js removed: reverting to legacy resizer
+
 # Lazy loading library
 lazysizes:
   js:

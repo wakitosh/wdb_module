@@ -11,13 +11,14 @@
   min-height: 400px;
   /* It's good to specify a minimum height. */
   width: 100%;
+  box-sizing: border-box;
   border: 1px solid #ccc;
 }
 
 /* The OpenSeadragon viewer itself. */
 #openseadragon-viewer {
   flex: 1 1 auto;
-  /* Use all remaining available space. */
+  /* default: fill remaining space when no saved layout */
   min-width: 200px;
   /* Minimum width. */
   background-color: #000;
@@ -40,12 +41,20 @@
   /* Arrange child elements vertically. */
   padding: 0;
   min-width: 270px;
-  flex-basis: 270px;
-  flex-shrink: 0;
+  flex: 0 0 270px;
+  /* default: 270px panel */
+  /* Split.js制御下で幅を固定 */
   height: 100%;
-  overflow-y: auto;
+  overflow-y: hidden;
+  /* avoid covering resizer-h with scrolling layer */
+  overflow-x: hidden;
+  /* prevent children from widening the panel */
   /* Show scrollbar if content overflows. */
   font-size: 0.8rem;
+  /* Contain paint to avoid ghosting during fast resizes */
+  contain: paint;
+  /* Enable container queries so inner layout can respond to panel width */
+  container-type: inline-size;
 }
 
 /* Content areas within the side panel. */
@@ -55,6 +64,15 @@
   flex-grow: 1;
   /* Use all remaining space. */
   overflow-y: auto;
+  /* scrolling happens inside content areas */
+  overflow-x: hidden;
+  /* avoid horizontal scrollbars in panel */
+  min-width: 0;
+  /* allow shrink inside flex item */
+  word-break: break-word;
+  /* break long tokens */
+  overflow-wrap: anywhere;
+  /* allow breaks even without spaces */
   /* Also scroll if content is long. */
   font-size: 0.9rem;
   line-height: 1.5rem;
@@ -69,6 +87,8 @@
   min-height: 100px;
   /* Minimum height. */
   overflow: hidden;
+  min-width: 0;
+  /* allow shrink to avoid overflow */
   /* To enable scrolling on child elements. */
 }
 
@@ -107,6 +127,8 @@
   min-height: 100px;
   /* Minimum height. */
   overflow: hidden;
+  min-width: 0;
+  /* allow shrink to avoid overflow */
   /* To enable scrolling on child elements. */
 }
 
@@ -119,6 +141,14 @@
   /* Title area should not shrink. */
   font-weight: bold;
   font-size: 0.9rem;
+}
+
+/* Promote toolbar to its own layer to reduce repaint artifacts */
+#wdb-panel-toolbar {
+  will-change: transform;
+  transform: translateZ(0);
+  padding-right: 2px;
+  /* keep visual right spacing for toolbar buttons */
 }
 
 
@@ -144,6 +174,7 @@
 #wdb-resizer-horizontal {
   flex-basis: 6px;
   /* Handle height. */
+  min-height: 6px;
   flex-shrink: 0;
   background-color: #eee;
   cursor: row-resize;
@@ -151,10 +182,71 @@
   width: 100%;
   border-top: 1px solid #ccc;
   border-bottom: 1px solid #ccc;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#wdb-resizer-horizontal::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  bottom: -4px;
+  /* expand hit area to 14px without changing visual size */
+  cursor: row-resize;
 }
 
 #wdb-resizer-horizontal:hover {
   background-color: #ddd;
+}
+
+/* Split.js removed: no gutter styles needed */
+
+/* ---------------------------------------------- */
+/* Wide panel: 2-column layout for details area   */
+/* When the right panel is >= 540px wide          */
+/* ---------------------------------------------- */
+@container (min-width: 540px) {
+
+  /* Convert details content to a 2-column grid */
+  #wdb-annotation-details-area .annotation-details-popup {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    /* 50:50 */
+    grid-template-rows: auto 1fr;
+    /* Sign on top, Constituents below */
+    grid-template-areas:
+      "word sign"
+      "word cons";
+    column-gap: 0;
+    /* draw divider via border */
+    row-gap: 0;
+    /* eliminate gap so left border appears continuous */
+    align-items: start;
+  }
+
+  /* Area placement */
+  #wdb-annotation-details-area .annotation-detail-word {
+    grid-area: word;
+  }
+
+  #wdb-annotation-details-area .annotation-detail-sign {
+    grid-area: sign;
+  }
+
+  #wdb-annotation-details-area .annotation-detail-constituent-signs {
+    grid-area: cons;
+  }
+
+  /* Center divider and padding only on right column */
+  #wdb-annotation-details-area .annotation-detail-sign,
+  #wdb-annotation-details-area .annotation-detail-constituent-signs {
+    border-left: 1px solid #ccc;
+    padding-left: 10px;
+  }
 }
 
 /* ------------------------------ */
