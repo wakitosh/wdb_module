@@ -214,6 +214,22 @@
           if (!mainContainer) return;
           if (!mainContainer.classList.contains('layout--drawer')) return;
           mainContainer.classList.toggle('drawer-open');
+          const opened = mainContainer.classList.contains('drawer-open');
+          try {
+            document.body.classList.toggle('wdb-drawer-opened', opened);
+          } catch (e) { /* noop */ }
+          // After toggling, recalc container height soon so the viewer gets non-zero height
+          try {
+            if (Drupal && Drupal.behaviors && Drupal.behaviors.wdbDynamicLayout) {
+              setTimeout(() => {
+                try {
+                  // Adjust if behavior is available
+                  const ev = new Event('resize');
+                  window.dispatchEvent(ev);
+                } catch (_) { }
+              }, 50);
+            }
+          } catch (_) { }
         };
 
         // Initial mode: prefer drawer for very small screens, stacked otherwise; split for desktop.

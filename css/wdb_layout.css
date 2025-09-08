@@ -211,8 +211,8 @@
 /* ---------------------------------------------- */
 @container (min-width: 540px) {
 
-  /* Convert details content to a 2-column grid */
-  #wdb-annotation-details-area .annotation-details-popup {
+  /* Split mode only: convert details content to a 2-column grid */
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-details-popup {
     display: grid;
     grid-template-columns: 1fr 1fr;
     /* 50:50 */
@@ -229,21 +229,21 @@
   }
 
   /* Area placement */
-  #wdb-annotation-details-area .annotation-detail-word {
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-word {
     grid-area: word;
   }
 
-  #wdb-annotation-details-area .annotation-detail-sign {
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-sign {
     grid-area: sign;
   }
 
-  #wdb-annotation-details-area .annotation-detail-constituent-signs {
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-constituent-signs {
     grid-area: cons;
   }
 
   /* Center divider and padding only on right column */
-  #wdb-annotation-details-area .annotation-detail-sign,
-  #wdb-annotation-details-area .annotation-detail-constituent-signs {
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-sign,
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-constituent-signs {
     border-left: 1px solid #ccc;
     padding-left: 10px;
   }
@@ -266,13 +266,15 @@
 }
 
 #wdb-main-container.layout--stacked #openseadragon-viewer {
-  flex: 1 1 60%;
-  min-height: 200px;
+  flex: 1 1 70%;
+  /* give more height to viewer on stacked */
+  /* Allow proper fill based on container height without clamping to 200px */
+  min-height: 0;
 }
 
 #wdb-main-container.layout--stacked #wdb-annotation-info-panel {
-  flex: 1 1 40%;
-  min-height: 180px;
+  flex: 1 1 30%;
+  min-height: 0;
   /* Fixed 50:50 columns under toolbar */
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -377,7 +379,10 @@
 }
 
 #wdb-main-container.layout--drawer.drawer-open #wdb-annotation-info-panel {
+  /* Robust viewport height with fallbacks (prefer stable svh last) */
   height: 60vh;
+  height: 60dvh;
+  height: 60svh;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -417,6 +422,9 @@
   min-height: 0;
   height: 100%;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 /* Drawer: show title and keep it sticky at the top */
@@ -460,10 +468,40 @@
   outline-offset: 2px;
 }
 
+/* Prevent page background scroll while drawer is open */
+body.wdb-drawer-opened {
+  overflow: hidden;
+  /* Prevent background scroll chaining while drawer is open */
+  overscroll-behavior: none;
+}
+
 /* Sensible defaults by viewport width (can be overridden by JS) */
 @media (max-width: 720px) {
   #wdb-main-container:not(.layout--drawer):not(.layout--stacked) {
     /* If no mode is set yet on small screens, use stacked as default. */
     flex-direction: column;
   }
+}
+
+/* Ensure full-height usage in portrait (mobile/tablet) */
+@media (orientation: portrait) {
+
+  /* Avoid forcing the container to full viewport height; let JS compute when needed. */
+  /* In drawer mode, keep viewer filling remaining vertical space */
+  #wdb-main-container.layout--drawer #openseadragon-viewer {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+/* Drawer: viewer should always be allowed to grow/shrink freely */
+#wdb-main-container.layout--drawer #openseadragon-viewer {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* While drawer is open, block pointer events to the viewer underneath */
+#wdb-main-container.layout--drawer.drawer-open #openseadragon-viewer,
+#wdb-main-container.layout--drawer.drawer-open .openseadragon-container {
+  pointer-events: none !important;
 }

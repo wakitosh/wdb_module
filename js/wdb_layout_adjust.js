@@ -28,6 +28,9 @@
       if (lockUntil && Date.now() < lockUntil) return;
     } catch (e) { }
 
+    // Apply in all modes (split/stacked/drawer): compute the available space between header and footer
+    const mode = mainContainer.dataset.mode;
+
     // Get the total height of the viewport.
     const viewportHeight = window.innerHeight;
 
@@ -44,8 +47,11 @@
     const availableHeight = viewportHeight - containerTopOffset - footerHeight - marginBottom;
 
     // Set the calculated height on the container's style.
-    if (availableHeight > 200) { // Set a minimum height of 200px.
+    if (availableHeight > 200) {
       mainContainer.style.height = `${availableHeight}px`;
+    } else {
+      // If the computed space is too small, prefer letting CSS handle it
+      try { mainContainer.style.removeProperty('height'); } catch (e) { }
     }
   }
 
@@ -58,9 +64,23 @@
       once('wdb-dynamic-layout-init', 'body', context).forEach(function () {
         // Run on initial page load.
         adjustViewerHeight();
+        // Re-check shortly after to counter late layout changes (e.g., OSD init)
+        setTimeout(adjustViewerHeight, 700);
 
         // Run whenever the window is resized (debounced for performance).
         window.addEventListener('resize', Drupal.debounce(adjustViewerHeight, 150, false));
+
+        // Recompute when layout mode changes (split/stacked/drawer)
+        const mc = document.getElementById('wdb-main-container');
+        if (mc) {
+          const mo = new MutationObserver(() => adjustViewerHeight());
+          mo.observe(mc, { attributes: true, attributeFilter: ['data-mode'] });
+        }
+
+        // On orientation change, recompute after a short delay.
+        window.addEventListener('orientationchange', () => {
+          setTimeout(adjustViewerHeight, 300);
+        });
       });
     }
   };

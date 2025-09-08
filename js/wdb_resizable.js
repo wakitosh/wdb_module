@@ -33,6 +33,21 @@
         const leftSide = resizer.previousElementSibling; // The viewer container
         const rightSide = resizer.nextElementSibling; // The annotation panel
 
+        const isSplitMode = () => {
+          const mc = document.getElementById('wdb-main-container');
+          return !!mc && (mc.dataset.mode === 'split' || mc.classList.contains('layout--split'));
+        };
+        const clearHInlineWidths = () => {
+          try {
+            leftSide.style.removeProperty('flex');
+            leftSide.style.removeProperty('flex-basis');
+            rightSide.style.removeProperty('flex');
+            rightSide.style.removeProperty('flex-basis');
+          } catch (e) { }
+          lastRightWidth = null;
+          lastLeftWidth = null;
+        };
+
         let x = 0;
         let rightWidth = 0;
         let dragOffsetX = 0; // pointer offset from resizer's left edge
@@ -63,6 +78,7 @@
         }
         // Reassert pinned horizontal widths from dataset during lock
         function reassertPinnedH() {
+          if (!isSplitMode()) return;
           if (!mainContainer) return;
           const r = Number(mainContainer.dataset.hRightPx || '0');
           const l = Number(mainContainer.dataset.hLeftPx || '0');
@@ -93,6 +109,7 @@
         function startHDragPinLoop() {
           if (hDragRafId) return;
           const tick = () => {
+            if (!isSplitMode()) { hDragRafId = 0; return; }
             if (!isHDragging) { hDragRafId = 0; return; }
             if (lastRightWidth != null) {
               const cur = rightSide.getBoundingClientRect().width;
@@ -117,6 +134,7 @@
         function startHPostSettleLoop() {
           if (hSettleRafId) return;
           const tick = () => {
+            if (!isSplitMode()) { hSettleRafId = 0; return; }
             if (Date.now() >= hSettleUntil) { hSettleRafId = 0; return; }
             try {
               const parentEl = resizer.parentElement;
@@ -169,6 +187,7 @@
 
         // Helper: snapshot current widths, clamp, pin, and record dataset for lock
         function snapAndPinCurrentH(reason) {
+          if (!isSplitMode()) return;
           try {
             const parentEl = resizer.parentElement;
             const cw = (parentEl && (parentEl.clientWidth || parentEl.getBoundingClientRect().width)) || 0;
@@ -380,6 +399,8 @@
 
         // Restore saved width in desktop mode (not stacked/drawer). Prefer ratio, fallback to px.
         const applyHRestore = () => {
+          // Only in split mode
+          if (!isSplitMode()) return;
           // If Split.js is active, do not restore widths here
           if (document.getElementById('wdb-main-container')?.classList.contains('splitjs-active')) return;
           if (mainContainer && (mainContainer.dataset.mode === 'stacked' || mainContainer.dataset.mode === 'drawer')) return;
@@ -427,6 +448,7 @@
         };
         applyHRestore();
         const roH = new ResizeObserver(() => {
+          if (!isSplitMode()) return;
           if (isHDragging) return;
           if (isHLocked()) { reassertPinnedH(); return; }
           if (Date.now() >= hRestoreSuppressUntil) applyHRestore();
@@ -437,6 +459,7 @@
         let _hResizeSuppTimer = null;
         let _lastResizeCW = null;
         window.addEventListener('resize', () => {
+          if (!isSplitMode()) return;
           // On first event in a burst, start suppression and settle pinning
           if (_hResizeSuppTimer === null) {
             const now = Date.now();
@@ -477,11 +500,28 @@
         };
         const moSidesH = new MutationObserver((mutations) => {
           for (const m of mutations) {
-            if (m.type === 'attributes' && m.attributeName === 'style') { reassertIfSuppressedH(); break; }
+            if (m.type === 'attributes' && m.attributeName === 'style') { if (isSplitMode()) reassertIfSuppressedH(); break; }
           }
         });
         moSidesH.observe(leftSide, { attributes: true, attributeFilter: ['style'] });
         moSidesH.observe(rightSide, { attributes: true, attributeFilter: ['style'] });
+
+        // Follow layout mode changes to clear inline widths outside split
+        if (mainContainer) {
+          const moMode = new MutationObserver(() => {
+            const mode = mainContainer.dataset.mode;
+            if (mode !== 'split') {
+              // Leaving split: remove any inline widths to avoid 200px clamp in stacked/drawer
+              clearHInlineWidths();
+            } else {
+              // Entering split: restore saved width, if any
+              applyHRestore();
+            }
+          });
+          moMode.observe(mainContainer, { attributes: true, attributeFilter: ['data-mode'] });
+          // If we start not in split, ensure no inline widths linger
+          if (!isSplitMode()) clearHInlineWidths();
+        }
       });
 
       // --- Vertical Resizing (Top/Bottom Panels) ---
