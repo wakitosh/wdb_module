@@ -464,7 +464,10 @@
                 if (firstSignItem.length) {
                   const firstSignAnnotationUri = firstSignItem.data('annotation-uri');
                   if (firstSignAnnotationUri && anno.getAnnotationById(firstSignAnnotationUri)) {
+                    try { if (typeof anno.clearSelected === 'function') anno.clearSelected(); } catch (_) { }
                     safeSetSelected(firstSignAnnotationUri);
+                    lastPanelAnnotationId = firstSignAnnotationUri;
+                    try { anno.setStyle(stylingFunction); } catch (_) { }
                     // Do not pan while suppressed (prioritize user gesture)
                     if (!isSuppressed()) panToAnnotation(firstSignAnnotationUri);
                   }
@@ -618,6 +621,7 @@
                   const imgPoint = viewer.viewport.viewportToImageCoordinates(vpPoint);
                   const hitId = findHitAnnotationIdAt(imgPoint.x, imgPoint.y, 0.5); // 0.5%のバッファ
                   if (hitId && hitId !== lastPanelAnnotationId) {
+                    try { if (typeof anno.clearSelected === 'function') anno.clearSelected(); } catch (_) { }
                     safeSetSelected(hitId);
                     updateAnnotationPanel(osdSettings.context.subsysname, hitId, true);
                   }
@@ -749,6 +753,20 @@
               }
             };
 
+            // Best-effort: clear any existing Annotorious selection
+            const clearAnnoSelection = () => {
+              try {
+                if (typeof anno.clearSelected === 'function') {
+                  anno.clearSelected();
+                  return;
+                }
+                if (typeof anno.setSelected === 'function') {
+                  try { anno.setSelected([]); return; } catch (_) { }
+                  try { anno.setSelected(null); return; } catch (_) { }
+                }
+              } catch (_) { /* noop */ }
+            };
+
             // 1. Handle navigation button clicks.
             if (clickedElement.hasClass('nav-button-icon') && !clickedElement.is('[disabled]')) {
               const nextAnnotationUri = clickedElement.data('annotation-uri');
@@ -756,6 +774,9 @@
                 const { subsysname } = osdSettings.context;
                 const isWordNav = clickedElement.hasClass('prev-word') || clickedElement.hasClass('next-word');
                 if (isWordNav) {
+                  // Reset previous visible selection to avoid double-highlight while loading next
+                  lastPanelAnnotationId = null;
+                  clearAnnoSelection();
                   const wordPoints = clickedElement.data('word-points');
                   showWordHull(wordPoints);
                   updateAnnotationPanel(subsysname, nextAnnotationUri, false);
@@ -772,7 +793,12 @@
               clearTempWordAnnotation();
               const annotationId = clickedElement.data('annotation-uri');
               if (annotationId && anno.getAnnotationById(annotationId)) {
+                // Ensure only one visible selection
+                try { if (typeof anno.clearSelected === 'function') anno.clearSelected(); } catch (_) { }
                 safeSetSelected(annotationId);
+                // Mark as confirmed selection immediately so styling shows it even before Ajax completes
+                lastPanelAnnotationId = annotationId;
+                try { anno.setStyle(stylingFunction); } catch (_) { }
                 panToAnnotation(annotationId);
                 if (osdSettings?.context?.subsysname) {
                   updateAnnotationPanel(osdSettings.context.subsysname, annotationId, false);
@@ -782,12 +808,18 @@
             // 3. Handle word thumbnail clicks.
             else if (clickedElement.hasClass('word-thumbnail')) {
               const rawAttr = clickedElement.attr('data-word-points');
+              // Clear any existing character/annotation selection first
+              try { if (typeof anno.clearSelected === 'function') anno.clearSelected(); } catch (_) { }
+              lastPanelAnnotationId = null;
               showWordHull(rawAttr);
             }
             // 4. Handle clicks on words in the full text area.
             else if (clickedElement.hasClass('word-unit')) {
               const wordUnitId = clickedElement.data('word-unit-original-id');
               const rawAttr = clickedElement.attr('data-word-points');
+              // Clear any existing character/annotation selection first
+              try { if (typeof anno.clearSelected === 'function') anno.clearSelected(); } catch (_) { }
+              lastPanelAnnotationId = null;
               showWordHull(rawAttr);
               if (wordUnitId) {
                 const getUriUrl = Drupal.url(`wdb/ajax/get_uri_from_wu/${wordUnitId}`);
