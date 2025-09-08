@@ -11,6 +11,26 @@
   let tooltip = null;
   // Track whether the pointer is currently inside the viewer area.
   let isPointerInsideViewer = false;
+  // Track gesture states to suppress UI during interactions.
+  let isPinching = false;
+  let isPanning = false;
+  let _pinchResetTid = null;
+  let _panResetTid = null;
+  // Gesture suppression timing and drag metrics to avoid accidental selection
+  let _suppressUntilTs = 0; // timestamp until which we ignore selection/hover
+  let _pressTime = 0;
+  let _dragTotalPx = 0;
+  let _lastPressPos = null;
+  let _lastDragPos = null;
+  let _hadAnyDrag = false; // true if any drag beyond deadzone occurred during this gesture
+  let _isTouchActive = false; // true while a touch pointer is down within the viewer
+  // ID of the "confirmed" selection currently shown in the panel (used to suppress visual flicker)
+  let lastPanelAnnotationId = null;
+  // Timestamps for the most recent pan / animation start
+  let _lastPanEventTs = 0;
+  let _lastAnimStartTs = 0;
+
+  const nowTs = () => Date.now();
 
   /**
    * Helper function to add the tooltip DOM element to the page just once.
@@ -54,10 +74,100 @@
           homeFillsViewer: true,
           crossOriginPolicy: 'Anonymous',
           gestureSettingsMouse: { clickToZoom: false },
+          // デフォルトのフリック挙動を使用（clickToZoomのみ無効）
           gestureSettingsTouch: { clickToZoom: false },
           gestureSettingsPen: { clickToZoom: false }, // added to prevent pen tap zoom
           gestureSettingsUnknown: { clickToZoom: false },
         });
+
+        // Tunables for suppression
+        const SUPPRESS_AFTER_PAN_MS = 200; // Short suppression window close to the earlier tuning
+        const DRAG_SUPPRESS_DIST = 8;  // Prior value for classifying a real pan
+        const PAN_DEADZONE_PX = 3;     // Prior value (not overly sensitive)
+        const TAP_MAX_DIST = 6;        // Prior value for tap distance
+        const TAP_MAX_MS = 300;        // Prior value for tap duration
+        const isSuppressed = () => (isPinching || isPanning || _isTouchActive || nowTs() < _suppressUntilTs);
+
+        // --- Pinch detection & suppression of hover/select during pinch ---
+        const startPinch = () => {
+          isPinching = true;
+          try { hideTooltipAndClearHover(); } catch (e) { /* noop */ }
+          if (_pinchResetTid) { clearTimeout(_pinchResetTid); _pinchResetTid = null; }
+        };
+        const endPinchSoon = () => {
+          if (_pinchResetTid) clearTimeout(_pinchResetTid);
+          _pinchResetTid = setTimeout(() => { isPinching = false; _pinchResetTid = null; }, 160);
+        };
+        try {
+          viewer.addHandler('canvas-pinch', () => { startPinch(); });
+          // Only end pinch on release if we were pinching
+          viewer.addHandler('canvas-release', () => { if (isPinching) endPinchSoon(); });
+        } catch (e) { /* noop */ }
+
+        // --- Pan detection & suppression during scroll/drag ---
+        const startPan = () => {
+          if (!isPanning) {
+            isPanning = true;
+            try { hideTooltipAndClearHover(); } catch (e) { /* noop */ }
+          }
+          if (_panResetTid) { clearTimeout(_panResetTid); _panResetTid = null; }
+          _lastPanEventTs = nowTs();
+        };
+        const endPanSoon = () => {
+          if (_panResetTid) clearTimeout(_panResetTid);
+          _panResetTid = setTimeout(() => { isPanning = false; _panResetTid = null; }, 120);
+        };
+        try {
+          // Track press to start distance/time metrics
+          viewer.addHandler('canvas-press', (e) => {
+            _pressTime = nowTs();
+            _dragTotalPx = 0;
+            _hadAnyDrag = false;
+            const p = e.position || (e.originalEvent && e.originalEvent.position) || null;
+            _lastPressPos = p ? { x: p.x, y: p.y } : null;
+            _lastDragPos = _lastPressPos;
+            // Hide tooltip immediately on press
+            try { hideTooltipAndClearHover(); } catch (err) { /* noop */ }
+          });
+          // Start pan only when dragging or viewer animates (kinetic/momentum)
+          viewer.addHandler('canvas-drag', (e) => {
+            startPan();
+            // accumulate drag distance in screen px
+            let step = 0;
+            if (e && e.delta) {
+              step = Math.hypot(e.delta.x || 0, e.delta.y || 0);
+            } else if (e && e.position && _lastDragPos) {
+              step = Math.hypot((e.position.x - _lastDragPos.x) || 0, (e.position.y - _lastDragPos.y) || 0);
+              _lastDragPos = { x: e.position.x, y: e.position.y };
+            }
+            _dragTotalPx += step;
+            if (!_hadAnyDrag && _dragTotalPx > PAN_DEADZONE_PX) {
+              _hadAnyDrag = true;
+            }
+            _lastPanEventTs = nowTs();
+          });
+          viewer.addHandler('animation', () => { startPan(); });
+          viewer.addHandler('animation-start', () => {
+            startPan();
+            // While kinetic animation starts, briefly extend suppression window
+            _suppressUntilTs = Math.max(_suppressUntilTs, nowTs() + 180);
+            _lastAnimStartTs = nowTs();
+          });
+          // End pan shortly after finishing drag/animation
+          viewer.addHandler('canvas-release', () => {
+            if (_dragTotalPx > DRAG_SUPPRESS_DIST) {
+              // After a larger pan, keep a longer suppression window
+              _suppressUntilTs = Math.max(_suppressUntilTs, nowTs() + SUPPRESS_AFTER_PAN_MS);
+            } else if (_hadAnyDrag) {
+              // Even for a small drag, apply a short post-release suppression (rollback to the earlier tuning)
+              _suppressUntilTs = Math.max(_suppressUntilTs, nowTs() + 180);
+            }
+            if (isPanning) endPanSoon();
+            _lastDragPos = _lastPressPos = null;
+            _hadAnyDrag = false;
+          });
+          viewer.addHandler('animation-finish', () => { if (isPanning) endPanSoon(); });
+        } catch (e) { /* noop */ }
 
         // If annotations exist, update the initial text in the panel.
         if (osdSettings.hasAnnotations) {
@@ -215,16 +325,25 @@
 
         // Define the styling function for annotations.
         const stylingFunction = (annotation, state) => {
-          // Style for selected annotations or the temporary word hull.
-          if (state?.selected || annotation.id === tempWordAnnotationId) {
+          // Always render the temporary word hull
+          if (annotation.id === tempWordAnnotationId) {
             return { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#ffffff', strokeWidth: 2 };
           }
-          // Style for hovered annotations.
-          // Only render hover highlight while the pointer is inside the viewer.
+          const suppressed = (isPinching || isPanning || _isTouchActive || (nowTs() < _suppressUntilTs));
+          if (suppressed) {
+            // While suppressed, render only the confirmed selection (hide transient selected/hover from Annotorious)
+            if (lastPanelAnnotationId && annotation.id === lastPanelAnnotationId) {
+              return { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#ffffff', strokeWidth: 2 };
+            }
+            return { fillOpacity: 0, strokeOpacity: 0 };
+          }
+          // Normal (not suppressed): render selected or hovered
+          if (state?.selected) {
+            return { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#ffffff', strokeWidth: 2 };
+          }
           if (state?.hovered && isPointerInsideViewer) {
             return { fill: 'rgba(255, 255, 255, 0.1)', stroke: '#ffffff', strokeWidth: 2 };
           }
-          // Default: invisible.
           return { fillOpacity: 0, strokeOpacity: 0 };
         };
 
@@ -274,7 +393,6 @@
         });
 
         // --- Selection handling helpers ---
-        let lastPanelAnnotationId = null;          // Last annotation whose details were loaded
         let programmaticSelection = false;         // Guard so selectAnnotation handler ignores our own sets
         const safeSetSelected = (id) => {
           programmaticSelection = true;
@@ -286,6 +404,8 @@
          * @param {string} annotationId - The ID of the annotation to pan to.
          */
         const panToAnnotation = (annotationId) => {
+          // Skip auto pan while suppressed (avoid recent selection auto-centering)
+          if (isSuppressed()) return;
           const annotation = anno.getAnnotationById(annotationId);
           if (annotation && annotation.target.selector.geometry) {
             const { minX, minY, maxX, maxY } = annotation.target.selector.geometry.bounds;
@@ -345,7 +465,8 @@
                   const firstSignAnnotationUri = firstSignItem.data('annotation-uri');
                   if (firstSignAnnotationUri && anno.getAnnotationById(firstSignAnnotationUri)) {
                     safeSetSelected(firstSignAnnotationUri);
-                    panToAnnotation(firstSignAnnotationUri);
+                    // Do not pan while suppressed (prioritize user gesture)
+                    if (!isSuppressed()) panToAnnotation(firstSignAnnotationUri);
                   }
                 }
               }
@@ -399,25 +520,33 @@
 
         // Handle clicks on annotations in the viewer (mouse or synthesized). Keep lightweight duplicate guard.
         anno.on('clickAnnotation', (annotation) => {
+          // During touch, ignore Annotorious click and rely on the pointerup fallback
+          if (_isTouchActive) return;
+          if (isSuppressed()) return; // suppress clicks during/just after gestures
           if (annotation?.id && annotation.id !== lastPanelAnnotationId) {
-            updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, true);
+            // While suppressed, update the panel but do not auto-pan (focusOnFirstSign=false)
+            updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, !isSuppressed());
           }
         });
 
         // Unified: fires for mouse, touch, pen. Some Annotorious versions pass an array of selected annotations.
         anno.on('selectAnnotation', (payload) => {
+          if (_isTouchActive) return; // During touch, handle via the fallback
+          if (isSuppressed()) return; // suppress selection during/just after gestures
           if (programmaticSelection) return;
           let annotation = payload;
           if (Array.isArray(payload)) {
             annotation = payload[0];
           }
           if (annotation?.id && annotation.id !== lastPanelAnnotationId) {
-            updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, true);
+            updateAnnotationPanel(osdSettings.context.subsysname, annotation.id, !isSuppressed());
           }
         });
 
         // Show tooltip on mouse enter.
         anno.on('mouseEnterAnnotation', (annotation) => {
+          if (_isTouchActive) return; // Do not show hover while a touch is active
+          if (isSuppressed()) return; // suppress hover during gestures
           viewerElement.style.cursor = 'pointer';
           const commentBody = annotation.bodies.find(b => b.purpose === 'commenting');
           const labelText = commentBody ? commentBody.value : '';
@@ -446,8 +575,23 @@
         // --- Touch fallback -------------------------------------------------
         // Some touch environments may not emit clickAnnotation/selectAnnotation reliably.
         // Fallback: on a touch pointerup inside the viewer, inspect current selection.
+        viewerElement.addEventListener('pointerdown', (ev) => {
+          if (ev.pointerType === 'touch') _isTouchActive = true;
+        });
         viewerElement.addEventListener('pointerup', (ev) => {
           if (ev.pointerType !== 'touch') return;
+          // Treat this as the end of the touch session (subsequent events may be mouse/keyboard)
+          _isTouchActive = false;
+          // Validate it's a tap (not a drag)
+          const isTap = (_dragTotalPx <= TAP_MAX_DIST) && ((nowTs() - _pressTime) <= TAP_MAX_MS);
+          // If suppressedだが純粋なタップなら、ここは抑止をバイパスして選択確認を続行
+          if (isSuppressed() && !isTap) return;
+          // If a pan/animation happened very recently, don't treat as a tap (fast-flick guard)
+          const recentPanMs = nowTs() - Math.max(_lastPanEventTs, _lastAnimStartTs);
+          const RECENT_PAN_THRESHOLD = 260;
+          if (!isTap || recentPanMs <= RECENT_PAN_THRESHOLD) return;
+          // If any small drag happened, don't treat as a tap
+          if (_hadAnyDrag) return;
           // Defer slightly to allow internal selection logic to run first.
           setTimeout(() => {
             try {
@@ -459,6 +603,23 @@
                   const id = first?.id || first; // depending on implementation
                   if (id && id !== lastPanelAnnotationId) {
                     updateAnnotationPanel(osdSettings.context.subsysname, id, true);
+                    return;
+                  }
+                }
+                // Extra fallback: hit test for an annotation near the tap position
+                const rect = viewer.element.getBoundingClientRect();
+                const clientX = (ev.clientX !== undefined) ? ev.clientX : (ev.changedTouches && ev.changedTouches[0]?.clientX);
+                const clientY = (ev.clientY !== undefined) ? ev.clientY : (ev.changedTouches && ev.changedTouches[0]?.clientY);
+                if (clientX != null && clientY != null) {
+                  const px = clientX - rect.left;
+                  const py = clientY - rect.top;
+                  // 画面px -> ビューポート -> 画像座標
+                  const vpPoint = viewer.viewport.pointFromPixel(new OpenSeadragon.Point(px, py));
+                  const imgPoint = viewer.viewport.viewportToImageCoordinates(vpPoint);
+                  const hitId = findHitAnnotationIdAt(imgPoint.x, imgPoint.y, 0.5); // 0.5%のバッファ
+                  if (hitId && hitId !== lastPanelAnnotationId) {
+                    safeSetSelected(hitId);
+                    updateAnnotationPanel(osdSettings.context.subsysname, hitId, true);
                   }
                 }
               }
@@ -467,6 +628,53 @@
             }
           }, 10);
         }, { passive: true });
+        viewerElement.addEventListener('pointercancel', (ev) => {
+          if (ev.pointerType === 'touch') {
+            _isTouchActive = false;
+            _suppressUntilTs = Math.max(_suppressUntilTs, nowTs() + 150); // add a short suppression window
+          }
+        });
+
+        // Hit test: lightweight check whether the image-space (x, y) lies inside the polygon
+        function findHitAnnotationIdAt(imgX, imgY, percentBuffer = 0) {
+          try {
+            if (typeof anno.getAnnotations !== 'function') return null;
+            const anns = anno.getAnnotations();
+            const p = { x: imgX, y: imgY };
+            // Expand test buffer by a percentage of the image width (simple heuristic)
+            const imgW = viewer.world.getItemAt(0)?.getContentSize()?.x || 0;
+            const tol = imgW * (percentBuffer / 100); // percentBufferは%として扱う
+            for (const a of anns) {
+              const g = a?.target?.selector?.geometry;
+              if (!g) continue;
+              // First, bounding box test
+              const b = g.bounds;
+              if (!b) continue;
+              if (imgX < b.minX - tol || imgX > b.maxX + tol || imgY < b.minY - tol || imgY > b.maxY + tol) continue;
+              // If polygon points exist, do a point-in-polygon test
+              if (Array.isArray(g.points) && g.points.length >= 3) {
+                if (pointInPolygon(p, g.points)) return a.id;
+              } else {
+                // If no polygon points, fall back to the bounding box
+                return a.id;
+              }
+            }
+          } catch (_) { /* noop */ }
+          return null;
+        }
+
+        function pointInPolygon(point, polygon) {
+          // ray-casting
+          let inside = false;
+          for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i][0], yi = polygon[i][1];
+            const xj = polygon[j][0], yj = polygon[j][1];
+            const intersect = ((yi > point.y) !== (yj > point.y)) &&
+              (point.x < (xj - xi) * (point.y - yi) / ((yj - yi) || 1e-9) + xi);
+            if (intersect) inside = !inside;
+          }
+          return inside;
+        }
 
         // === Click Listeners within the Panel (Event Delegation) ===
         // Reuse mainContainer for delegated events below.
