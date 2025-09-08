@@ -21,6 +21,13 @@
       return;
     }
 
+    // Skip while vertical drag or shortly after, to avoid fighting with user sizing
+    try {
+      if (mainContainer.dataset.vdrag === '1') return;
+      const lockUntil = Number(mainContainer.dataset.lockUntil || '0');
+      if (lockUntil && Date.now() < lockUntil) return;
+    } catch (e) { }
+
     // Get the total height of the viewport.
     const viewportHeight = window.innerHeight;
 

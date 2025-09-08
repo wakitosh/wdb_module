@@ -31,13 +31,85 @@
         let dragOffsetX = 0; // pointer offset from resizer's left edge
         let overlay = null; // overlay to swallow pointer events during drag
         let prevOverflow = '';
+        let isHDragging = false;
+        let hRestoreSuppressUntil = 0;
+        let lastRightWidth = null;
+        let lastLeftWidth = null;
+        let hDragRafId = 0;
+        // Helper to read numeric min-width (px) from computed style
+        function getMinWidthPx(el, fallback = 0) {
+          try {
+            const s = window.getComputedStyle(el);
+            const v = parseFloat(s.minWidth);
+            return Number.isFinite(v) ? v : fallback;
+          } catch (e) { return fallback; }
+        }
+        // Read whether horizontal width changes should be locked (e.g., during vertical interactions)
+        function isHLocked() {
+          if (!mainContainer) return false;
+          const until = Number(mainContainer.dataset.hLockUntil || '0');
+          return until && Date.now() < until;
+        }
+        // Reassert pinned horizontal widths from dataset during lock
+        function reassertPinnedH() {
+          if (!mainContainer) return;
+          const r = Number(mainContainer.dataset.hRightPx || '0');
+          const l = Number(mainContainer.dataset.hLeftPx || '0');
+          if (r > 0 && l >= 0) {
+            rightSide.style.setProperty('flex', '0 0 auto', 'important');
+            leftSide.style.setProperty('flex', '0 0 auto', 'important');
+            // Clamp to container just in case
+            const cw = resizer.parentElement.getBoundingClientRect().width || 0;
+            const resW = resizerRectWidth();
+            const maxR = Math.max(0, cw - resW);
+            const rr = Math.min(r, maxR);
+            const ll = Math.max(0, cw - resW - rr);
+            rightSide.style.setProperty('flex-basis', `${rr}px`, 'important');
+            leftSide.style.setProperty('flex-basis', `${ll}px`, 'important');
+            lastRightWidth = rr;
+            lastLeftWidth = ll;
+          }
+        }
+        function startHDragPinLoop() {
+          if (hDragRafId) return;
+          const tick = () => {
+            if (!isHDragging) { hDragRafId = 0; return; }
+            if (lastRightWidth != null) {
+              const cur = rightSide.getBoundingClientRect().width;
+              if (Math.abs(cur - lastRightWidth) > 0.75) {
+                rightSide.style.setProperty('flex-basis', `${lastRightWidth}px`, 'important');
+              }
+            }
+            if (lastLeftWidth != null) {
+              const curL = leftSide.getBoundingClientRect().width;
+              if (Math.abs(curL - lastLeftWidth) > 0.75) {
+                leftSide.style.setProperty('flex-basis', `${lastLeftWidth}px`, 'important');
+              }
+            }
+            hDragRafId = requestAnimationFrame(tick);
+          };
+          hDragRafId = requestAnimationFrame(tick);
+        }
+        function stopHDragPinLoop() {
+          if (hDragRafId) { cancelAnimationFrame(hDragRafId); hDragRafId = 0; }
+        }
 
         const mouseDownHandler = function (e) {
           e.preventDefault();
+          isHDragging = true;
           const resizerRect = resizer.getBoundingClientRect();
           x = e.clientX;
           dragOffsetX = e.clientX - resizerRect.left;
           rightWidth = rightSide.getBoundingClientRect().width;
+          lastRightWidth = rightWidth;
+          // Freeze sides so layout can't reflow them during drag
+          const containerRectStart = resizer.parentElement.getBoundingClientRect();
+          const leftWidth = containerRectStart.width - resizerRect.width - rightWidth;
+          lastLeftWidth = leftWidth;
+          leftSide.style.setProperty('flex', '0 0 auto', 'important');
+          leftSide.style.setProperty('flex-basis', `${leftWidth}px`, 'important');
+          rightSide.style.setProperty('flex', '0 0 auto', 'important');
+          rightSide.style.setProperty('flex-basis', `${rightWidth}px`, 'important');
 
           document.addEventListener('mousemove', mouseMoveHandler);
           document.addEventListener('mouseup', mouseUpHandler);
@@ -66,6 +138,7 @@
           overlay.addEventListener('wheel', _prevent, { passive: false });
           overlay.addEventListener('touchmove', _prevent, { passive: false });
           document.body.appendChild(overlay);
+          startHDragPinLoop();
         };
 
         const mouseMoveHandler = function (e) {
@@ -75,13 +148,28 @@
           const containerWidth = containerRect.width;
           // Right panel width equals remaining space to the right of divider
           let newRightWidth = containerWidth - desiredDividerX - resizerRectWidth();
-          // Clamp to reasonable min widths (50px each)
-          const minW = 50;
-          const maxRight = containerWidth - resizerRectWidth() - minW;
-          if (newRightWidth < minW) newRightWidth = minW;
+          // Clamp using CSS min-width for both sides to avoid overflow or negative widths
+          const minLeft = getMinWidthPx(leftSide, 200);
+          const minRight = getMinWidthPx(rightSide, 270);
+          const maxRight = Math.max(minRight, containerWidth - resizerRectWidth() - minLeft);
+          if (newRightWidth < minRight) newRightWidth = minRight;
           if (newRightWidth > maxRight) newRightWidth = maxRight;
           // Update the flex-basis to change the width.
-          rightSide.style.flexBasis = `${newRightWidth}px`;
+          rightSide.style.setProperty('flex-basis', `${newRightWidth}px`, 'important');
+          lastRightWidth = newRightWidth;
+          // Keep left side consistent with remainder
+          const newLeftWidth = containerWidth - resizerRectWidth() - newRightWidth;
+          leftSide.style.setProperty('flex-basis', `${newLeftWidth}px`, 'important');
+          lastLeftWidth = newLeftWidth;
+          // If external change tweaked width in this same frame, reapply immediately
+          const cur = rightSide.getBoundingClientRect().width;
+          if (Math.abs(cur - newRightWidth) > 0.75) {
+            rightSide.style.setProperty('flex-basis', `${newRightWidth}px`, 'important');
+          }
+          const curL = leftSide.getBoundingClientRect().width;
+          if (Math.abs(curL - newLeftWidth) > 0.75) {
+            leftSide.style.setProperty('flex-basis', `${newLeftWidth}px`, 'important');
+          }
         };
 
         // Helper to read current resizer width (in case of CSS changes)
@@ -108,20 +196,91 @@
             overlay.parentNode.removeChild(overlay);
           }
           overlay = null;
+          stopHDragPinLoop();
+
+          // Keep both sides explicit to avoid any jump at release
+          try {
+            const parentRect = resizer.parentElement.getBoundingClientRect();
+            const cw = parentRect.width || 0;
+            const resW = resizerRectWidth();
+            const finalRight = rightSide.getBoundingClientRect().width;
+            const finalLeft = Math.max(0, cw - resW - finalRight);
+            rightSide.style.setProperty('flex', '0 0 auto', 'important');
+            leftSide.style.setProperty('flex', '0 0 auto', 'important');
+            rightSide.style.setProperty('flex-basis', `${finalRight}px`, 'important');
+            leftSide.style.setProperty('flex-basis', `${finalLeft}px`, 'important');
+            lastRightWidth = finalRight;
+            lastLeftWidth = finalLeft;
+          } catch (e) { }
 
           // Persist split width (Split mode) as pixels of right panel.
-          if (mainContainer && mainContainer.dataset.mode === 'split') {
-            state.splitRightWidth = rightSide.getBoundingClientRect().width;
-            saveState(state);
-          }
+          const widthPx = rightSide.getBoundingClientRect().width;
+          const parentWidth = resizer.parentElement.getBoundingClientRect().width;
+          state.splitRightWidth = widthPx;
+          state.splitRightRatio = parentWidth > 0 ? Math.max(0, Math.min(1, widthPx / parentWidth)) : null;
+          saveState(state);
+          // Brief suppression window in case something tries to restore immediately
+          hRestoreSuppressUntil = Date.now() + 1000;
+          setTimeout(() => { isHDragging = false; }, 50);
         };
 
         resizer.addEventListener('mousedown', mouseDownHandler);
 
-        // Restore saved width in split mode.
-        if (mainContainer && mainContainer.dataset.mode === 'split' && state.splitRightWidth) {
-          rightSide.style.flexBasis = `${state.splitRightWidth}px`;
-        }
+        // Restore saved width in desktop mode (not stacked/drawer). Prefer ratio, fallback to px.
+        const applyHRestore = () => {
+          if (mainContainer && (mainContainer.dataset.mode === 'stacked' || mainContainer.dataset.mode === 'drawer')) return;
+          if (isHDragging || Date.now() < hRestoreSuppressUntil) return;
+          const containerRect = resizer.parentElement.getBoundingClientRect();
+          const cw = containerRect.width || 0;
+          let w = null;
+          if (typeof state.splitRightRatio === 'number' && isFinite(state.splitRightRatio) && cw > 0) {
+            w = Math.round(cw * state.splitRightRatio);
+          } else if (state.splitRightWidth) {
+            w = state.splitRightWidth;
+          }
+          if (w != null) {
+            // Clamp to CSS min-widths and container
+            const minLeft = getMinWidthPx(leftSide, 200);
+            const minRight = getMinWidthPx(rightSide, 270);
+            const maxRight = Math.max(minRight, cw - resizerRectWidth() - minLeft);
+            if (w < minRight) w = minRight;
+            if (w > maxRight) w = maxRight;
+            // Pin both sides explicitly to prevent flex reflow jitter
+            rightSide.style.setProperty('flex', '0 0 auto', 'important');
+            leftSide.style.setProperty('flex', '0 0 auto', 'important');
+            rightSide.style.setProperty('flex-basis', `${w}px`, 'important');
+            const newLeft = Math.max(minLeft, cw - resizerRectWidth() - w);
+            leftSide.style.setProperty('flex-basis', `${newLeft}px`, 'important');
+            lastRightWidth = w;
+            lastLeftWidth = newLeft;
+          }
+        };
+        applyHRestore();
+        const roH = new ResizeObserver(() => {
+          if (isHDragging) return;
+          if (isHLocked()) { reassertPinnedH(); return; }
+          if (Date.now() >= hRestoreSuppressUntil) applyHRestore();
+        });
+        roH.observe(resizer.parentElement);
+
+        // During suppression window after mouseup, reassert explicit widths if something overrides them
+        const reassertIfSuppressedH = () => {
+          if (!isHDragging && (Date.now() < hRestoreSuppressUntil || isHLocked())) {
+            if (lastRightWidth != null && lastLeftWidth != null) {
+              rightSide.style.setProperty('flex', '0 0 auto', 'important');
+              leftSide.style.setProperty('flex', '0 0 auto', 'important');
+              rightSide.style.setProperty('flex-basis', `${lastRightWidth}px`, 'important');
+              leftSide.style.setProperty('flex-basis', `${lastLeftWidth}px`, 'important');
+            }
+          }
+        };
+        const moSidesH = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            if (m.type === 'attributes' && m.attributeName === 'style') { reassertIfSuppressedH(); break; }
+          }
+        });
+        moSidesH.observe(leftSide, { attributes: true, attributeFilter: ['style'] });
+        moSidesH.observe(rightSide, { attributes: true, attributeFilter: ['style'] });
       });
 
       // --- Vertical Resizing (Top/Bottom Panels) ---
@@ -138,6 +297,10 @@
         let dragOffsetY = 0; // pointer offset from resizer's top edge
         let overlay = null; // overlay to swallow pointer events during drag
         let prevOverflow = '';
+        // Dragging state to suppress restore logic during user interaction
+        let isVDragging = false;
+        // After mouseup, briefly suppress any restore/apply that could override final user size
+        let vRestoreSuppressUntil = 0; // epoch ms
         // Capture gaps around resizer to keep totals exact during delta updates
         let gapTotal = 0;
         let parentSnapHeight = 0;
@@ -154,6 +317,30 @@
         // Track last computed heights during drag
         let lastTopHeight = null;
         let lastBottomHeight = null;
+        // Guard to avoid infinite loops when we reassert heights
+        let _vReasserting = false;
+        // RAF id for pinning heights during drag
+        let vDragRafId = 0;
+        function startVDragPinLoop() {
+          if (vDragRafId) return;
+          const tick = () => {
+            if (!isVDragging) { vDragRafId = 0; return; }
+            // If external code changed heights, immediately reapply last computed ones
+            if (lastTopHeight != null && lastBottomHeight != null) {
+              const curTop = topSide.getBoundingClientRect().height;
+              const curBot = bottomSide.getBoundingClientRect().height;
+              if (Math.abs(curTop - lastTopHeight) > 0.5 || Math.abs(curBot - lastBottomHeight) > 0.5) {
+                topSide.style.setProperty('height', `${lastTopHeight}px`, 'important');
+                bottomSide.style.setProperty('height', `${lastBottomHeight}px`, 'important');
+              }
+            }
+            vDragRafId = requestAnimationFrame(tick);
+          };
+          vDragRafId = requestAnimationFrame(tick);
+        }
+        function stopVDragPinLoop() {
+          if (vDragRafId) { cancelAnimationFrame(vDragRafId); vDragRafId = 0; }
+        }
 
         // Debounced window resize emitter to notify dependent components (e.g., viewers)
         let _emitResizeTimer = null;
@@ -164,7 +351,7 @@
           _emitResizeTimer = setTimeout(() => {
             try { window.dispatchEvent(new Event('resize')); } catch (e) { }
             _emitResizeTimer = null;
-          }, 32); // ~2 frames
+          }, 180); // slightly longer to avoid racing other observers
         }
 
         // --- Helpers for robust availability calculation on restore/save ---
@@ -186,8 +373,8 @@
           const avail = getAvailHeight();
           const clampedTop = Math.max(minH, Math.min(Math.max(minH, avail - minH), topH));
           const bottomH = Math.max(minH, avail - clampedTop);
-          topSide.style.height = `${clampedTop}px`;
-          bottomSide.style.height = `${bottomH}px`;
+          topSide.style.setProperty('height', `${clampedTop}px`, 'important');
+          bottomSide.style.setProperty('height', `${bottomH}px`, 'important');
           topSide.style.flex = '0 0 auto';
           bottomSide.style.flex = '0 0 auto';
           lastTopHeight = clampedTop;
@@ -206,6 +393,27 @@
 
         const mouseDownHandler = function (e) {
           e.preventDefault();
+          isVDragging = true;
+          // Inform other layout scripts to pause container height adjustments
+          if (mainContainer) {
+            try { mainContainer.dataset.vdrag = '1'; } catch (e) { }
+            // Also lock horizontal split briefly to avoid cross-axis wobble
+            try {
+              const hResizer = document.getElementById('wdb-resizer');
+              if (hResizer) {
+                const leftPane = hResizer.previousElementSibling;
+                const rightPane = hResizer.nextElementSibling;
+                const r = rightPane ? rightPane.getBoundingClientRect().width : 0;
+                const parentRect = hResizer.parentElement ? hResizer.parentElement.getBoundingClientRect() : { width: 0 };
+                const cw = parentRect.width || 0;
+                const resW = hResizer.getBoundingClientRect().width || 0;
+                const l = Math.max(0, cw - resW - r);
+                mainContainer.dataset.hRightPx = String(r);
+                mainContainer.dataset.hLeftPx = String(l);
+                mainContainer.dataset.hLockUntil = String(Date.now() + 800);
+              }
+            } catch (e) { }
+          }
           const resizerRect = resizer.getBoundingClientRect();
           y = e.clientY;
           dragOffsetY = e.clientY - resizerRect.top; // kept for compatibility, not used in delta calc
@@ -230,12 +438,15 @@
           minBottomAtStart = Math.min(startBottomHeight, minH);
 
           // Freeze exact current sizes using height + flex lock to avoid any layout jump
-          topSide.style.height = `${startTopHeight}px`;
-          bottomSide.style.height = `${startBottomHeight}px`;
+          topSide.style.setProperty('height', `${startTopHeight}px`, 'important');
+          bottomSide.style.setProperty('height', `${startBottomHeight}px`, 'important');
           topSide.style.flex = '0 0 auto';
           bottomSide.style.flex = '0 0 auto';
           lastTopHeight = startTopHeight;
           lastBottomHeight = startBottomHeight;
+
+          // Start per-frame pinning to prevent snap-back while paused
+          startVDragPinLoop();
 
           // Disable transitions during drag for snappy response
           topSide.style.transition = 'none';
@@ -285,10 +496,26 @@
           if (!(mainContainer && mainContainer.dataset.mode === 'stacked')) {
             const newBottomHeight = parentSnapHeight - newTopHeight - resizerSnapHeight - gapTotal;
             // Apply explicit heights during drag for exact visual alignment
-            topSide.style.height = `${newTopHeight}px`;
-            bottomSide.style.height = `${newBottomHeight}px`;
+            topSide.style.setProperty('height', `${newTopHeight}px`, 'important');
+            bottomSide.style.setProperty('height', `${newBottomHeight}px`, 'important');
             lastTopHeight = newTopHeight;
             lastBottomHeight = newBottomHeight;
+
+            // Keep in-memory ratio in sync during drag so any observer-based restore
+            // uses the latest user size (persisting to localStorage only on mouseup).
+            const avail = getAvailHeight();
+            if (avail > 0) {
+              state.verticalRatio = Math.max(0, Math.min(1, newTopHeight / avail));
+            }
+
+            // If some external change tweaked heights in this same frame, reapply immediately.
+            // This pins the divider to pointer during drag.
+            const curTop = topSide.getBoundingClientRect().height;
+            const curBot = bottomSide.getBoundingClientRect().height;
+            if (Math.abs(curTop - newTopHeight) > 1 || Math.abs(curBot - newBottomHeight) > 1) {
+              topSide.style.setProperty('height', `${newTopHeight}px`, 'important');
+              bottomSide.style.setProperty('height', `${newBottomHeight}px`, 'important');
+            }
           }
         };
 
@@ -303,8 +530,8 @@
           // Keep explicit heights and flex lock on mouseup to avoid any jump
           const finalTop = (lastTopHeight != null) ? lastTopHeight : topSide.getBoundingClientRect().height;
           const finalBottom = (lastBottomHeight != null) ? lastBottomHeight : bottomSide.getBoundingClientRect().height;
-          topSide.style.height = `${finalTop}px`;
-          bottomSide.style.height = `${finalBottom}px`;
+          topSide.style.setProperty('height', `${finalTop}px`, 'important');
+          bottomSide.style.setProperty('height', `${finalBottom}px`, 'important');
           topSide.style.flex = '0 0 auto';
           bottomSide.style.flex = '0 0 auto';
 
@@ -327,6 +554,22 @@
             saveState(state);
           }
           emitResizeSoon();
+
+          // Suppress restore for a short window to avoid race with observers/layout
+          vRestoreSuppressUntil = Date.now() + 1000; // extend suppression to avoid late observers
+          // Allow observers after a brief delay (keep dragging state a tad longer)
+          setTimeout(() => { isVDragging = false; }, 50);
+          stopVDragPinLoop();
+          // Release vdrag flag soon and set a short lock for layout adjusters
+          if (mainContainer) {
+            try {
+              const lockUntil = Date.now() + 1000; // align with suppression window
+              mainContainer.dataset.lockUntil = String(lockUntil);
+              setTimeout(() => { try { delete mainContainer.dataset.vdrag; } catch (e) { } }, 80);
+              // Keep horizontal lock a bit longer to ride out accordion/layout updates
+              mainContainer.dataset.hLockUntil = String(Date.now() + 1000);
+            } catch (e) { }
+          }
         };
 
         resizer.addEventListener('mousedown', mouseDownHandler);
@@ -349,6 +592,8 @@
           };
 
           const applyForMode = () => {
+            if (isVDragging) return; // do not override while user is dragging
+            if (Date.now() < vRestoreSuppressUntil) return; // brief post-drag suppression
             if (mainContainer.dataset.mode === 'stacked' || mainContainer.dataset.mode === 'drawer') {
               clearExplicitHeights();
               return;
@@ -370,17 +615,46 @@
 
           // Follow parent size changes
           const ro = new ResizeObserver(() => {
-            applyForMode();
-            // persist updated ratio to keep reload consistent after manual resize
-            if (mainContainer.dataset.mode !== 'stacked' && mainContainer.dataset.mode !== 'drawer') {
-              try { localStorage.setItem('wdb.viewer.layout', JSON.stringify(state)); } catch (e) { }
+            if (!isVDragging && Date.now() >= vRestoreSuppressUntil) {
+              applyForMode();
+              // persist updated ratio to keep reload consistent after manual resize
+              if (mainContainer.dataset.mode !== 'stacked' && mainContainer.dataset.mode !== 'drawer') {
+                try { localStorage.setItem('wdb.viewer.layout', JSON.stringify(state)); } catch (e) { }
+              }
             }
           });
           ro.observe(parentContainer);
 
+          // Watch for external style changes on top/bottom panels and reassert during suppression
+          const reassertIfSuppressed = () => {
+            // Do not interfere during active drag; only act during post-drag suppression window
+            if (!isVDragging && Date.now() < vRestoreSuppressUntil) {
+              if (lastTopHeight != null && !_vReasserting && mainContainer.dataset.mode !== 'stacked' && mainContainer.dataset.mode !== 'drawer') {
+                _vReasserting = true;
+                try {
+                  applyExplicitHeights(lastTopHeight);
+                } finally {
+                  setTimeout(() => { _vReasserting = false; }, 0);
+                }
+              }
+            }
+          };
+          const moSides = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+              if (m.type === 'attributes' && m.attributeName === 'style') {
+                reassertIfSuppressed();
+                break;
+              }
+            }
+          });
+          moSides.observe(topSide, { attributes: true, attributeFilter: ['style'] });
+          moSides.observe(bottomSide, { attributes: true, attributeFilter: ['style'] });
+
           // Follow mode changes (drawer <-> classic)
           const mo = new MutationObserver(() => {
-            applyForMode();
+            if (!isVDragging && Date.now() >= vRestoreSuppressUntil) {
+              applyForMode();
+            }
           });
           mo.observe(mainContainer, { attributes: true, attributeFilter: ['data-mode'] });
         }
