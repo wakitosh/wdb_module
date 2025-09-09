@@ -67,8 +67,36 @@
         // Re-check shortly after to counter late layout changes (e.g., OSD init)
         setTimeout(adjustViewerHeight, 700);
 
-        // Run whenever the window is resized (debounced for performance).
-        window.addEventListener('resize', Drupal.debounce(adjustViewerHeight, 150, false));
+        // Run on window resize in near real-time: throttle by requestAnimationFrame.
+        let _rafScheduled = false;
+        window.addEventListener('resize', () => {
+          // 直ちに1回実行（初動の空白をなくす）
+          adjustViewerHeight();
+          if (_rafScheduled) return;
+          _rafScheduled = true;
+          requestAnimationFrame(() => {
+            adjustViewerHeight();
+            _rafScheduled = false;
+          });
+        }, { passive: true });
+
+        // Also respond to VisualViewport changes for immediate height updates (mobile/zoom/live-resize)
+        try {
+          if (window.visualViewport) {
+            const vv = window.visualViewport;
+            const handleVV = () => {
+              adjustViewerHeight();
+              if (_rafScheduled) return;
+              _rafScheduled = true;
+              requestAnimationFrame(() => {
+                adjustViewerHeight();
+                _rafScheduled = false;
+              });
+            };
+            vv.addEventListener('resize', handleVV, { passive: true });
+            vv.addEventListener('scroll', handleVV, { passive: true });
+          }
+        } catch (e) { }
 
         // Recompute when layout mode changes (split/stacked/drawer)
         const mc = document.getElementById('wdb-main-container');

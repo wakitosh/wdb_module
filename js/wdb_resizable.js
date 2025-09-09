@@ -62,6 +62,21 @@
         let hSettleUntil = 0;
         let hSettleRafId = 0;
         let hStableFrames = 0; // consecutive frames considered stable
+        // Short-lived boundary pin to avoid jitter when slamming into limits
+        let hBoundaryPinUntil = 0;
+        let hBoundaryPinSide = null; // 'min' | 'max' | null
+        // Boundary hysteresis to avoid rapid in/out toggling around limits
+        const BOUNDARY_HYSTERESIS = 2.5; // px (slightly smaller so exit feels freer)
+        // Throttled window resize emitter to nudge viewer redraw during H-drag
+        let hLastResizeEmitTs = 0;
+        const H_EMIT_MIN_MS = 40; // emit at most ~25fps
+        function emitWindowResizeThrottledH() {
+          const now = Date.now();
+          if (now - hLastResizeEmitTs >= H_EMIT_MIN_MS) {
+            try { window.dispatchEvent(new Event('resize')); } catch (e) { /* noop */ }
+            hLastResizeEmitTs = now;
+          }
+        }
         // Helper to read numeric min-width (px) from computed style
         function getMinWidthPx(el, fallback = 0) {
           try {
@@ -92,7 +107,7 @@
             const minLeft = getMinWidthPx(leftSide, 200);
             const minRight = getMinWidthPx(rightSide, 270);
             let rr = r;
-            const maxRight = Math.max(minRight, cw - resW - minLeft);
+            const maxRight = Math.min(540, Math.max(minRight, cw - resW - minLeft));
             if (rr < minRight) rr = minRight;
             if (rr > maxRight) rr = maxRight;
             let ll = Math.max(minLeft, cw - resW - rr);
@@ -111,18 +126,35 @@
           const tick = () => {
             if (!isSplitMode()) { hDragRafId = 0; return; }
             if (!isHDragging) { hDragRafId = 0; return; }
-            if (lastRightWidth != null) {
-              const cur = rightSide.getBoundingClientRect().width;
-              if (Math.abs(cur - lastRightWidth) > 0.75) {
-                rightSide.style.setProperty('flex-basis', `${lastRightWidth}px`, 'important');
-              }
+            const now = Date.now();
+            if (now < hBoundaryPinUntil && lastRightWidth != null) {
+              // While boundary pin is active, recompute and force-apply both sides every frame
+              try {
+                const parentEl = resizer.parentElement;
+                const cw = (parentEl && (parentEl.clientWidth || parentEl.getBoundingClientRect().width)) || 0;
+                const resW = resizer.offsetWidth || resizerRectWidth();
+                const minLeft = getMinWidthPx(leftSide, 200);
+                const minRight = getMinWidthPx(rightSide, 270);
+                const maxRight = Math.min(540, Math.max(minRight, cw - resW - minLeft));
+                let rr = lastRightWidth;
+                if (rr < minRight) rr = minRight;
+                if (rr > maxRight) rr = maxRight;
+                let ll = Math.max(minLeft, cw - resW - rr);
+                if (ll + resW + rr > cw) {
+                  ll = Math.max(minLeft, cw - resW - rr);
+                }
+                rightSide.style.setProperty('flex', '0 0 auto', 'important');
+                leftSide.style.setProperty('flex', '0 0 auto', 'important');
+                rightSide.style.setProperty('flex-basis', `${rr}px`, 'important');
+                leftSide.style.setProperty('flex-basis', `${ll}px`, 'important');
+                lastRightWidth = rr;
+                lastLeftWidth = ll;
+              } catch (e) { /* noop */ }
+            } else {
+              // Avoid same-frame reapply writes; rely on last computed bases to hold
             }
-            if (lastLeftWidth != null) {
-              const curL = leftSide.getBoundingClientRect().width;
-              if (Math.abs(curL - lastLeftWidth) > 0.75) {
-                leftSide.style.setProperty('flex-basis', `${lastLeftWidth}px`, 'important');
-              }
-            }
+            // While dragging, periodically emit a resize event to force viewer redraws
+            emitWindowResizeThrottledH();
             hDragRafId = requestAnimationFrame(tick);
           };
           hDragRafId = requestAnimationFrame(tick);
@@ -140,22 +172,22 @@
               const parentEl = resizer.parentElement;
               const cw = (parentEl && (parentEl.clientWidth || parentEl.getBoundingClientRect().width)) || 0;
               const resW = resizer.offsetWidth || resizerRectWidth();
-              if (cw > 0 && lastRightWidth != null) {
-                // Recompute left to exactly fill remaining space and clamp
+              if (cw > 0) {
                 const minLeft = getMinWidthPx(leftSide, 200);
                 const minRight = getMinWidthPx(rightSide, 270);
-                let leftW = Math.max(minLeft, cw - resW - lastRightWidth);
-                let rightW = lastRightWidth;
-                const maxRight = Math.max(minRight, cw - resW - minLeft);
+                let rightW = (lastRightWidth != null) ? lastRightWidth : rightSide.getBoundingClientRect().width;
+                const maxRight = Math.min(540, Math.max(minRight, cw - resW - minLeft));
+                if (rightW < minRight) rightW = minRight;
                 if (rightW > maxRight) rightW = maxRight;
+                let leftW = Math.max(minLeft, cw - resW - rightW);
                 if (leftW + resW + rightW > cw) {
-                  // Adjust left to match exactly if rounding drift remains
                   leftW = Math.max(minLeft, cw - resW - rightW);
                 }
-                // Check if current widths already match target within epsilon
-                const eps = 0.5;
+
+                // Check current vs target widths
                 const curR = rightSide.getBoundingClientRect().width;
                 const curL = leftSide.getBoundingClientRect().width;
+                const eps = 0.6;
                 const sumOK = Math.abs((curL + resW + curR) - cw) <= 1.0;
                 const rOK = Math.abs(curR - rightW) <= eps;
                 const lOK = Math.abs(curL - leftW) <= eps;
@@ -163,23 +195,22 @@
                   hStableFrames++;
                 } else {
                   hStableFrames = 0;
-                }
-                // Only write styles if deltas are meaningful to avoid extra paints
-                if (!rOK) {
-                  rightSide.style.setProperty('flex', '0 0 auto', 'important');
-                  rightSide.style.setProperty('flex-basis', `${rightW}px`, 'important');
-                }
-                if (!lOK) {
-                  leftSide.style.setProperty('flex', '0 0 auto', 'important');
-                  leftSide.style.setProperty('flex-basis', `${leftW}px`, 'important');
+                  // Only write styles if deltas are meaningful to avoid extra paints
+                  if (!rOK) {
+                    rightSide.style.setProperty('flex', '0 0 auto', 'important');
+                    rightSide.style.setProperty('flex-basis', `${rightW}px`, 'important');
+                  }
+                  if (!lOK) {
+                    leftSide.style.setProperty('flex', '0 0 auto', 'important');
+                    leftSide.style.setProperty('flex-basis', `${leftW}px`, 'important');
+                  }
                 }
                 lastRightWidth = rightW;
                 lastLeftWidth = leftW;
                 dbg('settle pin', { cw, resW, rightW, leftW, curR, curL, hStableFrames });
-                // If stable for a few frames, end settle early to reduce perceived “wait”
-                if (hStableFrames >= 4) { hSettleRafId = 0; return; }
+                if (hStableFrames >= 2) { hSettleRafId = 0; return; }
               }
-            } catch (e) { }
+            } catch (e) { /* noop */ }
             hSettleRafId = requestAnimationFrame(tick);
           };
           hSettleRafId = requestAnimationFrame(tick);
@@ -195,7 +226,7 @@
             const minLeft = getMinWidthPx(leftSide, 200);
             const minRight = getMinWidthPx(rightSide, 270);
             let rr = rightSide.getBoundingClientRect().width;
-            const maxRight = Math.max(minRight, cw - resW - minLeft);
+            const maxRight = Math.min(540, Math.max(minRight, cw - resW - minLeft));
             if (rr < minRight) rr = minRight;
             if (rr > maxRight) rr = maxRight;
             let ll = Math.max(minLeft, cw - resW - rr);
@@ -211,7 +242,8 @@
             if (mainContainer) {
               mainContainer.dataset.hRightPx = String(rr);
               mainContainer.dataset.hLeftPx = String(ll);
-              mainContainer.dataset.hLockUntil = String(Date.now() + 900);
+              // Shorter horizontal lock while vertical drag starts to reduce perceived latency
+              mainContainer.dataset.hLockUntil = String(Date.now() + 450);
             }
             dbg('snapPin', reason, { cw, resW, rr, ll });
           } catch (e) { }
@@ -220,6 +252,7 @@
         const mouseDownHandler = function (e) {
           e.preventDefault();
           isHDragging = true;
+          hBoundaryPinUntil = 0; hBoundaryPinSide = null;
           const resizerRect = resizer.getBoundingClientRect();
           x = e.clientX;
           dragOffsetX = e.clientX - resizerRect.left;
@@ -230,7 +263,7 @@
           const resWStart = resizer.offsetWidth || resizerRect.width || 0;
           const minLeft = getMinWidthPx(leftSide, 200);
           const minRight = getMinWidthPx(rightSide, 270);
-          const maxRight = Math.max(minRight, cwStart - resWStart - minLeft);
+          const maxRight = Math.min(540, Math.max(minRight, cwStart - resWStart - minLeft));
           // Clamp right to feasible range, then compute left as remainder
           if (rightWidth < minRight) rightWidth = minRight;
           if (rightWidth > maxRight) rightWidth = maxRight;
@@ -253,6 +286,9 @@
           leftSide.style.transition = 'none';
           rightSide.style.transition = 'none';
           resizer.style.transition = 'none';
+          // Performance hint: widths will change rapidly during drag
+          leftSide.style.willChange = 'flex-basis';
+          rightSide.style.willChange = 'flex-basis';
           // Prevent page scroll via overlay event suppression (no overflow toggle).
 
           // Insert a full-page transparent overlay to capture events while dragging.
@@ -271,9 +307,14 @@
           overlay.addEventListener('touchmove', _prevent, { passive: false });
           document.body.appendChild(overlay);
           startHDragPinLoop();
+          // Kick a resize immediately at drag start for faster first redraw
+          emitWindowResizeThrottledH();
         };
 
         const mouseMoveHandler = function (e) {
+          // Small deadzone to avoid initial micro-jumps causing flicker
+          const dx = e.clientX - x;
+          if (Math.abs(dx) < 2) { emitWindowResizeThrottledH(); return; }
           // Keep the divider aligned to the pointer based on initial grab offset
           const parentEl = resizer.parentElement;
           const containerRect = parentEl.getBoundingClientRect();
@@ -282,16 +323,14 @@
           const containerWidth = parentEl.clientWidth || containerRect.width;
           // Right panel width equals remaining space to the right of divider
           const resW = resizer.offsetWidth || resizerRectWidth();
-          let newRightWidth = containerWidth - desiredDividerX - resW;
+          const rawRightWidth = containerWidth - desiredDividerX - resW;
+          let newRightWidth = rawRightWidth;
           // Clamp using CSS min-width for both sides to avoid overflow or negative widths
           const minLeft = getMinWidthPx(leftSide, 200);
           const minRight = getMinWidthPx(rightSide, 270);
-          const maxRight = Math.max(minRight, containerWidth - resW - minLeft);
+          const maxRight = Math.min(540, Math.max(minRight, containerWidth - resW - minLeft));
           if (newRightWidth < minRight) newRightWidth = minRight;
           if (newRightWidth > maxRight) newRightWidth = maxRight;
-          // Update the flex-basis to change the width.
-          rightSide.style.setProperty('flex-basis', `${newRightWidth}px`, 'important');
-          lastRightWidth = newRightWidth;
           // Keep left side consistent with remainder
           let newLeftWidth = containerWidth - resW - newRightWidth;
           // Final guard: ensure sum never exceeds container content width
@@ -301,21 +340,57 @@
             const adjR = Math.min(newRightWidth, maxR);
             if (adjR !== newRightWidth) {
               newRightWidth = adjR;
-              rightSide.style.setProperty('flex-basis', `${newRightWidth}px`, 'important');
-              lastRightWidth = newRightWidth;
             }
           }
-          leftSide.style.setProperty('flex-basis', `${newLeftWidth}px`, 'important');
-          lastLeftWidth = newLeftWidth;
-          // If external change tweaked width in this same frame, reapply immediately
-          const cur = rightSide.getBoundingClientRect().width;
-          if (Math.abs(cur - newRightWidth) > 0.75) {
+
+          // If user is pushing beyond limits, briefly pin right width to avoid jitter from small layout shifts
+          const pushEps = 0.5;
+          const pushingMin = rawRightWidth < (minRight - pushEps);
+          const pushingMax = rawRightWidth > (maxRight + pushEps);
+          const now = Date.now();
+          if ((pushingMin || pushingMax) && lastRightWidth != null) {
+            const atMinNow = lastRightWidth <= (minRight + BOUNDARY_HYSTERESIS);
+            const atMaxNow = lastRightWidth >= (maxRight - BOUNDARY_HYSTERESIS);
+            if ((pushingMin && atMinNow) || (pushingMax && atMaxNow)) {
+              hBoundaryPinSide = pushingMin ? 'min' : 'max';
+              hBoundaryPinUntil = now + 45; // shorter pin (~45ms) to reduce sticky feel
+            }
+          }
+          // If user returns toward interior, drop the pin immediately
+          if (hBoundaryPinSide === 'min' && !pushingMin) { hBoundaryPinSide = null; hBoundaryPinUntil = 0; }
+          if (hBoundaryPinSide === 'max' && !pushingMax) { hBoundaryPinSide = null; hBoundaryPinUntil = 0; }
+          if (now < hBoundaryPinUntil && lastRightWidth != null && hBoundaryPinSide) {
+            // Hold right at last value; recompute left to keep totals exact
+            newRightWidth = lastRightWidth;
+            newLeftWidth = Math.max(minLeft, containerWidth - resW - newRightWidth);
+          } else if (now >= hBoundaryPinUntil) {
+            hBoundaryPinSide = null;
+          }
+
+          // Avoid redundant writes that can cause flicker when pinned at bounds
+          const eps = 0.6; // relax to avoid thrashing
+          const atMin = Math.abs(newRightWidth - minRight) <= eps;
+          const atMax = Math.abs(newRightWidth - maxRight) <= eps;
+          const needR = (lastRightWidth == null) || (Math.abs(newRightWidth - lastRightWidth) > eps);
+          const needL = (lastLeftWidth == null) || (Math.abs(newLeftWidth - lastLeftWidth) > eps);
+          if (!needR && !needL && ((atMin && Math.abs((lastRightWidth || 0) - minRight) <= eps) || (atMax && Math.abs((lastRightWidth || 0) - maxRight) <= eps))) {
+            // Nothing effectively changed and we're pressed against a boundary; skip writes
+            return;
+          }
+
+          // Update the flex-basis only when meaningful delta exists
+          if (needR) {
             rightSide.style.setProperty('flex-basis', `${newRightWidth}px`, 'important');
+            lastRightWidth = newRightWidth;
           }
-          const curL = leftSide.getBoundingClientRect().width;
-          if (Math.abs(curL - newLeftWidth) > 0.75) {
+          if (needL) {
             leftSide.style.setProperty('flex-basis', `${newLeftWidth}px`, 'important');
+            lastLeftWidth = newLeftWidth;
           }
+
+          // Avoid immediate same-frame reapply which can cause ping-pong
+          // Nudge viewer to redraw during drag
+          emitWindowResizeThrottledH();
         };
 
         // Helper to read current resizer width (in case of CSS changes)
@@ -327,6 +402,7 @@
         const mouseUpHandler = function () {
           document.removeEventListener('mousemove', mouseMoveHandler);
           document.removeEventListener('mouseup', mouseUpHandler);
+          hBoundaryPinUntil = 0; hBoundaryPinSide = null;
 
           // Restore default cursor and text selection.
           document.body.style.removeProperty('cursor');
@@ -335,6 +411,8 @@
           leftSide.style.removeProperty('transition');
           rightSide.style.removeProperty('transition');
           resizer.style.removeProperty('transition');
+          leftSide.style.removeProperty('will-change');
+          rightSide.style.removeProperty('will-change');
           // Restore overflow unchanged (we didn't toggle it).
 
           // Remove overlay if present.
@@ -352,7 +430,7 @@
             const minLeft = getMinWidthPx(leftSide, 200);
             const minRight = getMinWidthPx(rightSide, 270);
             let finalRight = rightSide.getBoundingClientRect().width;
-            const maxRight = Math.max(minRight, cw - resW - minLeft);
+            const maxRight = Math.min(540, Math.max(minRight, cw - resW - minLeft));
             if (finalRight < minRight) finalRight = minRight;
             if (finalRight > maxRight) finalRight = maxRight;
             let finalLeft = Math.max(minLeft, cw - resW - finalRight);
@@ -376,7 +454,7 @@
           state.splitRightRatio = parentWidth > 0 ? Math.max(0, Math.min(1, widthPx / parentWidth)) : null;
           saveState(state);
           // Brief suppression window in case something tries to restore immediately
-          hRestoreSuppressUntil = Date.now() + 1500;
+          hRestoreSuppressUntil = Date.now() + 450;
           // Record pinned widths for observers and set a short horizontal lock
           if (mainContainer) {
             try {
@@ -386,13 +464,15 @@
               const resW = resizer.offsetWidth || resizerRectWidth();
               const leftPx = Math.max(0, cw - resW - (Number(mainContainer.dataset.hRightPx) || 0));
               mainContainer.dataset.hLeftPx = String(leftPx);
-              mainContainer.dataset.hLockUntil = String(Date.now() + 800);
+              mainContainer.dataset.hLockUntil = String(Date.now() + 350);
             } catch (e) { }
           }
           // Start a short settle loop to absorb late scrollbars/layout flush
-          hSettleUntil = Date.now() + 700;
+          hSettleUntil = Date.now() + 200;
           startHPostSettleLoop();
-          setTimeout(() => { isHDragging = false; }, 50);
+          // One more resize emit on release to flush any observers
+          emitWindowResizeThrottledH();
+          setTimeout(() => { isHDragging = false; }, 10);
         };
 
         resizer.addEventListener('mousedown', mouseDownHandler);
@@ -433,7 +513,7 @@
             // Clamp to CSS min-widths and container
             const minLeft = getMinWidthPx(leftSide, 200);
             const minRight = getMinWidthPx(rightSide, 270);
-            const maxRight = Math.max(minRight, cw - resW - minLeft);
+            const maxRight = Math.min(540, Math.max(minRight, cw - resW - minLeft));
             if (w < minRight) w = minRight;
             if (w > maxRight) w = maxRight;
             // Pin both sides explicitly to prevent flex reflow jitter
@@ -459,12 +539,15 @@
         let _hResizeSuppTimer = null;
         let _lastResizeCW = null;
         window.addEventListener('resize', () => {
+          // Ignore synthetic resize bursts while the user is dragging horizontally.
+          if (isHDragging) return;
           if (!isSplitMode()) return;
           // On first event in a burst, start suppression and settle pinning
           if (_hResizeSuppTimer === null) {
             const now = Date.now();
-            hRestoreSuppressUntil = Math.max(hRestoreSuppressUntil, now + 1000);
-            hSettleUntil = Math.max(hSettleUntil, now + 600);
+            // Even shorter suppression so updates begin near-instantly when resize starts
+            hRestoreSuppressUntil = Math.max(hRestoreSuppressUntil, now + 260);
+            hSettleUntil = Math.max(hSettleUntil, now + 180);
             // Only snap if parent width changed meaningfully
             try {
               const parentEl = resizer.parentElement;
@@ -476,6 +559,10 @@
             } catch (e) { }
             startHPostSettleLoop();
           }
+          // For every resize event in the burst, extend settle window and ensure RAF keeps running
+          const now2 = Date.now();
+          hSettleUntil = Math.max(hSettleUntil, now2 + 80);
+          startHPostSettleLoop();
           // Debounce end of resize; after quiet period, apply restore once
           if (_hResizeSuppTimer) clearTimeout(_hResizeSuppTimer);
           _hResizeSuppTimer = setTimeout(() => {
@@ -484,7 +571,7 @@
               applyHRestore();
               dbg('win-resize-end restore');
             }
-          }, 150);
+          }, 70);
         });
 
         // During suppression window after mouseup, reassert explicit widths if something overrides them
@@ -562,6 +649,16 @@
         let _vReasserting = false;
         // RAF id for pinning heights during drag
         let vDragRafId = 0;
+        // Throttled window resize emitter to nudge viewer redraw during V-drag
+        let vLastResizeEmitTs = 0;
+        const V_EMIT_MIN_MS = 40; // emit at most ~25fps
+        function emitWindowResizeThrottledV() {
+          const now = Date.now();
+          if (now - vLastResizeEmitTs >= V_EMIT_MIN_MS) {
+            try { window.dispatchEvent(new Event('resize')); } catch (e) { /* noop */ }
+            vLastResizeEmitTs = now;
+          }
+        }
         function startVDragPinLoop() {
           if (vDragRafId) return;
           const tick = () => {
@@ -575,6 +672,8 @@
                 bottomSide.style.setProperty('height', `${lastBottomHeight}px`, 'important');
               }
             }
+            // While dragging, periodically emit a resize event to force viewer redraws
+            emitWindowResizeThrottledV();
             vDragRafId = requestAnimationFrame(tick);
           };
           vDragRafId = requestAnimationFrame(tick);
@@ -721,6 +820,8 @@
           overlay.addEventListener('wheel', _prevent, { passive: false });
           overlay.addEventListener('touchmove', _prevent, { passive: false });
           document.body.appendChild(overlay);
+          // Kick a resize immediately at drag start for faster first redraw
+          emitWindowResizeThrottledV();
         };
 
         const mouseMoveHandler = function (e) {
@@ -764,6 +865,8 @@
               topSide.style.setProperty('height', `${newTopHeight}px`, 'important');
               bottomSide.style.setProperty('height', `${newBottomHeight}px`, 'important');
             }
+            // Nudge viewer to redraw during drag
+            emitWindowResizeThrottledV();
           }
         };
 
@@ -804,19 +907,22 @@
           }
           emitResizeSoon();
 
-          // Suppress restore for a short window to avoid race with observers/layout
-          vRestoreSuppressUntil = Date.now() + 1000; // extend suppression to avoid late observers
+          // Suppress restore briefly to avoid race with observers/layout (shorter to improve responsiveness)
+          vRestoreSuppressUntil = Date.now() + 450;
           // Allow observers after a brief delay (keep dragging state a tad longer)
           setTimeout(() => { isVDragging = false; }, 50);
           stopVDragPinLoop();
+          // One more resize emit on release to flush any observers
+          emitWindowResizeThrottledV();
           // Release vdrag flag soon and set a short lock for layout adjusters
           if (mainContainer) {
             try {
-              const lockUntil = Date.now() + 1000; // align with suppression window
+              // Keep layout adjusters paused only briefly after vertical drag to avoid 1s stall at resize start
+              const lockUntil = Date.now() + 300;
               mainContainer.dataset.lockUntil = String(lockUntil);
               setTimeout(() => { try { delete mainContainer.dataset.vdrag; } catch (e) { } }, 80);
               // Keep horizontal lock a bit longer to ride out accordion/layout updates
-              mainContainer.dataset.hLockUntil = String(Date.now() + 1000);
+              mainContainer.dataset.hLockUntil = String(Date.now() + 450);
             } catch (e) { }
           }
         };

@@ -80,6 +80,67 @@
           gestureSettingsUnknown: { clickToZoom: false },
         });
 
+        // Fast redraw on outer/viewport resize to eliminate startup lag and stalls
+        let _fastRedrawRaf = 0;
+        let _lastRedrawTs = 0;
+        const REDRAW_MIN_MS = 16; // ~60fps上限（実際はブラウザにより抑制）
+        const doForceRedraw = () => { try { if (viewer && viewer.forceRedraw) viewer.forceRedraw(); } catch (e) { /* noop */ } };
+        const scheduleFastRedraw = () => {
+          const now = Date.now();
+          if (now - _lastRedrawTs >= REDRAW_MIN_MS) {
+            doForceRedraw();
+            _lastRedrawTs = now;
+          }
+          if (!_fastRedrawRaf) {
+            _fastRedrawRaf = requestAnimationFrame(() => {
+              _fastRedrawRaf = 0;
+              doForceRedraw();
+              _lastRedrawTs = Date.now();
+            });
+          }
+          // microtaskでもう一度（ブラウザのタイミング差吸収）
+          setTimeout(() => { doForceRedraw(); _lastRedrawTs = Date.now(); }, 0);
+        };
+        // Resize開始直後に連続redrawを短時間走らせる“バースト”
+        let _burstRaf = 0;
+        let _burstUntil = 0;
+        function startRedrawBurst(ms = 240) {
+          const now = Date.now();
+          _burstUntil = Math.max(_burstUntil, now + ms);
+          if (_burstRaf) return;
+          const tick = () => {
+            _burstRaf = 0;
+            const t = Date.now();
+            if (t <= _burstUntil) {
+              doForceRedraw();
+              _lastRedrawTs = t;
+              _burstRaf = requestAnimationFrame(tick);
+            }
+          };
+          _burstRaf = requestAnimationFrame(tick);
+        }
+
+        // Force OSD to redraw when its element size changes (during split/stacked/drawer resizes)
+        try {
+          const osdEl = viewer.element;
+          if (osdEl && typeof ResizeObserver !== 'undefined') {
+            const roOsd = new ResizeObserver(() => {
+              try { if (viewer && viewer.forceRedraw) viewer.forceRedraw(); } catch (e) { /* noop */ }
+            });
+            roOsd.observe(osdEl);
+          }
+        } catch (e) { /* noop */ }
+
+        // Also react to window/visual viewport changes immediately
+        try {
+          window.addEventListener('resize', () => { scheduleFastRedraw(); startRedrawBurst(260); }, { passive: true });
+          if (window.visualViewport) {
+            const vv = window.visualViewport;
+            vv.addEventListener('resize', () => { scheduleFastRedraw(); startRedrawBurst(260); }, { passive: true });
+            vv.addEventListener('scroll', () => { scheduleFastRedraw(); startRedrawBurst(180); }, { passive: true });
+          }
+        } catch (e) { /* noop */ }
+
         // Tunables for suppression
         const SUPPRESS_AFTER_PAN_MS = 200; // Short suppression window close to the earlier tuning
         const DRAG_SUPPRESS_DIST = 8;  // Prior value for classifying a real pan
@@ -209,6 +270,8 @@
           applySavedSizesForMode(mode);
           // sync UI whenever mode changes
           syncUiForLayout();
+          // Ensure the viewer updates immediately after mode switches
+          try { scheduleFastRedraw(); } catch (e) { /* noop */ }
         };
         const toggleDrawerOpen = () => {
           if (!mainContainer) return;
@@ -230,6 +293,8 @@
               }, 50);
             }
           } catch (_) { }
+          // And nudge OSD redraw immediately as well
+          try { scheduleFastRedraw(); } catch (_) { }
         };
 
         // Initial mode: prefer drawer for very small screens, stacked otherwise; split for desktop.
@@ -238,22 +303,27 @@
         if (vw <= 540) setLayoutMode('drawer');
         else if (vw <= 900) setLayoutMode('stacked');
         else setLayoutMode('split');
-        // Re-evaluate on resize with a small debounce.
+        // Re-evaluate on resize quickly: RAF-throttled immediate pass + small debounce follow-up
         let _resizeTid;
+        let _rafQueued = false;
+        const reevaluateMode = () => {
+          const w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+          const current = mainContainer?.dataset?.mode;
+          if (w > 900 && current !== 'split') setLayoutMode('split');
+          else if (w <= 900 && w > 540 && current !== 'stacked') setLayoutMode('stacked');
+          else if (w <= 540 && current !== 'drawer') setLayoutMode('drawer');
+          else {
+            if (typeof syncUiForLayout === 'function') syncUiForLayout();
+            // Do NOT reapply saved widths on plain resize to avoid fighting with live drags.
+          }
+        };
         window.addEventListener('resize', function () {
+          if (!_rafQueued) {
+            _rafQueued = true;
+            requestAnimationFrame(() => { reevaluateMode(); _rafQueued = false; });
+          }
           clearTimeout(_resizeTid);
-          _resizeTid = setTimeout(() => {
-            const w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-            const current = mainContainer?.dataset?.mode;
-            if (w > 900 && current !== 'split') setLayoutMode('split');
-            else if (w <= 900 && w > 540 && current !== 'stacked') setLayoutMode('stacked');
-            else if (w <= 540 && current !== 'drawer') setLayoutMode('drawer');
-            else {
-              // Mode unchanged, still refresh dependent UI in case responsive CSS changed.
-              if (typeof syncUiForLayout === 'function') syncUiForLayout();
-              if (current) applySavedSizesForMode(current);
-            }
-          }, 150);
+          _resizeTid = setTimeout(() => { reevaluateMode(); }, 120);
         }, { passive: true });
 
         // Sync UI (FAB visibility, toolbar placement, edit button) based on layout mode.

@@ -2,6 +2,19 @@
 
 All notable changes to WDB Core will be documented in this file.
 
+## [1.5.1] - 2025-09-10
+
+### Changed
+- Viewer: Immediate redraw on window/visualViewport resize with a short redraw burst at resize start; lowered redraw throttle to 16ms for snappier updates.
+- Layout: Adjust container height immediately on viewport changes (window + VisualViewport), then follow up via requestAnimationFrame.
+
+### Fixed
+- Reduced perceived startup lag at the beginning of window resize and removed pauses around layout mode thresholds.
+- Smoothed behavior near min/max bounds when dragging, minimizing sticky feel without sacrificing stability.
+
+### Performance
+- Live-resize responsiveness: shortened suppression/settle windows and increased resize event cadence during drags (H/V) for more continuous redraw.
+
 ## [1.5.0] - 2025-09-09
 
 ### Added
@@ -46,3 +59,4 @@ All notable changes to WDB Core will be documented in this file.
 [1.4.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.0
 [1.4.4]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.4
 [1.5.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.0
+[1.5.1]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.1
