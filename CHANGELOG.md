@@ -2,7 +2,7 @@
 
 All notable changes to WDB Core will be documented in this file.
 
-## [1.5.1] - 2025-09-10
+## [1.5.2] - 2025-09-10
 
 ### Changed
 - Viewer: Immediate redraw on window/visualViewport resize with a short redraw burst at resize start; lowered redraw throttle to 16ms for snappier updates.
@@ -59,4 +59,4 @@ All notable changes to WDB Core will be documented in this file.
 [1.4.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.0
 [1.4.4]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.4
 [1.5.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.0
-[1.5.1]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.1
+[1.5.2]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.2
