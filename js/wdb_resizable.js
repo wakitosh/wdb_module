@@ -475,7 +475,29 @@
           setTimeout(() => { isHDragging = false; }, 10);
         };
 
-        resizer.addEventListener('mousedown', mouseDownHandler);
+        // Prefer Pointer Events if available (supports touch/pen), fallback to mouse.
+        if (window.PointerEvent) {
+          const pointerUpHandler = function () {
+            document.removeEventListener('pointermove', mouseMoveHandler);
+            document.removeEventListener('pointerup', pointerUpHandler);
+            // Reuse existing mouse handler to finalize state and cleanup
+            mouseUpHandler();
+          };
+          const pointerDownHandler = function (e) {
+            // Only react to primary pointer (ignore secondary touches)
+            if (e.isPrimary === false) return;
+            // Prevent scrolling/selection while starting drag
+            try { e.preventDefault(); } catch (_) { }
+            // Reuse mouseDown logic (creates overlay, state, etc.)
+            mouseDownHandler(e);
+            // Drive updates via pointermove/pointerup
+            document.addEventListener('pointermove', mouseMoveHandler, { passive: false });
+            document.addEventListener('pointerup', pointerUpHandler, { passive: false });
+          };
+          resizer.addEventListener('pointerdown', pointerDownHandler, { passive: false });
+        } else {
+          resizer.addEventListener('mousedown', mouseDownHandler);
+        }
 
         // Restore saved width in desktop mode (not stacked/drawer). Prefer ratio, fallback to px.
         const applyHRestore = () => {
@@ -927,7 +949,24 @@
           }
         };
 
-        resizer.addEventListener('mousedown', mouseDownHandler);
+        // Prefer Pointer Events if available (supports touch/pen), fallback to mouse.
+        if (window.PointerEvent) {
+          const pointerUpHandler = function () {
+            document.removeEventListener('pointermove', mouseMoveHandler);
+            document.removeEventListener('pointerup', pointerUpHandler);
+            mouseUpHandler();
+          };
+          const pointerDownHandler = function (e) {
+            if (e.isPrimary === false) return;
+            try { e.preventDefault(); } catch (_) { }
+            mouseDownHandler(e);
+            document.addEventListener('pointermove', mouseMoveHandler, { passive: false });
+            document.addEventListener('pointerup', pointerUpHandler, { passive: false });
+          };
+          resizer.addEventListener('pointerdown', pointerDownHandler, { passive: false });
+        } else {
+          resizer.addEventListener('mousedown', mouseDownHandler);
+        }
 
         // Restore sizes with layout-stable approach and keep following resizes/mode changes
         if (mainContainer) {

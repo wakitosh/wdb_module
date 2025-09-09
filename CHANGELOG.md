@@ -2,6 +2,18 @@
 
 All notable changes to WDB Core will be documented in this file.
 
+## [1.5.3] - 2025-09-10
+
+### Added
+- Annotation panel (split ≥540px): Left Word column now scrolls independently with a sticky header; Right column (Sign + Constituents) scrolls as one, with Sign header sticky.
+- Resizers: Touch/pen support via Pointer Events for both horizontal and vertical gutters.
+
+### Changed
+- Horizontal and vertical gutters: Enlarged invisible hit areas for easier touch interaction; added active state visual feedback; raised z-index to sit above viewer/panel content.
+
+### Fixed
+- iOS Safari: Horizontal gutter drag now works reliably; prevented page scroll/gesture conflicts during resizes using touch-action and overlay suppression.
+
 ## [1.5.2] - 2025-09-10
 
 ### Changed
@@ -60,3 +72,4 @@ All notable changes to WDB Core will be documented in this file.
 [1.4.4]: https://github.com/wakitosh/wdb_module/releases/tag/1.4.4
 [1.5.0]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.0
 [1.5.2]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.2
+[1.5.3]: https://github.com/wakitosh/wdb_module/releases/tag/1.5.3

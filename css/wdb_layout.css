@@ -22,6 +22,9 @@
   min-width: 200px;
   /* Minimum width. */
   background-color: #000;
+  position: relative;
+  z-index: 1;
+  /* ensure #wdb-resizer (z-index:3000) sits above */
 }
 
 /* The title of the annotation panel. */
@@ -113,6 +116,13 @@
   order: 3;
 }
 
+/* New wrapper for right side (sign + constituents) used in wide split mode; harmless default elsewhere. */
+.annotation-detail-right {
+  display: block;
+  order: 2;
+  /* appear after .annotation-detail-word (order:1) in base flex layout */
+}
+
 #wdb-annotation-info-panel .annotation-detail-constituent-signs h3 {
   margin: 0;
   padding: 0;
@@ -164,10 +174,39 @@
   height: 100%;
   border-left: 1px solid #ccc;
   border-right: 1px solid #ccc;
+  /* Enable touch/pen drag with Pointer Events */
+  touch-action: none;
+  position: relative;
+  /* allow hit-area pseudo to extend */
+  z-index: 3000;
+  /* ensure above viewer overlays/controls */
+  pointer-events: auto;
 }
 
 #wdb-resizer:hover {
   background-color: #ddd;
+}
+
+/* Touch feedback when pressing the gutter */
+#wdb-resizer:active,
+#wdb-resizer:active::before {
+  background-color: #ddd;
+}
+
+/* Expand horizontal gutter hit area for touch (visual width stays 6px) */
+#wdb-resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -12px;
+  /* expand into viewer side */
+  right: -12px;
+  /* expand into panel side */
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  pointer-events: auto;
 }
 
 /* Handle for vertical resizing (between annotation details and full text). */
@@ -183,7 +222,8 @@
   border-top: 1px solid #ccc;
   border-bottom: 1px solid #ccc;
   position: relative;
-  z-index: 10;
+  z-index: 3000;
+  /* ensure above surrounding content */
   pointer-events: auto;
   touch-action: none;
 }
@@ -193,13 +233,22 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: -4px;
-  bottom: -4px;
-  /* expand hit area to 14px without changing visual size */
+  top: -12px;
+  bottom: -12px;
+  /* expand hit area to ~30px without changing visual size */
   cursor: row-resize;
+  background: transparent;
+  pointer-events: auto;
+  touch-action: none;
 }
 
 #wdb-resizer-horizontal:hover {
+  background-color: #ddd;
+}
+
+/* Touch feedback when pressing the vertical gutter */
+#wdb-resizer-horizontal:active,
+#wdb-resizer-horizontal:active::before {
   background-color: #ddd;
 }
 
@@ -211,41 +260,79 @@
 /* ---------------------------------------------- */
 @container (min-width: 540px) {
 
+  /* Prevent outer content from scrolling; let inner columns handle it */
+  #wdb-main-container.layout--split #wdb-annotation-panel-content {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Ensure details area can shrink so inner scroll works */
+  #wdb-main-container.layout--split #wdb-annotation-details-area {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
   /* Split mode only: convert details content to a 2-column grid */
   #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-details-popup {
     display: grid;
     grid-template-columns: 1fr 1fr;
     /* 50:50 */
-    grid-template-rows: auto 1fr;
-    /* Sign on top, Constituents below */
-    grid-template-areas:
-      "word sign"
-      "word cons";
+    grid-template-rows: 1fr;
+    /* single row: left word, right (sign+cons) */
+    grid-template-areas: "word right";
     column-gap: 0;
     /* draw divider via border */
     row-gap: 0;
     /* eliminate gap so left border appears continuous */
     align-items: start;
+    height: 100%;
+    min-height: 0;
+    /* allow inner areas to shrink and scroll */
+    overflow: hidden;
+    /* prevent double scroll; let inner areas scroll */
   }
 
   /* Area placement */
   #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-word {
     grid-area: word;
+    min-height: 0;
+    height: 100%;
+    overflow: auto;
+    /* scroll only the Word column */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
-  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-sign {
-    grid-area: sign;
+  /* Keep Word header visible while left column scrolls */
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-word .item-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
   }
 
-  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-constituent-signs {
-    grid-area: cons;
-  }
-
-  /* Center divider and padding only on right column */
-  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-sign,
-  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-constituent-signs {
+  /* Right column wrapper holds Sign (sticky) + Constituents (flow) */
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-right {
+    grid-area: right;
+    display: block;
+    min-height: 0;
+    height: 100%;
+    overflow: auto;
+    /* unified scroll on right side */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     border-left: 1px solid #ccc;
     padding-left: 10px;
+  }
+
+  /* Keep the small Sign header area visible when right column scrolls */
+  #wdb-main-container.layout--split #wdb-annotation-details-area .annotation-detail-right .annotation-detail-sign .item-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
   }
 }
 
