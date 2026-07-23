@@ -67,7 +67,7 @@
               {# Word thumbnail with polygon overlay #}
               <div class="word-thumbnail is-clickable" data-word-points="{{ word_points_data|json_encode }}">
                 <svg width="250" height="125" viewBox="0 0 {{ word_thumb.region_w }} {{ word_thumb.region_h }}">
-                  <image href="{{ word_thumb.thumbnail_url }}" x="0" y="0" width="{{ word_thumb.region_w }}" height="{{ word_thumb.region_h }}" />
+                  <image crossorigin="anonymous" href="{{ word_thumb.thumbnail_url }}" x="0" y="0" width="{{ word_thumb.region_w }}" height="{{ word_thumb.region_h }}" />
                   <polygon points="{{ word_thumb.word_hull_points }}"/>
                 </svg>
               </div>
@@ -139,7 +139,7 @@
               <div class="sign-thumbnail is-clickable" data-annotation-uri="{{ interp.sign_info.annotation_uri }}">
                 {% set thumb = interp.thumbnail_data %}
                 <svg width="125" height="125" viewBox="0 0 {{ thumb.region_w }} {{ thumb.region_h }}">
-                  <image href="{{ thumb.thumbnail_url }}" x="0" y="0" width="{{ thumb.region_w }}" height="{{ thumb.region_h }}" />
+                  <image crossorigin="anonymous" href="{{ thumb.thumbnail_url }}" x="0" y="0" width="{{ thumb.region_w }}" height="{{ thumb.region_h }}" />
                   <polygon points="{{ thumb.polygon_points }}"/>
                 </svg>
               </div>
@@ -178,7 +178,7 @@
                   {% set sign_image_url = data.iiif_base_url ~ '/' ~ sign_thumb.image_identifier|url_encode ~ '/' ~ sign_thumb.region_xywh ~ '/!100,100/0/default.jpg' %}
                   <div class="sign-thumbnail is-clickable" data-annotation-uri="{{ si_item.annotation_uri }}">
                     <svg width="100" height="100" viewBox="0 0 {{ sign_thumb.region_w }} {{ sign_thumb.region_h }}">
-                      <image href="{{ sign_image_url }}" x="0" y="0" width="{{ sign_thumb.region_w }}" height="{{ sign_thumb.region_h }}" />
+                      <image crossorigin="anonymous" href="{{ sign_image_url }}" x="0" y="0" width="{{ sign_thumb.region_w }}" height="{{ sign_thumb.region_h }}" />
                       <polygon points="{{ sign_thumb.polygon_points }}"/>
                     </svg>
                   </div>

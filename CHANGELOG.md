@@ -2,6 +2,13 @@
 
 All notable changes to this module will be documented in this file.
 
+## [1.5.14] - 2026-07-23
+### Fixed
+- Thumbnails (word/sign/constituent-sign, pager, and search results) are now requested in CORS mode via `crossorigin="anonymous"`, matching the OpenSeadragon viewer. This prevents `ERR_BLOCKED_BY_RESPONSE.NotSameSite` errors when the IIIF image server responds with a cross-origin `Cross-Origin-Resource-Policy` header.
+
+### 修正 (日本語)
+- 単語／文字／構成文字サムネイル、ページャーサムネイル、検索結果サムネイルを、ビューア（OpenSeadragon）と同様に `crossorigin="anonymous"`（CORSモード）で読み込むようにしました。IIIF 画像サーバーが `Cross-Origin-Resource-Policy` ヘッダーを返す場合に発生する `ERR_BLOCKED_BY_RESPONSE.NotSameSite` によるサムネイル読み込み失敗を防止します。
+
 ## [1.5.13] - 2025-12-23
 ### Fixed
 - Cantaloupe delegate: added an `authorize()` entrypoint (aliasing to `pre_authorize()`) to stay compatible with installations that invoke `authorize`, preventing 500 errors.

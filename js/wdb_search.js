@@ -112,7 +112,9 @@
 
             const thumbnailContainer = $('<div>').addClass('search-result-thumbnail');
             if (item.thumbnail_data && item.thumbnail_data.image_url) {
-              const img = $('<img>').attr('src', item.thumbnail_data.image_url);
+              // Set crossorigin before src so thumbnails load in CORS mode and
+              // are not blocked by a cross-origin Cross-Origin-Resource-Policy.
+              const img = $('<img>').attr('crossorigin', 'anonymous').attr('src', item.thumbnail_data.image_url);
               const svgOverlay = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg'))
                 .attr('viewBox', `0 0 ${item.thumbnail_data.region_w} ${item.thumbnail_data.region_h}`)
                 .addClass('thumbnail-overlay');
