@@ -178,8 +178,10 @@ location ^~ /iiif/ {
 For Apache/mod_proxy the equivalent looks like:
 
 ```apacheconf
-ProxyPass        /iiif/  http://cantaloupe.internal:8182/iiif/ timeout=600 keepalive=On
-ProxyPassReverse /iiif/  http://cantaloupe.internal:8182/iiif/
+# enablereuse keeps the backend connection alive across tiles; without it every
+# tile opens a new TCP connection to Cantaloupe.
+ProxyPass        /iiif/  http://127.0.0.1:8182/iiif/ nocanon enablereuse=on max=64 ttl=60 timeout=60
+ProxyPassReverse /iiif/  http://127.0.0.1:8182/iiif/
 
 RequestHeader set X-Forwarded-Proto "https"
 RequestHeader set X-Forwarded-Host  "%{HTTP_HOST}s"
@@ -193,17 +195,95 @@ RequestHeader set X-Wdb-Token "%{wdb_token_qs}e"
 
 > Note: When the subsystem allows anonymous access there is no `wdb_token` query parameter, so the forwarded `X-Wdb-Token` header will be empty. Drupal still authorizes those requests automatically.
 
-Adjust the upstream host/port to match your deployment (Docker service name, UNIX socket, load balancer, etc.).
+Adjust the upstream host/port to match your deployment (Docker service name, UNIX socket, load balancer, etc.). Prefer a loopback or private address over the site's public FQDN: routing the proxy hop back out through the public interface adds a DNS lookup and a network round trip to every tile.
+
+##### Loopback vhost for the authorization endpoint
+
+The delegate calls `/wdb/api/cantaloupe_auth` once per IIIF request. If that call goes to the public HTTPS URL, each tile pays for a TLS handshake plus an external round trip — measured at roughly 25–30 ms on a reference deployment, against about 7 ms to generate the tile itself. Give the image server a plain-HTTP loopback entrance instead:
+
+```apacheconf
+# Bound to 127.0.0.1 only, so it is unreachable from outside the host.
+Listen 127.0.0.1:8080
+
+<VirtualHost 127.0.0.1:8080>
+    ServerName wdb.example.org
+    DocumentRoot "/var/www/wdb/web"
+    DirectoryIndex index.php
+
+    <Directory "/var/www/wdb/web">
+        Options -Indexes -Includes
+        AllowOverride All
+        Require ip 127.0.0.1
+    </Directory>
+
+    # Make Drupal evaluate the request as if it arrived over HTTPS.
+    SetEnv HTTPS on
+    RequestHeader set X-Forwarded-Proto https
+    RequestHeader set X-Forwarded-Port 443
+</VirtualHost>
+```
+
+Then point the delegate at it. `WDB_AUTH_HOST_HEADER` is required because Drupal resolves the site — and checks `trusted_host_patterns` — from the `Host` header, which would otherwise be `127.0.0.1`:
+
+```ini
+Environment="DRUPAL_AUTH_ENDPOINT=http://127.0.0.1:8080/wdb/api/cantaloupe_auth"
+Environment="WDB_AUTH_HOST_HEADER=wdb.example.org"
+```
+
+Note that a port 80 vhost redirecting to HTTPS will send the delegate a 301 rather than an authorization decision, which the delegate treats as "not authorized". Use a dedicated port as above rather than adding an exception to the redirect rule.
+
+##### Caching IIIF responses at the proxy
+
+IIIF responses are immutable for a given identifier and set of parameters, so they should be cached aggressively. Watch out for blanket `no-store` rules: a directive such as
+
+```apacheconf
+<Files ~ "\.(css|json|jpg)$">
+    Header set Cache-Control no-store
+</Files>
+```
+
+also matches `info.json` and every `default.jpg` tile, which disables IIIF caching entirely. Override it inside the proxy location:
+
+```apacheconf
+<Location /iiif/>
+    # Do not use "Header always" here: always operates on err_headers_out and
+    # cannot remove the Cache-Control the proxied response put in headers_out,
+    # so you end up emitting the header twice.
+    Header unset Cache-Control
+    Header unset Pragma
+    Header set Cache-Control "public, max-age=2592000, immutable"
+    FileETag None
+</Location>
+```
+
+Also enable HTTP/2 on the public vhost (`Protocols h2 http/1.1`). Loading `mod_http2` alone is not enough — without the `Protocols` directive Apache still answers HTTP/1.1, and a viewer's tile requests stay capped at the browser's six-connections-per-host limit.
 
 #### Delegate script & local harness
 
 - A sample delegate script is provided at `web/modules/custom/wdb_core/modules/wdb_cantaloupe_auth/scripts/delegates.rb`. It shows how to extract the token from `request_uri`, `request_headers`, and forwarded headers. Copy it into your Cantaloupe deployment (for example as `delegates.rb`, or `require_relative 'delegates'` from your existing delegate) and set `DRUPAL_AUTH_ENDPOINT`.
-- Set `DRUPAL_AUTH_ENDPOINT` to the internal address of `/wdb/api/cantaloupe_auth`. You can optionally override the query parameter name by exporting `WDB_TOKEN_PARAM`.
-- To require **tokens only** (no cookie fallback) at the image server level, set `WDB_TOKEN_ONLY=true` in the Cantaloupe environment. When this flag is on the delegate will not forward any browser cookies to Drupal; only valid `wdb_token` values will authorize requests.
-- A CLI harness (`web/modules/custom/wdb_core/modules/wdb_cantaloupe_auth/scripts/delegate_harness.rb`) lets you test the flow without running Cantaloupe:
+- **Do not delete the stub methods at the bottom of the sample.** Cantaloupe 5.x calls every method declared in its own `delegates.rb.sample` — `metadata`, `redactions`, `overlay`, `source`, and a dozen more. A method that is not defined raises `NoMethodError` inside JRuby, which Cantaloupe converts into an HTTP 500. A missing `metadata` breaks *every* `info.json` request while tiles keep working, which makes the failure look like a caching or manifest problem rather than a delegate one. When you upgrade Cantaloupe, diff your delegate against the new `delegates.rb.sample` and port over any newly added method.
+- The delegate is configured entirely through environment variables:
+
+  | Variable | Default | Purpose |
+  | --- | --- | --- |
+  | `DRUPAL_AUTH_ENDPOINT` | — | URL of `/wdb/api/cantaloupe_auth`. Prefer the loopback vhost above. |
+  | `WDB_AUTH_HOST_HEADER` | unset | `Host` header to send. Required when the endpoint is a loopback address. |
+  | `WDB_TOKEN_PARAM` | `wdb_token` | Query parameter carrying the token. |
+  | `WDB_TOKEN_ONLY` | `false` | `true` disables the cookie/session fallback; only valid tokens authorize. |
+  | `WDB_SKIP_AUTH_DIRS` | empty | Comma-separated identifier path segments served with no authorization check at all (e.g. `sample`). Use only for genuinely public material. |
+  | `WDB_AUTH_CACHE_TTL` | `60` | Seconds to cache an authorization decision. `0` disables caching. |
+
+- **Authorization caching.** One viewport pulls roughly twenty tiles and Cantaloupe calls the delegate for each, so without caching a single page view means twenty full Drupal bootstraps. The delegate caches each decision under a key covering the identifier, the token and the cookies, so a different user, token, or image never reuses another entry. The trade-off is that a decision can outlive the state it was based on by up to the TTL: after a logout or a token expiry, tiles for images the user had already opened keep loading for that long. Keep `WDB_AUTH_CACHE_TTL` well below `token_ttl` (default 600 s), or set it to `0` if you need revocation to take effect immediately.
+- A CLI harness (`web/modules/custom/wdb_core/modules/wdb_cantaloupe_auth/scripts/delegate_harness.rb`) lets you test the flow without running Cantaloupe. It verifies delegate method coverage on every run, and can do that check on its own:
 
 ```bash
+# Confirm every method Cantaloupe calls is defined (no Drupal contact).
+ruby delegate_harness.rb --check-methods
+
+# Full authorization round trip. Disable the cache so repeated runs against
+# changing permissions are not masked.
 DRUPAL_AUTH_ENDPOINT="https://wdb.example.org/wdb/api/cantaloupe_auth" \
+WDB_AUTH_CACHE_TTL=0 \
   ruby delegate_harness.rb \
   --identifier wdb/hdb/bm10221/1.ptif \
   --request-uri "/iiif/3/.../default.jpg?wdb_token=<paste token>"
@@ -213,7 +293,10 @@ DRUPAL_AUTH_ENDPOINT="https://wdb.example.org/wdb/api/cantaloupe_auth" \
 
 - Cantaloupe writes detailed logs to `cantaloupe/logs/application.log`. A healthy request shows `:token=>"[redacted]"` in the payload and `{"authorized":true,"reason":"Token validated."}` from Drupal.
 - If you only see `"reason":"No session cookie found."`, the token is not reaching the delegate—revisit your proxy headers.
-- Tokens remain valid until the configured TTL. This is why an already-open tile URL still works for a few minutes after logout, whereas a bare (no-token) URL immediately returns 403 once the Drupal session ends.
+- `NoMethodError: undefined method 'metadata' for #<CustomDelegate>` in the Cantaloupe error log, together with HTTP 500 on `info.json` while tiles still render, means the delegate is missing stub methods. Run `ruby delegate_harness.rb --check-methods` against your deployed copy.
+- `Delegate pre_authorize error: Errno::ECONNREFUSED` means `DRUPAL_AUTH_ENDPOINT` is unreachable — commonly the loopback vhost is configured but Apache has not been restarted. The delegate denies the request (403) when it cannot reach Drupal.
+- Configure Cantaloupe's `RollingFileAppender` rather than the plain `FileAppender`. The latter never rotates, and a delegate error that fires on every request will fill the disk quickly — a stack trace per request reached 1.2 GB of error log in one reference deployment.
+- Tokens remain valid until the configured TTL. This is why an already-open tile URL still works for a few minutes after logout, whereas a bare (no-token) URL immediately returns 403 once the Drupal session ends. With `WDB_AUTH_CACHE_TTL` above zero, add that value to the window.
 - Logged-in editors can still access IIIF URLs without tokens because the delegate falls back to session cookies. Disable that fallback only if you are ready to enforce tokens everywhere.
 ### **Export Template Variables**
 
@@ -461,8 +544,10 @@ location ^~ /iiif/ {
 Apache (mod_proxy) の例:
 
 ```apacheconf
-ProxyPass        /iiif/  http://cantaloupe.internal:8182/iiif/ timeout=600 keepalive=On
-ProxyPassReverse /iiif/  http://cantaloupe.internal:8182/iiif/
+# enablereuse でバックエンド接続を使い回します。これが無いとタイル 1 枚ごとに
+# Cantaloupe への TCP 接続を張り直します。
+ProxyPass        /iiif/  http://127.0.0.1:8182/iiif/ nocanon enablereuse=on max=64 ttl=60 timeout=60
+ProxyPassReverse /iiif/  http://127.0.0.1:8182/iiif/
 
 RequestHeader set X-Forwarded-Proto "https"
 RequestHeader set X-Forwarded-Host  "%{HTTP_HOST}s"
@@ -476,17 +561,95 @@ RequestHeader set X-Wdb-Token "%{wdb_token_qs}e"
 
 > 補足: Allow anonymous access をオンにしているサブシステムでは `wdb_token` クエリ自体が付与されないため、転送される `X-Wdb-Token` ヘッダーは空になります。その場合でも Drupal 側で自動的に許可されます。
 
-上流ホスト名やポート番号は実際の環境に合わせて変更してください。
+上流ホスト名やポート番号は実際の環境に合わせて変更してください。プロキシ先にはサイトの公開 FQDN ではなくループバックやプライベートアドレスを指定してください。公開インターフェースへ折り返すと、タイル 1 枚ごとに DNS 解決とネットワーク往復が余分に発生します。
+
+##### 認可エンドポイント用のループバック vhost
+
+delegate は IIIF リクエスト 1 件ごとに `/wdb/api/cantaloupe_auth` を呼びます。この呼び出しが公開 HTTPS URL を経由すると、タイルごとに TLS ハンドシェイクと外部往復のコストがかかります。ある実環境での実測では **1 リクエストあたり約 25〜30ms** で、タイル生成そのもの（約 7ms）より大きなコストでした。画像サーバ用に平文 HTTP のループバック入口を用意してください。
+
+```apacheconf
+# 127.0.0.1 にのみバインドするため、ホスト外部からは到達できません。
+Listen 127.0.0.1:8080
+
+<VirtualHost 127.0.0.1:8080>
+    ServerName wdb.example.org
+    DocumentRoot "/var/www/wdb/web"
+    DirectoryIndex index.php
+
+    <Directory "/var/www/wdb/web">
+        Options -Indexes -Includes
+        AllowOverride All
+        Require ip 127.0.0.1
+    </Directory>
+
+    # Drupal に HTTPS 経由のリクエストとして評価させます。
+    SetEnv HTTPS on
+    RequestHeader set X-Forwarded-Proto https
+    RequestHeader set X-Forwarded-Port 443
+</VirtualHost>
+```
+
+delegate 側はここを向けます。Drupal は `Host` ヘッダーからサイトを解決し `trusted_host_patterns` を検査するため、`WDB_AUTH_HOST_HEADER` の指定が必須です（指定しないと `127.0.0.1` になってしまいます）。
+
+```ini
+Environment="DRUPAL_AUTH_ENDPOINT=http://127.0.0.1:8080/wdb/api/cantaloupe_auth"
+Environment="WDB_AUTH_HOST_HEADER=wdb.example.org"
+```
+
+なお、ポート 80 の vhost が HTTPS へリダイレクトしている場合、delegate には認可結果ではなく 301 が返り、「認可されなかった」と扱われます。リダイレクト規則に例外を追加するのではなく、上記のように専用ポートを用意してください。
+
+##### プロキシでの IIIF レスポンスのキャッシュ
+
+IIIF のレスポンスは識別子とパラメータで一意に定まる不変コンテンツなので、積極的にキャッシュすべきです。ここで注意が必要なのが、一律の `no-store` 指定です。たとえば
+
+```apacheconf
+<Files ~ "\.(css|json|jpg)$">
+    Header set Cache-Control no-store
+</Files>
+```
+
+は `info.json` と全タイル（`default.jpg`）にも一致してしまい、IIIF のキャッシュを完全に無効化します。プロキシの Location 側で打ち消してください。
+
+```apacheconf
+<Location /iiif/>
+    # ここで "Header always" を使わないこと。always は err_headers_out を操作する
+    # ため、プロキシ応答が headers_out に載せた Cache-Control を消せず、
+    # ヘッダが 2 本出力されてしまいます。
+    Header unset Cache-Control
+    Header unset Pragma
+    Header set Cache-Control "public, max-age=2592000, immutable"
+    FileETag None
+</Location>
+```
+
+併せて公開 vhost で HTTP/2 を有効化してください（`Protocols h2 http/1.1`）。`mod_http2` をロードしただけでは不十分で、`Protocols` ディレクティブが無いと Apache は HTTP/1.1 で応答し続け、ビューアのタイル取得はブラウザの「同一ホスト 6 接続」制限に張り付いたままになります。
 
 #### Delegate スクリプトとローカルハーネス
 
 - サンプルの delegate は `web/modules/custom/wdb_core/modules/wdb_cantaloupe_auth/scripts/delegates.rb` に含まれています。`request_uri` や転送ヘッダーからのトークン抽出方法が実装されています。Cantaloupe の環境にコピー（例えば `delegates.rb` として設置、または既存 delegate から `require_relative 'delegates'`）し、`DRUPAL_AUTH_ENDPOINT` を設定してください。
-- `DRUPAL_AUTH_ENDPOINT` は `/wdb/api/cantaloupe_auth` への内部 URL に設定します。クエリパラメータ名を変えたい場合は環境変数 `WDB_TOKEN_PARAM` を指定します。
-- 画像サーバ側で **トークンのみ必須（Cookie フォールバックなし）** にしたい場合は、Cantaloupe の実行環境に `WDB_TOKEN_ONLY=true` を設定してください。このフラグが有効なとき、delegate はブラウザ Cookie を Drupal に転送せず、有効な `wdb_token` が無いリクエストはすべて拒否されます。
-- Cantaloupe を起動せずに試せる CLI ハーネス `web/modules/custom/wdb_core/modules/wdb_cantaloupe_auth/scripts/delegate_harness.rb` も用意しています。
+- **サンプル末尾のスタブメソッド群を削除しないでください。** Cantaloupe 5.x は自身の `delegates.rb.sample` に宣言されたメソッドをすべて呼び出します（`metadata`、`redactions`、`overlay`、`source` ほか十数個）。未定義のメソッドがあると JRuby 内で `NoMethodError` が発生し、Cantaloupe はこれを HTTP 500 に変換します。特に `metadata` が欠けていると、タイルは正常に返るのに **`info.json` だけがすべて 500 になる** ため、delegate ではなくキャッシュやマニフェストの問題に見えてしまいます。Cantaloupe をアップグレードした際は、新しい `delegates.rb.sample` と差分を取り、追加されたメソッドを必ず移植してください。
+- delegate の設定はすべて環境変数で行います。
+
+  | 変数 | 既定値 | 用途 |
+  | --- | --- | --- |
+  | `DRUPAL_AUTH_ENDPOINT` | — | `/wdb/api/cantaloupe_auth` の URL。上記のループバック vhost を推奨 |
+  | `WDB_AUTH_HOST_HEADER` | 未設定 | 送信する `Host` ヘッダー。エンドポイントがループバックアドレスの場合は必須 |
+  | `WDB_TOKEN_PARAM` | `wdb_token` | トークンを載せるクエリパラメータ名 |
+  | `WDB_TOKEN_ONLY` | `false` | `true` で Cookie／セッションのフォールバックを無効化し、有効なトークンのみを許可 |
+  | `WDB_SKIP_AUTH_DIRS` | 空 | 認可チェックを一切行わずに配信する識別子のパス要素（カンマ区切り、例 `sample`）。本当に公開してよい資料にのみ使用してください |
+  | `WDB_AUTH_CACHE_TTL` | `60` | 認可結果をキャッシュする秒数。`0` でキャッシュ無効 |
+
+- **認可結果のキャッシュ。** 1 画面で約 20 枚のタイルが読み込まれ、Cantaloupe はその 1 枚ごとに delegate を呼ぶため、キャッシュが無いと 1 ページ表示で Drupal のフルブートストラップが 20 回走ります。delegate は識別子・トークン・Cookie を含むキーで判定結果をキャッシュするので、利用者・トークン・画像が異なれば別エントリになります。トレードオフとして、**判定結果は根拠となった状態より最大 TTL 秒だけ長く生き残ります**。ログアウトやトークン失効の後も、すでに開いていた画像のタイルはその間だけ表示され続けます。`WDB_AUTH_CACHE_TTL` は `token_ttl`（既定 600 秒）より十分に小さく保つか、失効を即座に反映させたい場合は `0` にしてください。
+- Cantaloupe を起動せずに試せる CLI ハーネス `web/modules/custom/wdb_core/modules/wdb_cantaloupe_auth/scripts/delegate_harness.rb` も用意しています。実行のたびに delegate のメソッド網羅性を検査し、その検査のみを行うこともできます。
 
 ```bash
+# Cantaloupe が呼ぶメソッドがすべて定義されているか確認（Drupal には接続しません）
+ruby delegate_harness.rb --check-methods
+
+# 認可の往復を含む確認。権限を変えながら繰り返し試す場合は
+# キャッシュを無効化してください。
 DRUPAL_AUTH_ENDPOINT="https://wdb.example.org/wdb/api/cantaloupe_auth" \
+WDB_AUTH_CACHE_TTL=0 \
   ruby delegate_harness.rb \
   --identifier wdb/hdb/bm10221/1.ptif \
   --request-uri "/iiif/3/.../default.jpg?wdb_token=<貼り付けたトークン>"
@@ -496,7 +659,10 @@ DRUPAL_AUTH_ENDPOINT="https://wdb.example.org/wdb/api/cantaloupe_auth" \
 
 - Cantaloupe のログ (`cantaloupe/logs/application.log`) に `:token=>"[redacted]"` が出ていれば、delegate までトークンが届いています。Drupal 側は `{"authorized":true,"reason":"Token validated."}` を返します。
 - `"reason":"No session cookie found."` しか表示されない場合は、プロキシがヘッダーを付与できていない可能性があります。
-- トークンは TTL が切れるまで有効です。ログアウト後もしばらくタイルが表示されるのはこのためです。
+- Cantaloupe のエラーログに `NoMethodError: undefined method 'metadata' for #<CustomDelegate>` が出て、タイルは表示されるのに `info.json` だけ 500 になる場合は、delegate のスタブメソッドが不足しています。設置済みのファイルに対して `ruby delegate_harness.rb --check-methods` を実行して確認してください。
+- `Delegate pre_authorize error: Errno::ECONNREFUSED` は `DRUPAL_AUTH_ENDPOINT` に到達できないことを示します。ループバック vhost を追加したのに Apache を再起動していない場合によく起きます。delegate は Drupal に到達できないとき、そのリクエストを拒否（403）します。
+- Cantaloupe のログは `FileAppender` ではなく `RollingFileAppender` を設定してください。前者はローテーションを行わないため、毎リクエストで発生する delegate エラーがあると急速にディスクを圧迫します（ある実環境ではエラーログだけで 1.2GB に達していました）。
+- トークンは TTL が切れるまで有効です。ログアウト後もしばらくタイルが表示されるのはこのためです。`WDB_AUTH_CACHE_TTL` を 0 より大きくしている場合は、その秒数がさらに加算されます。
 - トークンなしの URL でも、Drupal にログインしているブラウザからのアクセスであればセッション Cookie によるフォールバックで許可されます。完全にトークンのみとしたい場合は、delegate スクリプト側でフォールバックを無効化してください。
 
 ### エクスポート用テンプレートの変数

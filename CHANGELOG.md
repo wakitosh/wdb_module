@@ -2,6 +2,31 @@
 
 All notable changes to this module will be documented in this file.
 
+## [1.5.15] - 2026-08-08
+### Fixed
+- Cantaloupe delegate sample: defined every method Cantaloupe 5.x invokes on `CustomDelegate` (`metadata`, `redactions`, `overlay`, `source`, the `*source_*` lookups, and the meta-identifier serializers), carrying over their upstream documentation comments. Previously only `pre_authorize`/`authorize` were defined, so a missing `metadata` raised `NoMethodError` inside JRuby and Cantaloupe returned HTTP 500 for **every** `info.json` request while tiles kept rendering normally.
+
+### Added
+- Cantaloupe delegate sample: authorization-result cache (`WDB_AUTH_CACHE_TTL`, default 60 s, `0` to disable), keyed on identifier + token + cookies. A single IIIF viewport pulls ~20 tiles and the delegate is called for each, so this collapses ~20 Drupal bootstraps per page view into one. Note the trade-off: a decision can outlive the state it was based on by up to the TTL, so keep it well below `token_ttl`.
+- Cantaloupe delegate sample: `WDB_AUTH_HOST_HEADER` to send an explicit `Host` header, so the authorization endpoint can be reached over a plain-HTTP loopback vhost instead of the public HTTPS URL (~25–30 ms → a few ms per IIIF request on a reference deployment).
+- Cantaloupe delegate sample: `WDB_SKIP_AUTH_DIRS` to serve named identifier path segments with no authorization check.
+- `delegate_harness.rb`: delegate method coverage check, run on every invocation and available standalone via `--check-methods`, to catch the missing-stub failure above before deployment.
+
+### Changed
+- README: documented the loopback authorization vhost, proxy connection reuse (`enablereuse`), the `no-store` rule that silently disables IIIF caching, the `Header always` pitfall that emits `Cache-Control` twice, enabling HTTP/2 via `Protocols`, and using `RollingFileAppender` so a per-request delegate error cannot fill the disk. Added a table of the delegate's environment variables and troubleshooting entries for `NoMethodError` and `ECONNREFUSED`.
+
+### 修正 (日本語)
+- Cantaloupe delegate サンプル: Cantaloupe 5.x が `CustomDelegate` に対して呼び出すメソッドをすべて定義しました（`metadata`、`redactions`、`overlay`、`source`、各 `*source_*` ルックアップ、メタ識別子のシリアライザ）。上流のドキュメントコメントもそのまま移植しています。従来は `pre_authorize`／`authorize` のみを定義していたため、`metadata` の欠落により JRuby 内で `NoMethodError` が発生し、タイルは正常に描画されるにもかかわらず **すべての `info.json` リクエストが HTTP 500** になっていました。
+
+### 追加 (日本語)
+- Cantaloupe delegate サンプル: 認可結果のキャッシュを追加しました（`WDB_AUTH_CACHE_TTL`、既定 60 秒、`0` で無効）。キーは識別子＋トークン＋Cookie です。IIIF ビューアは 1 画面で約 20 枚のタイルを取得し、その 1 枚ごとに delegate が呼ばれるため、1 ページ表示あたり約 20 回だった Drupal のフルブートストラップが 1 回に集約されます。ただし判定結果は根拠となった状態より最大 TTL 秒だけ長く残るため、`token_ttl` より十分小さい値にしてください。
+- Cantaloupe delegate サンプル: `Host` ヘッダーを明示する `WDB_AUTH_HOST_HEADER` を追加し、認可エンドポイントを公開 HTTPS URL ではなく平文 HTTP のループバック vhost 経由で呼べるようにしました（ある実環境で IIIF リクエストあたり約 25〜30ms → 数ms）。
+- Cantaloupe delegate サンプル: 指定した識別子のパス要素を認可チェックなしで配信する `WDB_SKIP_AUTH_DIRS` を追加しました。
+- `delegate_harness.rb`: delegate のメソッド網羅性検査を追加しました。毎回の実行時に検査し、`--check-methods` で単独実行もできます。上記のスタブ欠落を配備前に検出できます。
+
+### 変更 (日本語)
+- README: 認可用ループバック vhost、プロキシの接続再利用（`enablereuse`）、IIIF のキャッシュを意図せず無効化する `no-store` 指定、`Cache-Control` が 2 本出てしまう `Header always` の落とし穴、`Protocols` による HTTP/2 の有効化、毎リクエストの delegate エラーでディスクを埋めないための `RollingFileAppender` について記載しました。delegate の環境変数一覧表と、`NoMethodError`／`ECONNREFUSED` のトラブルシューティング項目も追加しています。
+
 ## [1.5.14] - 2026-07-23
 ### Fixed
 - Thumbnails (word/sign/constituent-sign, pager, and search results) are now requested in CORS mode via `crossorigin="anonymous"`, matching the OpenSeadragon viewer. This prevents `ERR_BLOCKED_BY_RESPONSE.NotSameSite` errors when the IIIF image server responds with a cross-origin `Cross-Origin-Resource-Policy` header.
